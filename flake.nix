@@ -1,7 +1,9 @@
 {
-  description = "A simple NixOS flake";
+  description = "Dani's NixOS configuration";
 
   inputs = {
+    # Main NixOS channel
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     # NixOS official package source, using the nixos-25.05 branch here
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-25.05";
     # home-manager, used for managing user configuration
@@ -12,20 +14,32 @@
     }; 
   };
 
-  outputs = inputs@{ nixpkgs, home-manager, nixpkgs-stable, ... }: {
-    # Please replace my-nixos with your hostname
-    nixosConfigurations.danixos-vm = nixpkgs.lib.nixosSystem {
-      # 'specialArgs' param passes the non-default nxipkgs isntances to other nix modules
-      specialArgs = let
-        system = "x86_64-linux";
-      in {
-        # To use packages from nixpkgs-stable, we config some params for it first
-        pkgs-stable = import nixpkgs-stable {
-          inherit system;
-          # To use Chrome, we need to allow the installation of non-free software
-          config.allowUnfree = true;
-        };
+  outputs = inputs@{ self, nixpkgs, home-manager, nixpkgs-stable, ... }:
+  let
+    system = "x86_64-linux";
+
+    # Main package set
+    pkgs = import nixpkgs {
+      inherit system;
+      config.allowUnfree = true;
+    };
+
+    # Stable package set (what the template calls pkgs-stable)
+    pkgs-stable = import nixpkgs-stable {
+      inherit system;
+      config.allowUnfree = true;
+    };
+  in {
+    nixosConfigurations."danixos-vm" = nixpkgs.lib.nixosSystem {
+      inherit system;
+
+      # Extra arguments available to all your modules
+      specialArgs = {
+        inherit pkgs pkgs-stable;
+        inherit self;      # sometimes useful
+        inherit home-manager;
       };
+
       modules = [
         # Import the previous configuration.nix we used,
         # so the old configuration file still takes effect
