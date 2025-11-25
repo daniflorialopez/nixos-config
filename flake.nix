@@ -1,64 +1,46 @@
 {
-  description = "Dani's NixOS configuration";
+  description = "Dani's NixOS + Home Manager config";
 
   inputs = {
-    # Main NixOS channel
+    # Main NixOS channel – stick to release for now
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
-    # NixOS official package source, using the nixos-25.05 branch here
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-25.05";
-    # home-manager, used for managing user configuration
+
+    # Home Manager, following the same nixpkgs
     home-manager = {
       url = "github:nix-community/home-manager/release-25.05";
-      
       inputs.nixpkgs.follows = "nixpkgs";
-    }; 
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, nixpkgs-stable, ... }:
+  outputs = { self, nixpkgs, home-manager, ... }:
   let
     system = "x86_64-linux";
-
-    # Main package set
-    pkgs = import nixpkgs {
-      inherit system;
-      config.allowUnfree = true;
-    };
-
-    # Stable package set (what the template calls pkgs-stable)
-    pkgs-stable = import nixpkgs-stable {
-      inherit system;
-      config.allowUnfree = true;
-    };
   in {
-    nixosConfigurations."danixos-vm" = nixpkgs.lib.nixosSystem {
+    nixosConfigurations.danixos-vm = nixpkgs.lib.nixosSystem {
       inherit system;
 
-      # Extra arguments available to all your modules
-      specialArgs = {
-        inherit pkgs pkgs-stable;
-        inherit self;      # sometimes useful
-        inherit home-manager;
-      };
+      # Extra args you want modules to see (if needed later)
+      specialArgs = { inherit self; };
 
       modules = [
-        # Import the previous configuration.nix we used,
-        # so the old configuration file still takes effect
-        ./configuration.nix
-        
+        # Host config (imports hardware + modules/nixos/*.nix)
+        ./hosts/danixos-vm
+
+        # Home Manager as a NixOS module
         home-manager.nixosModules.home-manager
+
         {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
 
-          # Extra args visible to Home Manager modules (home.nix etc.)
-          home-manager.extraSpecialArgs = {
-            inherit pkgs-stable;
-          };
+          # You can pass extra args to home modules if you want
+          home-manager.extraSpecialArgs = { inherit self; };
 
-          home-manager.users.dani = import ./home.nix;
-
+          # Your home config entry point
+          home-manager.users.dani = import ./home/dani;
         }
       ];
     };
   };
 }
+
