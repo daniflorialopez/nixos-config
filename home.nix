@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, pkgs-stable, ... }:
 
 {
   # TODO please change the username & home directory to your own
@@ -27,7 +27,7 @@
   };
 
   # Packages that should be installed to the user profile.
-  home.packages = with pkgs; [
+  home.packages = with pkgs-stable; [
     # here is some command line tools I use frequently
     # feel free to add your own or remove some of them
 
@@ -100,6 +100,7 @@
     enable = true;
     userName = "Daniel Floria";
     userEmail = "daniflorialopez@gmail.com";
+    package = pkgs-stable.git;
   };
 
   # starship - an customizable prompt for any shell
@@ -112,6 +113,7 @@
       gcloud.disabled = true;
       line_break.disabled = true;
     };
+    package = pkgs-stable.starship;
   };
 
   # alacritty - a cross-platform, GPU-accelerated terminal emulator
@@ -127,6 +129,7 @@
       scrolling.multiplier = 5;
       selection.save_to_clipboard = true;
     };
+    package = pkgs-stable.alacritty;   
   };
 
   programs.bash = {
@@ -143,6 +146,7 @@
       urldecode = "python3 -c 'import sys, urllib.parse as ul; print(ul.unquote_plus(sys.stdin.read()))'";
       urlencode = "python3 -c 'import sys, urllib.parse as ul; print(ul.quote_plus(sys.stdin.read()))'";
     };
+    package = pkgs-stable.bash-interactive;
   };
 
   # This value determines the home Manager release that your

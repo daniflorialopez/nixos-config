@@ -3,7 +3,7 @@
 
   inputs = {
     # NixOS official package source, using the nixos-25.05 branch here
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-25.05";
     # home-manager, used for managing user configuration
     home-manager = {
       url = "github:nix-community/home-manager/release-25.05";
@@ -12,9 +12,20 @@
     }; 
   };
 
-  outputs = inputs@{ nixpkgs, home-manager, ... }: {
+  outputs = inputs@{ nixpkgs, home-manager, nixpkgs-stable, ... }: {
     # Please replace my-nixos with your hostname
     nixosConfigurations.danixos-vm = nixpkgs.lib.nixosSystem {
+      # 'specialArgs' param passes the non-default nxipkgs isntances to other nix modules
+      specialArgs = let
+        system = "x86_64-linux";
+      in {
+        # To use packages from nixpkgs-stable, we config some params for it first
+        pkgs-stable = import nixpkgs-stable {
+          inherit system;
+          # To use Chrome, we need to allow the installation of non-free software
+          config.allowUnfree = true;
+        };
+      };
       modules = [
         # Import the previous configuration.nix we used,
         # so the old configuration file still takes effect
