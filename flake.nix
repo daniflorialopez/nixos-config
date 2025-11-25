@@ -50,6 +50,11 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
 
+          # Extra args visible to Home Manager modules (home.nix etc.)
+          home-manager.extraSpecialArgs = {
+            inherit pkgs-stable;
+          };
+
           home-manager.users.dani = import ./home.nix;
 
         }
