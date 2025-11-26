@@ -37,5 +37,7 @@
     wget
     curl
   ];
+  
+  nixpkgs.config.allowUnfree = true;
 }
 

@@ -4,7 +4,7 @@
   home.packages = with pkgs; [
     obsidian
     virt-manager   # GUI; the backend is managed on NixOS side
-    vscode
+    vscodium
     jetbrains.idea-community  # TODO or ultimate, if unfree + license
   ];
 
