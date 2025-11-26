@@ -33,6 +33,9 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
 
+	  # Tell HM what extension to use when backing up conflicting files
+	  home-manager.backupFileExtension = "backup";
+
           # You can pass extra args to home modules if you want
           home-manager.extraSpecialArgs = { inherit self; };
 
