@@ -41,6 +41,14 @@
   
   nixpkgs.config.allowUnfree = true;
 
+  nix.settings.auto-optimise-store = true;
+
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
+  };
+
   system.stateVersion = "25.05"; # NEVER change
 }
 
