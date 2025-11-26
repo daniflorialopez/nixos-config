@@ -10,6 +10,7 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  programs.fish.enable = true;
 
   users.users.dani = {
     isNormalUser = true;

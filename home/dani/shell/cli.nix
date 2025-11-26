@@ -8,6 +8,16 @@
     zoxide
     lazygit
     wev
+    tree
+    zip
+    unzip
+    ripgrep
+    jq
+    fzf
+    mtr
+    lsof
+    gnupg
+    socat
     # Neovim/LazyVim will usually be configured via programs.neovim
   ];
 
