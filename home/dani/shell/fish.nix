@@ -6,21 +6,22 @@
 
     # Short aliases
     shellAbbrs = { 
-      gs = "git status"; 
-      ga = "git add";  
-      gc = "git commit";  
-      gl = "git log --oneline --graph --decorate";
-      ll = "eza -lah";
+      gcm = "git commit -m";  
+    };
+
+    # Aliases
+    shellAliases = {
       n = "nvim";
+      gs = "git status"; 
+      ga = "git add -A";  
+      gl = "git log --oneline --graph --decorate";
+      ll = "eza -lah --icons --group-directories-first";
+      lg = "lazygit";
+
     };
 
     # Extra initialization when an interactive fish starts
     interactiveShellInit = ''
-      # Editor + pager
-      set -gx EDITOR nvim
-      set -gx VISUAL nvim
-      set -gx PAGER less
-
       # zoxide
       if type -q zoxide
         zoxide init fish | source
