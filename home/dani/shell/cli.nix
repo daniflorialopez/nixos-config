@@ -40,6 +40,7 @@
 
     # version control
     git
+    lazygit
 
     # misc
     unzip
