@@ -4,16 +4,17 @@
   programs.fish = {
     enable = true;
 
-    # Short aliases
+    # Abbreviation
     shellAbbrs = { 
-      gcm = "git commit -m";  
+      gs  = "git status";
+      ga  = "git add -A";
+      gcm = "git commit -m";
+      gl  = "git log --oneline --graph --decorate";
     };
 
     # Aliases
     shellAliases = {
-      n = "nvim";
-      gs = "git status"; 
-      ga = "git add -A";  
+      n = "nvim";   
       gl = "git log --oneline --graph --decorate";
       ll = "eza -lah --icons --group-directories-first";
       lg = "lazygit";
@@ -22,6 +23,9 @@
 
     # Extra initialization when an interactive fish starts
     interactiveShellInit = ''
+      # vi-style keybindings
+      fish_vi_key_bindings
+
       # zoxide
       if type -q zoxide
         zoxide init fish | source
@@ -29,12 +33,9 @@
 
       # fzf keybindings
       if type -q fzf
-        # TODO source scripts here 
-      end
-
-      #starship prompt
-      if type -q starship
-        starship init fish | source
+        if type -q fd
+          set -gx FZF_DEFAULT_COMMAND 'fd --type f --hidden --follow --exclude .git'
+        end
       end
     '';
   };
