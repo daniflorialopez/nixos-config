@@ -24,7 +24,7 @@
       };
 
       git_status = {
-        format = "[ $all_status]($style)";
+        format = "([ $all_status]($style))";
         style = "cyan";
 	conflicted = "⚔";
         ahead      = "↑";
