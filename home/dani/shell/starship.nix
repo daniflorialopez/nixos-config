@@ -8,7 +8,7 @@
     settings = {
       add_newline = false;
 
-      format = "$directory$git_branch$git_status$line_break$character";
+      format = "$directory$git_branch$git_status $character";
 
       directory = {
         truncation_length = 3;
@@ -18,14 +18,14 @@
       };
 
       git_branch = {
-        format = " on [$branch]($style)";
-        style = "purple";
+        format = " [$branch]($style)";
+        style = "italic cyan";
         truncation_length = 20;
       };
 
       git_status = {
         format = " [$all_status]($style)";
-        style = "red";
+        style = "cyan";
         conflicted = "⚔";
         ahead      = "↑";
         behind     = "↓";
@@ -38,8 +38,8 @@
       };
 
       character = {
-        success_symbol = "❯ ";
-        error_symbol   = "[❯](bold red) ";
+        success_symbol = "[❯](bold cyan)";
+        error_symbol   = "[✗](bold cyan)";
       };
 
       ################
