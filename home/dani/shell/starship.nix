@@ -26,11 +26,13 @@
       git_status = {
         format = " [$all_status]($style)";
         style = "cyan";
-        conflicted = "⚔";
+        up_to_date = "";
+	conflicted = "⚔";
         ahead      = "↑";
         behind     = "↓";
         diverged   = "↕";
         untracked  = "?";
+	stashed    = "\$";
         modified   = "!";
         staged     = "+";
         renamed    = "»";
