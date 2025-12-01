@@ -8,7 +8,7 @@
     settings = {
       add_newline = false;
 
-      format = "$directory$git_branch$git_status $character";
+      format = "$directory$git_branch$git_status$character";
 
       directory = {
         truncation_length = 3;
@@ -38,8 +38,8 @@
       };
 
       character = {
-        success_symbol = "[❯](bold cyan)";
-        error_symbol   = "[✗](bold cyan)";
+        success_symbol = " [❯](bold cyan)";
+        error_symbol   = " [✗](bold cyan)";
       };
 
       ################
