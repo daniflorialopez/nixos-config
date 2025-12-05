@@ -23,6 +23,9 @@
 
     # Extra initialization when an interactive fish starts
     interactiveShellInit = ''
+      # Remove the initial banner
+      set -g fish_greeting ""
+
       # vi-style keybindings
       fish_vi_key_bindings
 
