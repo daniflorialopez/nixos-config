@@ -1,67 +1,95 @@
 { config, pkgs, ... }:
 
+let
+  # Oh My Tmux, fetched once, pinned to a specific commit
+  ohMyTmux = pkgs.fetchFromGitHub {
+    owner = "gpakosz";
+    repo  = ".tmux";
+
+    # 1) Put a real commit hash here from https://github.com/gpakosz/.tmux
+    #    For example: rev = "abcd1234....";
+    rev    = "5b34d9a873b8bfe608004d59b08e81389ce7b6a9";
+
+    # 2) Put the corresponding sha256 here (see instructions below)
+    sha256 = "sha256-0suqQJvB7OfUuxw8ruRbBOSjv+hHy2mfwsvJKbg5csQ=";
+  };
+in
 {
   programs.tmux = {
     enable = true;
+    package = pkgs.tmux;
 
-    clock24 = true;
-    mouse = true;
-    baseIndex = 1;
-    historyLimit = 10000;
-    escapeTime = 0;
-    keyMode = "vi";
-    terminal = "screen-256color";
+    # Nice defaults that don’t fight Oh My Tmux
+    mouse        = true;      # scrolling, clicking panes
+    keyMode      = "vi";      # vi-style keys in prompts / copy-mode
+    historyLimit = 100000;
+    escapeTime   = 0;         # better for Neovim, fzf, etc.
+    baseIndex    = 1;         # windows start at 1
+    clock24      = true;
+    terminal     = "tmux-256color";
 
+    # Plugins managed by Nix (no TPM needed)
+    plugins = with pkgs.tmuxPlugins; [
+      {
+        plugin = resurrect;
+        extraConfig = ''
+          # Better Neovim/Vim restore behavior
+          set -g @resurrect-strategy-nvim 'session'
+          set -g @resurrect-strategy-vim  'session'
+
+          # Save pane scrollback contents too
+          set -g @resurrect-capture-pane-contents 'on'
+        '';
+      }
+      {
+        plugin = continuum;
+        extraConfig = ''
+          # Auto-restore sessions on tmux start
+          set -g @continuum-restore 'on'
+
+          # Autosave every 15 minutes
+          set -g @continuum-save-interval '15'
+        '';
+      }
+      yank
+
+      extrakto
+
+      vim-tmux-navigator
+    ];
+
+    # Load Oh My Tmux as the base config
     extraConfig = ''
-      # Prefix: use C-Space instead of C-b
-      set -g prefix C-Space
-      unbind C-b
-      bind C-Space send-prefix
+      # Make Oh My Tmux aware of its real config + local config
+      set-environment -g TMUX_CONF "${ohMyTmux}/.tmux.conf"
+      set-environment -g TMUX_CONF_LOCAL "$HOME/.tmux.conf.local"
 
-      # Splits: | and - (with prefix)
-      unbind '"'
-      unbind %
-      bind | split-window -h
-      bind - split-window -v
-
-      # Pane navigation without prefix using Alt + h/j/k/l
-      bind -n M-h select-pane -L
-      bind -n M-j select-pane -D
-      bind -n M-k select-pane -U
-      bind -n M-l select-pane -R
-
-      # Pane resize without prefix using Ctrl + Shift + h/j/k/l
-      bind -n M-H resize-pane -L 2
-      bind -n M-J resize-pane -D 2
-      bind -n M-K resize-pane -U 2
-      bind -n M-L resize-pane -R 2
-
-
-      # Reload config
-      bind r source-file ~/.tmux.conf \; display-message "Reloaded tmux.conf"
-
-      # Use vi keys in copy mode
-      setw -g mode-keys vi
-
-      # --- Status bar (not ugly version) ---
-
-      set -g status-interval 5
-      set -g status-justify centre
-      set -g status-bg default
-      set -g status-fg colour244
-
-      # Left: session name
-      set -g status-left-length 20
-      set -g status-left '#[bold]#S#[default] '
-
-      # Right: time
-      set -g status-right-length 40
-      set -g status-right '#[fg=colour244]%Y-%m-%d %H:%M #[default]'
-
-      # Window list: current vs inactive
-      setw -g window-status-format ' #I:#W '
-      setw -g window-status-current-format '#[bold]#I:#W#[default]'
-      '';
+      # Load Oh My Tmux
+      source-file "${ohMyTmux}/.tmux.conf"
+    '';
   };
+
+  # Oh My Tmux automatically loads ~/.tmux.conf.local if it exists.
+  # We let Home Manager manage that file for you.
+  home.file.".tmux.conf.local".text = ''
+    # ================= Prefix & Ergonomics =====================
+
+    # Drop Oh My Tmux's dual-prefix (C-b + C-a) and use Ctrl-Space only
+    set -gu prefix2
+    unbind C-b
+    unbind C-a
+    set -g prefix C-Space
+    bind C-Space send-prefix
+
+    # Reload config quickly
+    bind r source-file ~/.tmux.conf \; display-message "tmux.conf reloaded"
+
+    # Ensure vi-style keys in copy-mode + status (redundant but explicit)
+    setw -g mode-keys vi
+    set -g status-keys vi
+
+    # (Optional) you can add theme tweaks here later if you want.
+    # This file is YOUR playground for Oh My Tmux overrides.
+  '';
 }
 
