@@ -48,6 +48,7 @@
     file
     rlwrap
     wev
+    yazi
 
     # TODO Neovim/LazyVim will usually be configured via programs.neovim
   ];
