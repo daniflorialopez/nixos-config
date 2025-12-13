@@ -10,10 +10,15 @@
       url = "github:nix-community/home-manager/release-25.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    lazyvim-starter = {
+      url = "github:LazyVim/starter";
+      flake = false;
+    };
   };
 
   outputs =
-    {
+    inputs@{
       self,
       nixpkgs,
       home-manager,
@@ -44,7 +49,7 @@
             home-manager.backupFileExtension = "backup";
 
             # You can pass extra args to home modules if you want
-            home-manager.extraSpecialArgs = { inherit self; };
+            home-manager.extraSpecialArgs = { inherit inputs; };
 
             # Your home config entry point
             home-manager.users.dani = import ./home/dani;
