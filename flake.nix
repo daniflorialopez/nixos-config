@@ -15,6 +15,11 @@
       url = "github:LazyVim/starter";
       flake = false;
     };
+
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
