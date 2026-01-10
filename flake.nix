@@ -37,11 +37,39 @@
         inherit system;
 
         # Extra args you want modules to see (if needed later)
-        specialArgs = { inherit self; };
+        specialArgs = { inherit inputs; };
 
         modules = [
           # Host config (imports hardware + modules/nixos/*.nix)
           ./hosts/danixos-vm
+
+          # Home Manager as a NixOS module
+          home-manager.nixosModules.home-manager
+
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+
+            # Tell HM what extension to use when backing up conflicting files
+            home-manager.backupFileExtension = "backup";
+
+            # You can pass extra args to home modules if you want
+            home-manager.extraSpecialArgs = { inherit inputs; };
+
+            # Your home config entry point
+            home-manager.users.dani = import ./home/dani;
+          }
+        ];
+      };
+      nixosConfigurations.danix-hp = nixpkgs.lib.nixosSystem {
+        inherit system;
+
+        # Extra args you want modules to see (if needed later)
+        specialArgs = { inherit inputs; };
+
+        modules = [
+          # Host config (imports hardware + modules/nixos/*.nix)
+          ./hosts/danix-hp
 
           # Home Manager as a NixOS module
           home-manager.nixosModules.home-manager
