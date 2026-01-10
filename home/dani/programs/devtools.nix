@@ -5,7 +5,7 @@
     obsidian
     virt-manager   # GUI; the backend is managed on NixOS side
     vscodium
-    jetbrains.idea-community  # TODO or ultimate, if unfree + license
+    jetbrains.idea-community  # TODO or jetbrains.idea-ultimate, if unfree + license
   ];
 
   programs.git.enable = true;
