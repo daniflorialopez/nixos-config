@@ -14,25 +14,25 @@
   boot.extraModulePackages = [ ];
 
   fileSystems."/" =
-    { device = "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
+    { device = lib.mkDefault "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
       fsType = "btrfs";
       options = [ "subvol=root" ];
     };
 
   fileSystems."/nix" =
-    { device = "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
+    { device = lib.mkDefault "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
       fsType = "btrfs";
       options = [ "subvol=nix" ];
     };
 
   fileSystems."/persist" =
-    { device = "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
+    { device = lib.mkDefault "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
       fsType = "btrfs";
       options = [ "subvol=persist" ];
     };
 
   fileSystems."/swap" =
-    { device = "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
+    { device = lib.mkDefault "/dev/disk/by-uuid/d2306bda-3822-4312-a9bd-8ff2193415ed";
       fsType = "btrfs";
       options = [ "subvol=swap" ];
     };
