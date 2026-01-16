@@ -49,6 +49,7 @@
     rlwrap
     wev
     yazi
+    parted
 
     # TODO Neovim/LazyVim will usually be configured via programs.neovim
   ];
