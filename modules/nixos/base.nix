@@ -11,6 +11,9 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   programs.fish.enable = true;
+  
+  # Don't manage user passwords declaratively (keeps passwords out of git)
+  users.mutableUsers = true;
 
   users.users.dani = {
     isNormalUser = true;
@@ -20,6 +23,13 @@
     ]; 
     shell = pkgs.fish;
   };
+  
+  # Lock root account so it can't log with a password
+  users.users.root.hashedPassword = "!";
+  
+  security.sudo.enable = true;
+  security.sudo.wheelNeedsPassword = true;
+
 
   services.openssh = {
     enable = true;
