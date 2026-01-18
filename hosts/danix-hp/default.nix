@@ -18,5 +18,7 @@
   ];
 
   networking.hostName = "danix-hp";
+
+  system.stateVersion = "26.05";
 }
 

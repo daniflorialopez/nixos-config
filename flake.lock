@@ -57,6 +57,22 @@
         "type": "github"
       }
     },
+    "nixos-hardware": {
+      "locked": {
+        "lastModified": 1768736227,
+        "narHash": "sha256-qgGq7CfrYKc3IBYQ7qp0Z/ZXndQVC5Bj0N8HW9mS2rM=",
+        "owner": "NixOS",
+        "repo": "nixos-hardware",
+        "rev": "d447553bcbc6a178618d37e61648b19e744370df",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "master",
+        "repo": "nixos-hardware",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1763948260,
@@ -78,6 +94,7 @@
         "disko": "disko",
         "home-manager": "home-manager",
         "lazyvim-starter": "lazyvim-starter",
+        "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs"
       }
     }
