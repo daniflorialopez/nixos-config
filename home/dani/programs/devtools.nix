@@ -8,8 +8,11 @@
     jetbrains.idea-community  # TODO or jetbrains.idea-ultimate, if unfree + license
   ];
 
-  programs.git.enable = true;
-
+  programs.git = {
+    enable = true;
+    userName = "Daniel Floria Lopez";
+    userEmail = "daniflorialopez@gmail.com";
+  };
 
   # --- Neovim + practical runtime tools ---
   programs.neovim = {
