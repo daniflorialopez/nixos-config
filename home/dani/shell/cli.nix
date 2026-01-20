@@ -51,7 +51,6 @@
     yazi
     parted
 
-    # TODO Neovim/LazyVim will usually be configured via programs.neovim
   ];
 
   home.sessionVariables = {
@@ -61,7 +60,7 @@
     MANPAGER  = "less -R";
   };
 
-  # enable Alacritty as primary terminal
-  programs.alacritty.enable = true;
+  # enable Ghostty as primary terminal
+  programs.ghostty.enable = true;
 }
 
