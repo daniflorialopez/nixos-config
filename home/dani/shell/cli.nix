@@ -50,7 +50,7 @@
     wev
     yazi
     parted
-
+    byobu
   ];
 
   home.sessionVariables = {
