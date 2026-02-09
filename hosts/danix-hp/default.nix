@@ -11,7 +11,8 @@
     ../../modules/nixos/security.nix
     ../../modules/nixos/gaming.nix
     ../../modules/nixos/disko.nix
-
+    ../../modules/nixos/tlp.nix
+    
     # choose your desktop
     # ../../modules/nixos/desktop/hyprland.nix
     ../../modules/nixos/desktop/cinnamon.nix
