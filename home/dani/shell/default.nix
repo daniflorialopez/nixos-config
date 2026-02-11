@@ -5,6 +5,7 @@
     ./starship.nix
     ./fish.nix
     ./zellij.nix
+    ./alacritty.nix
   ];
 }
 
