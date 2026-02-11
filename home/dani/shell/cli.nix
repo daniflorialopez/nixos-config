@@ -20,6 +20,7 @@
     ncdu
     strace
     ltrace
+    gdu
 
     # networking
     curl
@@ -59,8 +60,5 @@
     PAGER     = "less -R";
     MANPAGER  = "less -R";
   };
-
-  # enable Ghostty as primary terminal
-  programs.ghostty.enable = true;
 }
 
