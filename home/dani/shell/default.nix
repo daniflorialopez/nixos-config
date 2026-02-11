@@ -4,6 +4,7 @@
     ./tmux.nix
     ./starship.nix
     ./fish.nix
+    ./zellij.nix
   ];
 }
 
