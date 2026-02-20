@@ -12,9 +12,9 @@
 
       directory = {
         truncation_length = 3;
-	truncate_to_repo = true;
-	style = "cyan";
-	format = "[$path]($style)";
+      	truncate_to_repo = true;
+	      style = "cyan";
+	      format = "[$path]($style)";
       };
 
       git_branch = {
@@ -26,12 +26,12 @@
       git_status = {
         format = "([ $all_status]($style))";
         style = "cyan";
-	conflicted = "⚔";
+	      conflicted = "⚔";
         ahead      = "↑";
         behind     = "↓";
         diverged   = "↕";
         untracked  = "?";
-	stashed    = "\$";
+      	stashed    = "\$";
         modified   = "!";
         staged     = "+";
         renamed    = "»";
@@ -41,6 +41,10 @@
       character = {
         success_symbol = " [❯](bold cyan)";
         error_symbol   = " [✗](bold cyan)";
+        vimcmd_symbol  = " [❮](bold green)";
+        vimcmd_visual_symbol = " [❮](bold purple)";
+        vimcmd_replace_symbol = " [❮](bold red)";
+        vimcmd_replace_one_symbol = " [❮](bold red)";
       };
 
       ################
