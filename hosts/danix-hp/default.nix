@@ -13,6 +13,7 @@
     ../../modules/nixos/disko.nix
     ../../modules/nixos/tlp.nix
     ../../modules/nixos/fonts.nix
+    ../../modules/nixos/keyd.nix
  
     # choose your desktop
     # ../../modules/nixos/desktop/hyprland.nix
