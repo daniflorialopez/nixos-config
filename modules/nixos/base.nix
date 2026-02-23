@@ -56,11 +56,19 @@
   
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
+  # Automatically garbage-collect
   nix.gc = {
     automatic = true;
     dates = "weekly";
     options = "--delete-older-than 14d";
   };
+
+  # Deduplicate/optimise store a bit over time
+  nix.optimise.automatic = true;
+  nix.optimise.dates = [ "weekly" ];
+
+  # Limit how many boot entries are kept (doesn't free space by itself, but keeps boot menu tidy)
+  boot.loader.systemd-boot.configurationLimit = 10;
 
   system.stateVersion = "25.05"; # NEVER change
 }
