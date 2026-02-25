@@ -15,9 +15,8 @@
     ../../modules/nixos/fonts.nix
     ../../modules/nixos/keyd.nix
  
-    # choose your desktop
-    # ../../modules/nixos/desktop/hyprland.nix
-    ../../modules/nixos/desktop/cinnamon.nix
+    # desktop environment
+    ./desktop.nix
   ];
 
   networking.hostName = "danix-hp";
