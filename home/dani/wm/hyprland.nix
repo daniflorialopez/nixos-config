@@ -22,7 +22,6 @@
         "waybar"
         "mako"
         "nm-applet --indicator"
-        "hyprpaper"
       ];
 
       bind = [

@@ -17,6 +17,7 @@ in
     ]
     ++ lib.optionals hyprEnabled [
       ./wm/hyprland.nix
+      ./wm/wallpaper.nix
     ];
 
   home.username = "dani";
