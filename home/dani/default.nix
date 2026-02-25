@@ -1,11 +1,23 @@
-{ config, pkgs, ... }:
+{ 
+  config, 
+  pkgs, 
+  lib, 
+  osConfig ? null, 
+  ... 
+}:
 
+let
+  hyprEnabled = osConfig != null && (osConfig.programs.hyprland.enable or false);
+in
 {
-  imports = [
-    ./shell
-    ./programs
-    ./wm/hyprland.nix
-  ];
+  imports =
+    [
+      ./shell
+      ./programs
+    ]
+    ++ lib.optionals hyprEnabled [
+      ./wm/hyprland.nix
+    ];
 
   home.username = "dani";
   home.homeDirectory = "/home/dani";
