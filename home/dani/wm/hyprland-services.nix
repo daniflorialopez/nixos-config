@@ -1,12 +1,12 @@
 { config, pkgs, ... }:
 let
-  target = config.wayland.systemd.target; # defaults to "graphical-session.target" :contentReference[oaicite:5]{index=5}
+  target = config.wayland.systemd.target; # defaults to "graphical-session.target"
 in
 {
   # Waybar (service + config) — recommended way
   programs.waybar = {
     enable = true;
-    systemd.enable = true;         # creates waybar.service :contentReference[oaicite:6]{index=6}
+    systemd.enable = true;         # creates waybar.service
     systemd.target = target;
 
     settings.mainBar = {
@@ -94,7 +94,7 @@ in
   };
 
   # Mako: HM config + systemd service
-  services.mako.enable = true;     # writes config + installs package :contentReference[oaicite:7]{index=7}
+  services.mako.enable = true;     # writes config + installs package
   systemd.user.services.mako = {
     Unit = {
       Description = "Mako notifications";
