@@ -7,6 +7,8 @@
 {
   imports = [
     ./hyprland-services.nix
+    ./theme.nix
+    ./wofi.nix
   ];
 
   wayland.windowManager.hyprland = {
@@ -25,7 +27,7 @@
       bind = [
         # Basic binds
         "$mod, Return, exec, alacritty"
-        "$mod, D, exec, wofi --show drun"
+        "$mod, D, exec, wofi --show drun --style $HOME/.config/wofi/style.css"
         "$mod, Q, killactive"
         "$mod, M, exit"
         "$mod, F, fullscreen"
@@ -100,6 +102,9 @@
     pavucontrol
     brightnessctl
     playerctl
+
+    # fonts
+    font-awesome
 
     # other utilities
     wl-kbptr
