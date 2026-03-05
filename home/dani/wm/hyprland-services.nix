@@ -61,34 +61,46 @@ in
     };
 
     style = ''
-      * { font-size: 12px; min-height: 0; }
+      @import "palette.css";
+
+      * {
+        border: none;
+        min-height: 0;
+        font-size: 12.5px;
+      }
 
       window#waybar {
-        background: rgba(0,0,0,0.35);
-        color: #fff;
-        border-radius: 10px;
+        background: transparent;
+      }
+
+      window#waybar > box {
+        background: @bg_alpha;
+        border: 1px solid @border;
+        border-radius: 14px;
+        padding: 4px 8px;
+        margin: 6px 10px;
       }
 
       #workspaces button {
-        padding: 0 7px;
-        margin: 4px 2px;
-        border-radius: 8px;
         background: transparent;
-        border: 0;
-        color: inherit;
+        color: @muted;
+        padding: 4px 10px;
+        margin: 0 3px;
+        border-radius: 10px;
       }
 
       #workspaces button.active {
-        background: rgba(255,255,255,0.15);
+        background: rgba(137, 180, 250, 0.18);
+        color: @fg;
       }
 
-      #workspaces button.empty {
-        opacity: 0.35;
-      }
-
-      #clock, #pulseaudio, #network, #battery, #tray {
-        padding: 0 10px;
-        margin: 4px 0;
+      #clock, #tray, #network, #pulseaudio, #battery {
+        background: @surface;
+        color: @fg;
+        padding: 4px 10px;
+        margin: 0 4px;
+        border-radius: 10px;
+        border: 1px solid @border;
       }
     ''; 
   };
