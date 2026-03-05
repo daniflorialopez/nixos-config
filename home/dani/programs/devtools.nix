@@ -37,6 +37,10 @@
       tree-sitter
       stdenv.cc # C compiler wrapper
       gnumake   # `make` often needed for builds
+
+      # clipboard requirements
+      wl-clipboard
+      xclip
     ];
   };
 
@@ -44,6 +48,17 @@
   home.sessionVariables = {
     EDITOR = "nvim";
     VISUAL = "nvim";
+  };
+
+  # --- Nix-managed LazyVim overrides (loaded by LazyVim) ---
+  #
+  # This file is generated declaratively by Home Manager.
+  # LazyVim will load it via a one-time injected `pcall(require, "config.nix")`.
+  xdg.configFile."nvim/lua/config/nix.lua" = {
+    force = true;
+    text = ''
+      vim.opt.clipboard = "unnamedplus"
+    '';
   };
 
   # --- Seed LazyVim starter into a WRITABLE ~/.config/nvim ---
@@ -81,6 +96,25 @@
       # Ensure lockfile remains writable (in case it ever got messed up)
       if [ -f "$NVIM_DIR/lazy-lock.json" ]; then
         chmod u+rw "$NVIM_DIR/lazy-lock.json" || true
+      fi
+    fi
+  '';
+
+  home.activation.lazyvimNixOverrides = lib.hm.dag.entryAfter [ "lazyvimStarter" ] ''
+    set -eu
+
+    NVIM_DIR="$HOME/.config/nvim"
+    OPTIONS="$NVIM_DIR/lua/config/options.lua"
+    INIT="$NVIM_DIR/init.lua"
+    LINE='pcall(require, "config.nix")'
+
+    if [ -f "$OPTIONS" ]; then
+      if ! grep -Fq "$LINE" "$OPTIONS"; then
+        printf '\n-- Nix-managed overrides\n%s\n' "$LINE" >> "$OPTIONS"
+      fi
+    elif [ -f "$INIT" ]; then
+      if ! grep -Fq "$LINE" "$INIT"; then
+        printf '\n-- Nix-managed overrides\n%s\n' "$LINE" >> "$INIT"
       fi
     fi
   '';
