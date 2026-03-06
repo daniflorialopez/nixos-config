@@ -67,7 +67,8 @@
       ];
 
       input = {
-        kb_layout = "us";
+        kb_layout = "us,es";
+        kb_options = "grp:alts_toggle,caps:super";
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
