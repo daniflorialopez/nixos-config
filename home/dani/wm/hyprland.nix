@@ -20,19 +20,14 @@
       monitor = [ ",preferred,auto,1" ];
 
       "$mod" = "SUPER";
+      "$terminal" = "alacritty";
+      "$fileManager" = "pcmanfm";
+      "$browser" = "firefox";
 
       exec-once = [
       ];
 
       bind = [
-        # Basic binds
-        "$mod, Return, exec, alacritty"
-        "$mod, D, exec, wofi --show drun --style $HOME/.config/wofi/style.css"
-        "$mod, Q, killactive"
-        "$mod, M, exit"
-        "$mod, F, fullscreen"
-        "$mod, Space, togglefloating"
-
         # Workspaces
         "$mod, 1, workspace, 1"
         "$mod, 2, workspace, 2"
@@ -57,8 +52,65 @@
         "$mod SHIFT, 9, movetoworkspace, 9"
         "$mod SHIFT, 0, movetoworkspace, 10"
 
+        # --- Scratchpad (special workspace) ---
+        # "$mod, S, togglespecialworkspace,"
+        # "$mod SHIFT, S, movetoworkspace, special"
+
+        # Window actions
+        # "$mod SHIFT, Space, togglefloating,"
+        # "$mod, P, pseudo,"          # pseudo-tiling
+        # "$mod, J, togglesplit,"     # dwindle split direction
+        # "$mod, Tab, cyclenext,"
+        # "$mod SHIFT, Tab, cyclenext, prev"
+
+        # --- Focus (vim keys) ---
+        "$mod, h, movefocus, l"
+        "$mod, l, movefocus, r"
+        "$mod, k, movefocus, u"
+        "$mod, j, movefocus, d"
+
+        # --- Move window (vim keys) ---
+        "$mod SHIFT, h, movewindow, l"
+        "$mod SHIFT, l, movewindow, r"
+        "$mod SHIFT, k, movewindow, u"
+        "$mod SHIFT, j, movewindow, d"
+
+        # --- Resize active window (vim keys) ---
+        "$mod CTRL, h, resizeactive, -30 0"
+        "$mod CTRL, l, resizeactive, 30 0"
+        "$mod CTRL, k, resizeactive, 0 -30"
+        "$mod CTRL, j, resizeactive, 0 30"
+
+        # --- Media keys (PipeWire + playerctl) ---
+        ", XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
+        ", XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
+        ", XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+        ", XF86AudioPlay, exec, playerctl play-pause"
+        ", XF86AudioNext, exec, playerctl next"
+        ", XF86AudioPrev, exec, playerctl previous"
+
+        # --- Brightness ---
+        ", XF86MonBrightnessUp, exec, brightnessctl set +10%"
+        ", XF86MonBrightnessDown, exec, brightnessctl set 10%-"
+      ];
+
+      bindd = [
+        # Basic binds
+        "$mod, Return, Alacritty, exec, $terminal"
+        "$mod, Space, Wofi, exec, wofi --show drun --style $HOME/.config/wofi/style.css"
+        "$mod, Kill Program, W, killactive"
+        # "$mod, M, exit"
+        "$mod, F, Full width, fullscreen, 1"
+        "$mod ALT, F, Force full screen, fullscreen, 0"
+        # "$mod, Space, togglefloating"
+        "$mod, M, File Manager, exec, $fileManager"
+        "$mod, B, Browser, exec, $browser"
+
         # Screenshot area to clipboard
-        ", Print, exec, grim -g \"$(slurp)\" - | wl-copy"
+        ", Print, Print screen selection, exec, grim -g \"$(slurp -d)\" - | wl-copy"
+
+        # wl-kbptr
+        "$mod SHIFT, M, wl-kbptr mouse actions, exec, wl-kbptr"
       ];
 
       bindm = [
