@@ -2,7 +2,7 @@
 
 {
   home.packages = with pkgs; [
-    firefox
+    # firefox
     google-chrome
     ungoogled-chromium
     brave

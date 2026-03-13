@@ -5,6 +5,7 @@
     ./devtools.nix
     ./media.nix
     ./misc.nix
+    ./firefox.nix
   ];
 }
 
