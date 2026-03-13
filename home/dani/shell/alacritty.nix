@@ -27,6 +27,8 @@
       keyboard.bindings = [
         { key = "Insert"; mods = "Shift";   action = "Paste"; }
         { key = "Insert"; mods = "Control"; action = "Copy";  }
+        { key = "C"; mods = "Super"; action = "Copy"; }
+        { key = "V"; mods = "Super"; action = "Paste"; }
       ];
 
       terminal = {
