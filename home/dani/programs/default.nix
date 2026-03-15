@@ -6,6 +6,7 @@
     ./media.nix
     ./misc.nix
     ./firefox.nix
+    ./comma.nix
   ];
 }
 
