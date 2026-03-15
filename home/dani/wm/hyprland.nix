@@ -98,13 +98,17 @@
         # Basic binds
         "$mod, Return, Alacritty, exec, $terminal"
         "$mod, Space, Wofi, exec, wofi --show drun --style $HOME/.config/wofi/style.css"
-        "$mod, Kill Program, W, killactive"
+        "$mod, W, Kill Program, killactive"
         # "$mod, M, exit"
         "$mod, F, Full width, fullscreen, 1"
         "$mod ALT, F, Force full screen, fullscreen, 0"
         # "$mod, Space, togglefloating"
         "$mod, M, File Manager, exec, $fileManager"
-        "$mod, B, Browser, exec, $browser"
+
+        # Different Firefox profiles: personal, lab, work
+        "$mod, B, Browser, exec, $browser -p personal"
+        "$mod SHIFT, B, Browser, exec, $browser -p lab"
+        "$mod ALT, B, Browser, exec, $browser -p work"
 
         # Screenshot area to clipboard
         ", Print, Print screen selection, exec, grim -g \"$(slurp -d)\" - | wl-copy"

@@ -14,6 +14,6 @@ in
   ];
 
   wayland.windowManager.hyprland.settings.bind = [
-    "$mod, W, exec, sh -lc 'f=$(find \"${dir}\" -maxdepth 1 -type f \\( -iname \"*.jpg\" -o -iname \"*.jpeg\" -o -iname \"*.png\" -o -iname \"*.webp\" \\) | sort | wofi --dmenu --prompt Wallpaper); [ -n \"$f\" ] && hyprctl hyprpaper reload ,\"$f\"'"
+    "$mod SHIFT, W, exec, sh -lc 'f=$(find \"${dir}\" -maxdepth 1 -type f \\( -iname \"*.jpg\" -o -iname \"*.jpeg\" -o -iname \"*.png\" -o -iname \"*.webp\" \\) | sort | wofi --dmenu --prompt Wallpaper); [ -n \"$f\" ] && hyprctl hyprpaper reload ,\"$f\"'"
   ];
 }
