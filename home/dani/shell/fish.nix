@@ -10,6 +10,10 @@
       ga  = "git add -A";
       gcm = "git commit -m";
       gl  = "git log --oneline --graph --decorate";
+
+      # Non-compliant packages with Comma syntax should follow the cowsay example below
+      cowsay-run = "nix run nixpkgs#cowsay --";
+
     };
 
     # Aliases
@@ -18,7 +22,6 @@
       gl = "git log --oneline --graph --decorate";
       ll = "eza -lah --icons --group-directories-first";
       lg = "lazygit";
-
     };
 
     # Extra initialization when an interactive fish starts
