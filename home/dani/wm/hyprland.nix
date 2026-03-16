@@ -4,6 +4,37 @@
   ... 
 }:
 
+let
+  screenshotSatty = pkgs.writeShellApplication {
+    name = "screenshot-satty";
+    runtimeInputs = with pkgs; [
+      grim
+      slurp
+      satty
+      wl-clipboard
+      coreutils
+    ];
+    text = ''
+      set -eu
+
+      outdir="$HOME/Pictures/Screenshots"
+      mkdir -p "$outdir"
+
+      region="$(slurp -c '#ff0000ff')" || exit 0
+      outfile="$outdir/satty-$(date +%Y%m%d-%H%M%S).png"
+
+      export GSK_RENDERER=ngl
+
+      grim -g "$region" -t ppm - | satty \
+        --filename - \
+        --fullscreen \
+        --initial-tool crop \
+        --copy-command wl-copy \
+        --output-filename "$outfile"
+    '';
+  };
+in
+
 {
   imports = [
     ./hyprland-services.nix
@@ -110,8 +141,8 @@
         "$mod SHIFT, B, Browser, exec, $browser -p lab"
         "$mod ALT, B, Browser, exec, $browser -p work"
 
-        # Screenshot area to clipboard
-        ", Print, Print screen selection, exec, grim -g \"$(slurp -d)\" - | wl-copy"
+        # Screenshots
+        ", Print, Screenshot with Satty, exec, screenshot-satty"
 
         # wl-kbptr
         "$mod SHIFT, M, wl-kbptr mouse actions, exec, wl-kbptr"
@@ -138,19 +169,19 @@
       };
     };
   };
-
+  
   home.packages = with pkgs; [
     # essentials
     alacritty
     wofi
-    # waybar
-    # mako
     hyprpaper
 
     # clipboard + screenshots
-    wl-clipboard
     grim
     slurp
+    wl-clipboard
+    screenshotSatty
+    satty
 
     # tray / network
     networkmanagerapplet
