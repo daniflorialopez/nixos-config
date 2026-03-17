@@ -39,7 +39,8 @@ in
   imports = [
     ./hyprland-services.nix
     ./theme.nix
-    ./wofi.nix
+    # ./wofi.nix
+    ./walker.nix
   ];
 
   wayland.windowManager.hyprland = {
@@ -129,6 +130,7 @@ in
         # Basic binds
         "$mod, Return, Alacritty, exec, $terminal"
         "$mod, Space, Wofi, exec, wofi --show drun --style $HOME/.config/wofi/style.css"
+        "$mod SHIFT, D, Walker and Elephant, exec, walker"
         "$mod, W, Kill Program, killactive"
         # "$mod, M, exit"
         "$mod, F, Full width, fullscreen, 1"
