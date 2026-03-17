@@ -84,8 +84,8 @@
     @define-color theme_fg_color #cdd6f4;
     @define-color subtext_color rgba(205, 214, 244, 0.62);
     @define-color border_color rgba(255, 255, 255, 0.07);
-    @define-color walker_outer_border rgba(137, 180, 250, 0.68);
-    @define-color walker_outer_glow rgba(137, 180, 250, 0.14);
+    @define-color walker_outer_border rgba(56, 189, 248, 0.96);
+    @define-color walker_outer_glow rgba(56, 189, 248, 0.26);
 
     * {
       all: unset;
@@ -101,7 +101,7 @@
       border-radius: 20px;
       padding: 16px;
       box-shadow:
-        0 0 0 1px rgba(137, 180, 250, 0.10),
+        0 0 0 1px rgba(56, 189, 248, 0.16),
         0 0 24px @walker_outer_glow,
         0 18px 50px rgba(0, 0, 0, 0.30),
         0 8px 24px rgba(0, 0, 0, 0.16);
