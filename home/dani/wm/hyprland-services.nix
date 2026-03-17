@@ -151,17 +151,17 @@ in
     Install.WantedBy = [ target ];
   };
 
-  # Wallpaper init (avoids black background after reboot)
-  systemd.user.services.wallpaper-init = {
+  # Wallpaper restore
+  systemd.user.services.wallpaper-restore = {
     Unit = {
-      Description = "Set wallpaper on Hyprland login";
+      Description = "Restore wallpaper with Waytrogen";
       PartOf = [ target ];
       After = [ "hyprpaper.service" target ];
       ConditionEnvironment = "WAYLAND_DISPLAY";
     };
     Service = {
       Type = "oneshot";
-      ExecStart = "${pkgs.runtimeShell} -lc 'dir=\"$HOME/Pictures/Wallpapers\"; f=$(find \"$dir\" -maxdepth 1 -type f \\( -iname \"*.jpg\" -o -iname \"*.jpeg\" -o -iname \"*.png\" -o -iname \"*.webp\" \\) | sort | head -n1); [ -n \"$f\" ] && ${pkgs.hyprland}/bin/hyprctl hyprpaper reload ,\"$f\"'";
+      ExecStart = "${pkgs.waytrogen}/bin/waytrogen --restore";
     };
     Install.WantedBy = [ target ];
   };

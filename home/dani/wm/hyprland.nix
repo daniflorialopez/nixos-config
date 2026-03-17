@@ -167,6 +167,12 @@ in
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
       };
+
+      windowrulev2 = [
+        "float, class:^(org\\.Waytrogen\\.Waytrogen)$"
+        "center, class:^(org\\.Waytrogen\\.Waytrogen)$"
+        "size 1200 800, class:^(org\\.Waytrogen\\.Waytrogen)$"
+      ];
     };
   };
   
