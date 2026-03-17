@@ -168,12 +168,22 @@ in
       general = {
         border_size = 2;
 
-        "col.active_border" = "rgba(89b4faff) rgba(cba6f7ff) 45deg";
+        "col.active_border" = "rgba(38bdf8ff) rgba(38bdf8ff) 45deg";
         "col.inactive_border" = "rgba(6c7086aa)";
       };
 
       decoration = {
         rounding = 12;
+        shadow = {
+          enabled = true;
+          range = 24;
+          render_power = 3;
+          ignore_window = true;
+          color = "rgba(38bdf84a)";
+          color_inactive = "rgba(00000018)";
+          offset = "0 0";
+          scale = 1.0;
+        };
       };
 
       misc = {
