@@ -155,15 +155,15 @@ in
       }
 
       window#waybar {
-        background: rgba(17, 19, 24, 0.94);
+        background: rgba(16, 18, 22, 0.94);
         color: #d7dce2;
         border-bottom: 1px solid rgba(215, 220, 226, 0.08);
       }
 
       tooltip {
         background: #111318;
-        color: #e5e9f0;
-        border: 1px solid rgba(229, 233, 240, 0.10);
+        color: #e6ebf2;
+        border: 1px solid rgba(230, 235, 242, 0.10);
       }
 
       #workspaces {
@@ -172,54 +172,61 @@ in
 
       #workspaces button {
         background: transparent;
-        color: #7f8796;
+        color: #7d8594;
         padding: 0 10px;
         margin: 0 6px 0 0;
         border-bottom: 2px solid transparent;
       }
 
       #workspaces button:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: #e5e9f0;
+        background: rgba(255, 255, 255, 0.04);
+        color: #e6ebf2;
         box-shadow: none;
       }
 
       #workspaces button.active {
         color: #f8fafc;
-        border-bottom: 2px solid #9aa5b1;
+        border-bottom: 2px solid #98a2b3;
       }
 
       #clock,
       #custom-kblayout,
       #network,
       #pulseaudio,
-      #battery,
-      #tray {
+      #battery {
         background: transparent;
-        color: #d7dce2;
+        color: #cfd6df;
         padding: 0 10px;
         margin: 0;
       }
 
       #clock {
+        color: #f4f7fb;
         font-weight: 600;
-        color: #f4f6f8;
+        letter-spacing: 0.2px;
       }
 
       #custom-kblayout {
-        font-weight: 600;
-        color: #cfd5dd;
+        min-width: 26px;
+        color: #b9c2cd;
+        font-weight: 700;
+      }
+
+      #network,
+      #pulseaudio,
+      #battery {
+        color: #c7ced8;
       }
 
       #battery.warning {
-        color: #d9b671;
+        color: #d8b56d;
       }
 
       #battery.critical {
-        color: #d17b88;
+        color: #d17c88;
       }
 
-      #tray {
+      .modules-right {
         margin-right: 10px;
       }
     '';
