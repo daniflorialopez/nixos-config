@@ -31,7 +31,7 @@
         behind     = "↓";
         diverged   = "↕";
         untracked  = "?";
-      	stashed    = "\$";
+      	stashed    = "\\$";
         modified   = "!";
         staged     = "+";
         renamed    = "»";
