@@ -39,8 +39,8 @@ in
   imports = [
     ./hyprland-services.nix
     ./theme.nix
-    # ./wofi.nix
     ./walker.nix
+    ./waybar.nix
   ];
 
   wayland.windowManager.hyprland = {
@@ -92,8 +92,8 @@ in
         # "$mod SHIFT, Space, togglefloating,"
         # "$mod, P, pseudo,"          # pseudo-tiling
         # "$mod, J, togglesplit,"     # dwindle split direction
-        # "$mod, Tab, cyclenext,"
-        # "$mod SHIFT, Tab, cyclenext, prev"
+        "$mod, Tab, cyclenext,"
+        "$mod SHIFT, Tab, cyclenext, prev"
 
         # --- Focus (vim keys) ---
         "$mod, h, movefocus, l"
@@ -129,8 +129,7 @@ in
       bindd = [
         # Basic binds
         "$mod, Return, Alacritty, exec, $terminal"
-        "$mod, Space, Wofi, exec, wofi --show drun --style $HOME/.config/wofi/style.css"
-        "$mod SHIFT, D, Walker and Elephant, exec, walker"
+        "$mod, Space, Walker and Elephant, exec, walker"
         "$mod, W, Kill Program, killactive"
         # "$mod, M, exit"
         "$mod, F, Full width, fullscreen, 1"
@@ -139,9 +138,9 @@ in
         "$mod, M, File Manager, exec, $fileManager"
 
         # Different Firefox profiles: personal, lab, work
-        "$mod, B, Browser, exec, $browser -p personal"
-        "$mod SHIFT, B, Browser, exec, $browser -p lab"
-        "$mod ALT, B, Browser, exec, $browser -p work"
+        "$mod, B, Firefox personal profile, exec, $browser -p personal"
+        "$mod SHIFT, B, Firefox lab profile, exec, $browser -p lab"
+        "$mod ALT, B, Firefox work profile, exec, $browser -p work"
 
         # Screenshots
         ", Print, Screenshot with Satty, exec, screenshot-satty"
@@ -176,11 +175,11 @@ in
         rounding = 12;
         shadow = {
           enabled = true;
-          range = 24;
+          range = 28;
           render_power = 3;
           ignore_window = true;
-          color = "rgba(38bdf84a)";
-          color_inactive = "rgba(00000018)";
+          color = "rgba(38bdf866)";
+          color_inactive = "rgba(00000014)";
           offset = "0 0";
           scale = 1.0;
         };
@@ -202,7 +201,6 @@ in
   home.packages = with pkgs; [
     # essentials
     alacritty
-    wofi
     hyprpaper
 
     # clipboard + screenshots
