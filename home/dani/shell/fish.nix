@@ -30,9 +30,6 @@
         set -l user $USER
         set -l shell "fish"
 
-        # Choose: soft | balanced | sharp
-        set -l banner_style "soft"
-
         # Friendly aliases for ugly real hostnames
         switch $host
           case 'nixos-desktop'
@@ -49,113 +46,45 @@
           set is_remote 1
         end
 
-        # Tokyo Night palette
+        # Restrained Tokyo Night palette
         set -l comment "#565f89"
         set -l fg      "#c0caf5"
         set -l blue    "#7aa2f7"
-        set -l cyan    "#7dcfff"
         set -l purple  "#bb9af7"
-        set -l orange  "#e0af68"
-        set -l green   "#9ece6a"
 
-        set -l role "LOCAL"
-        set -l role_color $cyan
+        set -l role "local"
+        set -l role_color $comment
         if test $is_remote -eq 1
-          set role "REMOTE"
+          set role "remote"
           set role_color $purple
         end
 
-        switch $banner_style
-          case soft
-            # ╭─ dani@danix-hp · remote · fish
-            set_color $comment
-            printf "╭─ "
+        set_color $comment
+        printf "╭─ "
 
-            set_color --bold $orange
-            printf "%s" $user
+        set_color $fg
+        printf "%s" $user
 
-            set_color $comment
-            printf "@"
+        set_color $comment
+        printf "@"
 
-            set_color --bold $blue
-            printf "%s" $host
+        set_color --bold $blue
+        printf "%s" $host
 
-            set_color $comment
-            printf " · "
+        set_color $comment
+        printf " · "
 
-            set_color $role_color
-            printf "%s" (string lower $role)
+        set_color $role_color
+        printf "%s" $role
 
-            set_color $comment
-            printf " · "
+        set_color $comment
+        printf " · "
 
-            set_color $green
-            printf "%s" $shell
+        set_color $comment
+        printf "%s" $shell
 
-            set_color normal
-            echo
-
-          case balanced
-            # ╭─ dani@danix-hp  REMOTE  fish
-            set_color $comment
-            printf "╭─ "
-
-            set_color --bold $orange
-            printf "%s" $user
-
-            set_color $comment
-            printf "@"
-
-            set_color --bold $blue
-            printf "%s" $host
-
-            set_color $comment
-            printf "  "
-
-            set_color --bold $role_color
-            printf "%s" $role
-
-            set_color $comment
-            printf "  "
-
-            set_color --bold $green
-            printf "%s" $shell
-
-            set_color normal
-            echo
-
-          case sharp
-            # ╭─ [dani@danix-hp] [REMOTE] [fish]
-            set_color $comment
-            printf "╭─ ["
-
-            set_color --bold $orange
-            printf "%s" $user
-
-            set_color $comment
-            printf "@"
-
-            set_color --bold $blue
-            printf "%s" $host
-
-            set_color $comment
-            printf "] ["
-
-            set_color --bold $role_color
-            printf "%s" $role
-
-            set_color $comment
-            printf "] ["
-
-            set_color --bold $green
-            printf "%s" $shell
-
-            set_color $comment
-            printf "]"
-
-            set_color normal
-            echo
-        end
+        set_color normal
+        echo
       '';
     };
 
