@@ -172,6 +172,23 @@ in
       };
 
       decoration = {
+        active_opacity = 1.0;
+        inactive_opacity = 0.94;
+        fullscreen_opacity = 1.0;
+
+        blur = {
+          enabled = true;
+          size = 6;
+          passes = 2;
+          ignore_opacity = true;
+          new_optimizations = true;
+          xray = false;
+          noise = 0.0117;
+          contrast = 0.89;
+          brightness = 0.82;
+          vibrancy = 0.10;
+        };
+
         rounding = 12;
         shadow = {
           enabled = true;
