@@ -124,6 +124,9 @@ in
         # --- Brightness ---
         ", XF86MonBrightnessUp, exec, brightnessctl set +10%"
         ", XF86MonBrightnessDown, exec, brightnessctl set 10%-"
+
+        # --- Change keyboard layout ---
+        "$mod SHIFT, Z, exec, hyprctl switchxkblayout current next"
       ];
 
       bindd = [
@@ -156,7 +159,8 @@ in
 
       input = {
         kb_layout = "us,es";
-        kb_options = "grp:alts_toggle,caps:super";
+        # kb_options = "grp:ctrls_toggle,caps:super";
+        kb_options = "caps:super";
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
