@@ -165,6 +165,9 @@ in
       };
 
       general = {
+        gaps_in = 6;
+        gaps_out = 12;
+
         border_size = 3;
 
         "col.active_border" = "rgba(00a6ffff)";
