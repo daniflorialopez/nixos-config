@@ -165,9 +165,9 @@ in
       };
 
       general = {
-        border_size = 2;
+        border_size = 3;
 
-        "col.active_border" = "rgba(38bdf8ff) rgba(38bdf8ff) 45deg";
+        "col.active_border" = "rgba(00a6ffff)";
         "col.inactive_border" = "rgba(6c7086aa)";
       };
 
@@ -192,11 +192,12 @@ in
         rounding = 12;
         shadow = {
           enabled = true;
-          range = 28;
-          render_power = 3;
+          range = 1;
+          sharp = true;
+          render_power = 4;
           ignore_window = true;
-          color = "rgba(38bdf866)";
-          color_inactive = "rgba(00000014)";
+          color = "rgba(000000aa)";
+          color_inactive = "rgba(00000055)";
           offset = "0 0";
           scale = 1.0;
         };
