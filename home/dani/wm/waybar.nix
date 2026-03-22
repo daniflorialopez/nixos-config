@@ -190,6 +190,10 @@ in
         border-bottom: 2px solid #98a2b3;
       }
 
+      #workspaces button.persistent:not(.empty) {
+        color: #f8fafc;
+      }
+
       #clock,
       #custom-kblayout,
       #network,
