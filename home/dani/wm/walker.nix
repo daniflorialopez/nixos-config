@@ -84,8 +84,8 @@
     @define-color theme_fg_color #cdd6f4;
     @define-color subtext_color rgba(205, 214, 244, 0.62);
     @define-color border_color rgba(255, 255, 255, 0.07);
-    @define-color walker_outer_border rgba(56, 189, 248, 0.96);
-    @define-color walker_outer_glow rgba(56, 189, 248, 0.26);
+    @define-color walker_outer_border rgba(0, 191, 255, 1.0);
+    @define-color walker_outer_glow rgba(0, 191, 255, 0.18);
 
     * {
       all: unset;
