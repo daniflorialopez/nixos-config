@@ -150,8 +150,9 @@ in
         border: none;
         border-radius: 0;
         min-height: 0;
-        font-family: "JetBrainsMono Nerd Font", "Symbols Nerd Font", sans-serif;
+        font-family: "JetBrainsMono Nerd Font"; 
         font-size: 13px;
+        font-weight: 500;
       }
 
       window#waybar {
@@ -202,14 +203,12 @@ in
 
       #clock {
         color: #f4f7fb;
-        font-weight: 600;
         letter-spacing: 0.2px;
       }
 
       #custom-kblayout {
         min-width: 26px;
         color: #b9c2cd;
-        font-weight: 700;
       }
 
       #network,
