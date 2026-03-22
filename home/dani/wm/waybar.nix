@@ -51,7 +51,7 @@ let
           ;;
       esac
 
-      printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' \
+      printf '{"text":"   %s","tooltip":"%s","class":"%s"}\n' \
         "$short" "$keymap" "$class"
     '';
   };
