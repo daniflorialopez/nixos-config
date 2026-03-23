@@ -118,7 +118,7 @@
 
         modules = [
           # Host config (imports hardware + modules/nixos/*.nix)
-          ./hosts/legionix/
+          ./hosts/legionix
 
           # Home Manager as a NixOS module
           home-manager.nixosModules.home-manager
