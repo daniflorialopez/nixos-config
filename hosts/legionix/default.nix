@@ -20,5 +20,7 @@
   ];
 
   networking.hostName = "legionix";
+
+  disko.devices.disk.main.device = "/dev/disk/by-id/nvme-SAMSUNG_MZVL21T0HCLR-00BL2_S64NNX0T568436";
 }
 
