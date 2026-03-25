@@ -21,6 +21,7 @@
     strace
     ltrace
     gdu
+    smartmontools
 
     # networking
     curl

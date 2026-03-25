@@ -14,6 +14,7 @@
     ../../modules/nixos/tlp.nix
     ../../modules/nixos/fonts.nix
     ../../modules/nixos/keyd.nix
+    ../../modules/nixos/hardware-health.nix
  
     # desktop environment
     ./desktop.nix
