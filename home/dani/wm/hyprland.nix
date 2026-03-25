@@ -139,6 +139,7 @@ in
         "$mod ALT, F, Force full screen, fullscreen, 0"
         # "$mod, Space, togglefloating"
         "$mod, M, File Manager, exec, $fileManager"
+        "$mod SHIFT, O, Obsidian, exec, obsidian"
 
         # Different Firefox profiles: personal, lab, work
         "$mod, B, Firefox personal profile, exec, $browser -p personal"
