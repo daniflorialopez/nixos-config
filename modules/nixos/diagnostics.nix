@@ -1,0 +1,5 @@
+{ ... }:
+
+{
+  services.journald.storage = "persistent";
+}
