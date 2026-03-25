@@ -141,9 +141,9 @@ in
         "$mod, M, File Manager, exec, $fileManager"
 
         # Different Firefox profiles: personal, lab, work
-        "$mod, B, Firefox personal profile, exec, $browser -p personal"
-        "$mod SHIFT, B, Firefox lab profile, exec, $browser -p lab"
-        "$mod ALT, B, Firefox work profile, exec, $browser -p work"
+        "$mod, B, Firefox personal profile, exec, $browser -p personal -no-remote"
+        "$mod SHIFT, B, Firefox lab profile, exec, $browser -p lab -no-remote"
+        "$mod ALT, B, Firefox work profile, exec, $browser -p work -no-remote"
 
         # Screenshots
         ", Print, Screenshot with Satty, exec, screenshot-satty"
