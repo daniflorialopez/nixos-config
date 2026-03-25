@@ -49,7 +49,10 @@ in
     systemd.enable = false; # because my system uses `programs.hyprland.withUWSM = true`
 
     settings = {
-      monitor = [ ",preferred,auto,1" ];
+      monitor = [ 
+        "HDMI-A-1, 2560x1440@59.95, 0x0, 1"
+        "eDP-1, 2560x1440@165, 2560x0, 1"
+      ];
 
       "$mod" = "SUPER";
       "$terminal" = "alacritty";
