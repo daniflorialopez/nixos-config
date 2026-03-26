@@ -188,35 +188,39 @@ in
         fullscreen_opacity = 1.0;
 
         blur = {
-          enabled = true;
-          size = 6;
-          passes = 2;
-          ignore_opacity = true;
-          new_optimizations = true;
-          xray = false;
-          noise = 0.0117;
-          contrast = 0.89;
-          brightness = 0.82;
-          vibrancy = 0.10;
+          enabled = false;
+          # enabled = true;
+          # size = 6;
+          # passes = 2;
+          # ignore_opacity = true;
+          # new_optimizations = true;
+          # xray = false;
+          # noise = 0.0117;
+          # contrast = 0.89;
+          # brightness = 0.82;
+          # vibrancy = 0.10;
         };
 
         rounding = 12;
         shadow = {
-          enabled = true;
-          range = 1;
-          sharp = true;
-          render_power = 4;
-          ignore_window = true;
-          color = "rgba(000000aa)";
-          color_inactive = "rgba(00000055)";
-          offset = "0 0";
-          scale = 1.0;
+          enabled = false;
+          # enabled = true;
+          # range = 1;
+          # sharp = true;
+          # render_power = 4;
+          # ignore_window = true;
+          # color = "rgba(000000aa)";
+          # color_inactive = "rgba(00000055)";
+          # offset = "0 0";
+          # scale = 1.0;
         };
       };
 
       misc = {
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
+
+        vfr = true;
       };
 
       windowrulev2 = [
