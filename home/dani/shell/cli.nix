@@ -53,6 +53,8 @@
     yazi
     parted
     byobu
+    poppler-utils
+    qpdf
   ];
 
   home.sessionVariables = {
