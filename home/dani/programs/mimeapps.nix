@@ -11,6 +11,7 @@ let
   firefoxDesktop = "firefox-handler.desktop";
   pcmanfmDesktop = "pcmanfm-handler.desktop";
   zathuraDesktop = "zathura-handler.desktop";
+  okularDesktop = "okular-handler.desktop";
   imvDesktop = "imv-handler.desktop";
   mpvDesktop = "mpv-handler.desktop";
   calcDesktop = "libreoffice-calc-handler.desktop";
@@ -93,6 +94,17 @@ in
       settings = {
         NoDisplay = "true";
       };
+    };
+
+    okular-handler = {
+      name = "Okular";
+      exec = "${pkgs.kdePackages.okular}/bin/okular %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Office" "Viewer" ];
+      mimeType = [ "application/pdf" ];
+
+      # Intentionally no NoDisplay=true, so it can show up in “Open With”.
     };
 
     imv-handler = {
@@ -300,5 +312,10 @@ in
       "application/x-xz" = [ archiveDesktop ];
       "application/x-iso9660-image" = [ archiveDesktop ];
     };
+
+    associations.added = {
+      "application/pdf" = [ okularDesktop ];
+    };
+
   };
 }
