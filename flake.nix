@@ -68,7 +68,7 @@
             ];
 
             # Tell HM what extension to use when backing up conflicting files
-            home-manager.backupFileExtension = "backup";
+            home-manager.backupFileExtension = "hm-backup";
 
             # You can pass extra args to home modules if you want
             home-manager.extraSpecialArgs = { inherit inputs; };
@@ -100,7 +100,7 @@
             ]; 
 
             # Tell HM what extension to use when backing up conflicting files
-            home-manager.backupFileExtension = "backup";
+            home-manager.backupFileExtension = "hm-backup";
 
             # You can pass extra args to home modules if you want
             home-manager.extraSpecialArgs = { inherit inputs; };
@@ -132,7 +132,7 @@
             ]; 
 
             # Tell HM what extension to use when backing up conflicting files
-            home-manager.backupFileExtension = "backup";
+            home-manager.backupFileExtension = "hm-backup";
 
             # You can pass extra args to home modules if you want
             home-manager.extraSpecialArgs = { inherit inputs; };
