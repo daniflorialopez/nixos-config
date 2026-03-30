@@ -3,7 +3,6 @@
 {
   imports = [
     ./hardware-configuration.nix
-    # ./partitions.nix
 
     # common system modules
     ../../modules/nixos/base.nix
