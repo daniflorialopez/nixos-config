@@ -49,6 +49,15 @@ in
           }
         ];
 
+        pdf_okular = [
+          {
+            run = "${pkgs.kdePackages.okular}/bin/okular \"$1\"";
+            orphan = true;
+            desc = "Okular";
+            for = "linux";
+          }
+        ];
+
         image = [
           {
             run = "${pkgs.imv}/bin/imv \"$1\"";
@@ -88,7 +97,7 @@ in
 
       open.prepend_rules = [
         # Strong explicit matches first
-        { url = "*.pdf"; use = [ "pdf" "open" ]; }
+        { url = "*.pdf"; use = [ "pdf" "pdf_okular" "open" ]; }
         { url = "*.csv"; use = [ "edit" "spreadsheet" "open" ]; }
         { url = "*.toml"; use = "edit"; }
         { url = "*.yaml"; use = "edit"; }
@@ -97,7 +106,7 @@ in
         { url = "*.nix"; use = "edit"; }
 
         # MIME-based rules
-        { mime = "application/pdf"; use = [ "pdf" "open" ]; }
+        { mime = "application/pdf"; use = [ "pdf" "pdf_okular" "open" ]; }
         { mime = "text/*"; use = "edit"; }
         { mime = "application/json"; use = "edit"; }
         { mime = "application/*+json"; use = "edit"; }
