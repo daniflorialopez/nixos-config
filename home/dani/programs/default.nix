@@ -7,6 +7,10 @@
     ./misc.nix
     ./firefox.nix
     ./comma.nix
+    ./whatsapp.nix
+    ./apps.nix
+    ./mimeapps.nix
+    ./yazi.nix
   ];
 }
 
