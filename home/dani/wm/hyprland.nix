@@ -43,6 +43,11 @@ in
     ./waybar.nix
   ];
 
+  home.file.".config/uwsm/env-hyprland".text = ''
+    export AQ_DRM_DEVICES="/dev/dri/card1"
+    export AQ_FORCE_LINEAR_BLIT=0
+  '';
+
   wayland.windowManager.hyprland = {
     enable = true;
 
@@ -50,8 +55,8 @@ in
 
     settings = {
       monitor = [ 
-        "HDMI-A-1, 2560x1440@59.95, 0x0, 1"
-        "eDP-1, 2560x1440@165, 2560x0, 1"
+        "HDMI-A-1, 2560x1440@60, 0x0, 1"
+        "eDP-1, 2560x1440@60, 2560x0, 1"
       ];
 
       "$mod" = "SUPER";
