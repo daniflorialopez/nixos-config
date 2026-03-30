@@ -1,11 +1,21 @@
 { config, pkgs, ... }:
-
+let
+  defaultWallpaper = "${config.home.homeDirectory}/Pictures/Wallpapers/default.png";
+in 
 {
   services.hyprpaper = {
     enable = true;
     settings = { 
       ipc = true; 
       splash = false; 
+
+      wallpaper = [
+        {
+          monitor = "";
+          path = defaultWallpaper;
+          fit_mode = "cover";
+        }
+      ];
     };
   };
 
