@@ -14,7 +14,7 @@ in
 
     # PDF viewers
     zathuraPkg
-    okular
+    kdePackages.okular
 
     # Viewers / media
     imv
