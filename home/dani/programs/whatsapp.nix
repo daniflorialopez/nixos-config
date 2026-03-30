@@ -10,6 +10,7 @@ let
       exec ${pkgs.chromium}/bin/chromium \
         --ozone-platform-hint=auto \
         --enable-wayland-ime \
+        --password-store=basic \
         --app=https://web.whatsapp.com \
         --user-data-dir="${profileDir}" \
         "$@"
