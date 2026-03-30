@@ -170,7 +170,7 @@ in
       input = {
         kb_layout = "us,es";
         # kb_options = "grp:ctrls_toggle,caps:super";
-        kb_options = "caps:super";
+        kb_options = "caps:super,shift:both_capslock_cancel";
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
