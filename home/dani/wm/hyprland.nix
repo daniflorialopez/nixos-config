@@ -41,6 +41,7 @@ in
     ./theme.nix
     ./walker.nix
     ./waybar.nix
+    ./cursor.nix
   ];
 
   home.file.".config/uwsm/env-hyprland".text = ''
@@ -232,6 +233,9 @@ in
         "float, class:^(org\\.Waytrogen\\.Waytrogen)$"
         "center, class:^(org\\.Waytrogen\\.Waytrogen)$"
         "size 1200 800, class:^(org\\.Waytrogen\\.Waytrogen)$"
+        "float, class:^(firefox)$, title:^(Save As|Guardar como).*$"
+        "size 70% 75%, class:^(firefox)$, title:^(Save As|Guardar como).*$"
+        "center 1, class:^(firefox)$, title:^(Save As|Guardar como).*$"
       ];
     };
   };

@@ -71,6 +71,8 @@ in
 
     settings.mainBar = {
       layer = "top";
+      mode = "dock";
+      exclusive = true;
       position = "top";
       height = 32;
       spacing = 0;
