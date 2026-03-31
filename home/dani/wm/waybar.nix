@@ -97,7 +97,7 @@ in
         sort-by = "number";
         disable-scroll = true;
         all-outputs = false;
-        move-to-monitor = true;
+        move-to-monitor = false;
 
         persistent-workspaces = {
           "*" = [ 1 2 3 4 5 ];

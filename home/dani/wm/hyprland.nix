@@ -231,6 +231,17 @@ in
 
       workspace = [
         "f[1], gapsout:0, gapsin:0"
+
+        "1, monitor:HDMI-A-1, default:true, persistent:true"
+        "2, monitor:eDP-1, default:true, persistent:true"
+        "3, monitor:eDP-1, persistent:true"
+        "4, monitor:HDMI-A-1, persistent:true"
+        "5, monitor:HDMI-A-1, persistent:true"
+        "6, monitor:HDMI-A-1"
+        "7, monitor:HDMI-A-1"
+        "8, monitor:HDMI-A-1"
+        "9, monitor:HDMI-A-1"
+        "10, monitor:HDMI-A-1"
       ];
 
       windowrulev2 = [
