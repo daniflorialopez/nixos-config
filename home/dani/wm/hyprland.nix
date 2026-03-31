@@ -229,6 +229,10 @@ in
         vfr = true;
       };
 
+      workspace = [
+        "f[1], gapsout:0, gapsin:0"
+      ];
+
       windowrulev2 = [
         "float, class:^(org\\.Waytrogen\\.Waytrogen)$"
         "center, class:^(org\\.Waytrogen\\.Waytrogen)$"
@@ -236,6 +240,8 @@ in
         "float, class:^(firefox)$, title:^(Save As|Guardar como).*$"
         "size 70% 75%, class:^(firefox)$, title:^(Save As|Guardar como).*$"
         "center 1, class:^(firefox)$, title:^(Save As|Guardar como).*$"
+        "bordersize 0, fullscreenstate:1 *"
+        "rounding 0, fullscreenstate:1 *"
       ];
     };
   };
