@@ -13,7 +13,7 @@
 
       # Non-compliant packages with Comma syntax should follow the cowsay example below
       cowsay-run = "nix run nixpkgs#cowsay --";
-
+      evtest-run = "sudo nix run nixpkgs#evtest --";
     };
 
     # Aliases
