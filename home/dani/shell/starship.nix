@@ -26,7 +26,7 @@
       git_status = {
         format = "([ $all_status]($style))";
         style = "cyan";
-	      conflicted = "⚔";
+	      conflicted = "⚔ ";
         ahead      = "↑";
         behind     = "↓";
         diverged   = "↕";
@@ -34,8 +34,8 @@
       	stashed    = "\\$";
         modified   = "!";
         staged     = "+";
-        renamed    = "»";
-        deleted    = "🗑";
+        renamed    = "» ";
+        deleted    = "🗑 ";
       };
 
       character = {
