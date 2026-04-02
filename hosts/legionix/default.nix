@@ -15,7 +15,6 @@
     ../../modules/nixos/keyd.nix
     ../../modules/nixos/hardware-health.nix
     ../../modules/nixos/diagnostics.nix 
-    ../../modules/nixos/legionix-gpu.nix
  
     # desktop environment
     ./desktop.nix
