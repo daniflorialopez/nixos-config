@@ -6,6 +6,7 @@
 
     # common system modules
     ../../modules/nixos/users/dani.nix
+    ../../modules/nixos/access.nix
     ../../modules/nixos/base.nix
     ../../modules/nixos/virtualisation.nix
     ../../modules/nixos/security.nix
