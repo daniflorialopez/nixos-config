@@ -15,6 +15,8 @@
     ../../modules/nixos/tlp.nix
     ../../modules/nixos/fonts.nix
     ../../modules/nixos/keyd.nix
+    ../../modules/nixos/corne.nix
+    #../../modules/nixos/keyd-vibranium-practice.nix
     ../../modules/nixos/hardware-health.nix
     ../../modules/nixos/diagnostics.nix 
  
