@@ -5,13 +5,13 @@
     obsidian
     virt-manager   # GUI; the backend is managed on NixOS side
     vscodium
-    jetbrains.idea-ultimate
+    jetbrains.idea
   ];
 
   programs.git = {
     enable = true;
-    userName = "Daniel Floria Lopez";
-    userEmail = "daniflorialopez@gmail.com";
+    settings.user.name = "Daniel Floria Lopez";
+    settings.user.email = "daniflorialopez@gmail.com";
   };
 
   # --- Neovim + practical runtime tools ---

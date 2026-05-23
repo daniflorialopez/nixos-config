@@ -29,7 +29,7 @@ in
     ffmpeg
     p7zip
     jq
-    poppler_utils
+    poppler-utils
     fd
     ripgrep
     fzf
