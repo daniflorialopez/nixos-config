@@ -1,6 +1,19 @@
 { config, pkgs, ... }:
 
 { 
+  programs.fzf = {
+    enable = true;
+    enableFishIntegration = false; # it is sourced later
+
+    defaultCommand = "fd --type f --hidden --follow --exclude .git";
+
+    historyWidgetOptions = [
+      "--layout=reverse"
+      "--height=40%"
+      "--border"
+    ];
+  };
+
   programs.fish = {
     enable = true;
 
@@ -98,12 +111,10 @@
         zoxide init fish | source
       end
 
-      # fzf keybindings
-      if type -q fzf
-        if type -q fd
-          set -gx FZF_DEFAULT_COMMAND 'fd --type f --hidden --follow --exclude .git'
-        end
-      end
+    '';
+
+    shellInitLast = ''
+      fzf --fish | source
     '';
   };
 }
