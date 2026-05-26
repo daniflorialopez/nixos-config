@@ -122,6 +122,24 @@ in
         "$mod CTRL, k, resizeactive, 0 -30"
         "$mod CTRL, j, resizeactive, 0 30"
 
+        # --- Focus (arrow keys) ---
+        "$mod, left, movefocus, l"
+        "$mod, right, movefocus, r"
+        "$mod, up, movefocus, u"
+        "$mod, down, movefocus, d"
+
+        # --- Move window (arrow keys) ---
+        "$mod SHIFT, left, movewindow, l"
+        "$mod SHIFT, right, movewindow, r"
+        "$mod SHIFT, up, movewindow, u"
+        "$mod SHIFT, down, movewindow, d"
+
+        # --- Resize active window (arrow keys) ---
+        "$mod CTRL, left, resizeactive, -30 0"
+        "$mod CTRL, right, resizeactive, 30 0"
+        "$mod CTRL, up, resizeactive, 0 -30"
+        "$mod CTRL, down, resizeactive, 0 30"
+
         # --- Media keys (PipeWire + playerctl) ---
         ", XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
         ", XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
