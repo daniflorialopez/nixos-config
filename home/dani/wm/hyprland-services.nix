@@ -1,6 +1,32 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, inputs, ... }:
 let
+  unstablePkgs = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   target = config.wayland.systemd.target; # defaults to "graphical-session.target"
+  wallApply = pkgs.writeShellApplication {
+    name = "wall-apply";
+    runtimeInputs = [ pkgs.hyprland ];
+    text = ''
+      set -eu
+
+      mon="''${1:-}"
+      img="''${2:-}"
+
+      if [ -z "$img" ]; then
+        echo "missing wallpaper path" >&2
+        exit 1
+      fi
+
+      case "$mon" in
+        ""|"All"|"all")
+          hyprctl hyprpaper wallpaper "HDMI-A-1,$img,cover"
+          hyprctl hyprpaper wallpaper "eDP-1,$img,cover"
+          ;;
+        *)
+          hyprctl hyprpaper wallpaper "$mon,$img,cover"
+          ;;
+      esac
+    '';
+  };
 in
 {
   
@@ -31,21 +57,6 @@ in
     Service = {
       ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
       Restart = "on-failure";
-    };
-    Install.WantedBy = [ target ];
-  };
-
-  # Wallpaper restore
-  systemd.user.services.wallpaper-restore = {
-    Unit = {
-      Description = "Restore wallpaper with Waytrogen";
-      PartOf = [ target ];
-      After = [ "hyprpaper.service" target ];
-      ConditionEnvironment = "WAYLAND_DISPLAY";
-    };
-    Service = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.waytrogen}/bin/waytrogen --restore";
     };
     Install.WantedBy = [ target ];
   };

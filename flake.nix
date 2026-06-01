@@ -4,6 +4,7 @@
   inputs = {
     # Main NixOS channel – stick to release for now
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     # Home Manager, following the same nixpkgs
     home-manager = {

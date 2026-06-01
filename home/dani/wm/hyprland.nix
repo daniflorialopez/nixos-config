@@ -278,7 +278,6 @@ in
   home.packages = with pkgs; [
     # essentials
     alacritty
-    hyprpaper
 
     # clipboard + screenshots
     grim
