@@ -1,17 +1,33 @@
 { config, pkgs, inputs, lib, ... }:
 
+let
+  unstablePkgs = import inputs.nixpkgs-unstable {
+    system = pkgs.stdenv.hostPlatform.system;
+
+    # Claude Code is marked as unfree in nixpkgs.
+    config.allowUnfree = true;
+  };
+in
+
 {
   home.packages = with pkgs; [
+    unstablePkgs.claude-code
+
     obsidian
     virt-manager   # GUI; the backend is managed on NixOS side
     vscodium
     jetbrains.idea
+    python3
   ];
 
   programs.git = {
     enable = true;
     settings.user.name = "Daniel Floria Lopez";
     settings.user.email = "daniflorialopez@gmail.com";
+
+    lfs = {
+      enable = true;
+    };
   };
 
   # --- Neovim + practical runtime tools ---
