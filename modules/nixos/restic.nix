@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   age.secrets.restic-password.file = ../../secrets/restic-password.age;
@@ -51,5 +51,26 @@
     ];
   };
 
-  environment.systemPackages = [ pkgs.restic ];
+  # Alert when the nightly backup fails: desktop notification, plus a
+  # marker file in the home directory in case no graphical session is
+  # running when the failure happens.
+  systemd.services.restic-backup-failure-notify = {
+    serviceConfig = {
+      Type = "oneshot";
+      User = "dani";
+    };
+    environment.DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus";
+    script = ''
+      echo "restic-backups-remote FAILED on $(date)" >> /home/dani/BACKUP-FAILED.txt
+      ${pkgs.libnotify}/bin/notify-send --urgency=critical "Backup failed" \
+        "restic-backups-remote failed. Check: journalctl -u restic-backups-remote -e" || true
+    '';
+  };
+
+  systemd.services.restic-backups-remote.onFailure = [ "restic-backup-failure-notify.service" ];
+
+  environment.systemPackages = [
+    pkgs.restic
+    inputs.agenix.packages.${pkgs.system}.default
+  ];
 }
