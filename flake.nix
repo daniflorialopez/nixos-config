@@ -33,6 +33,11 @@
       url = "github:abenz1267/walker";
       inputs.elephant.follows = "elephant";
     };
+
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -56,6 +61,9 @@
         modules = [
           # Host config (imports hardware + modules/nixos/*.nix)
           ./hosts/danixos-vm
+
+          # Secrets management
+          inputs.agenix.nixosModules.default
 
           # Home Manager as a NixOS module
           home-manager.nixosModules.home-manager
@@ -89,6 +97,9 @@
           # Host config (imports hardware + modules/nixos/*.nix)
           ./hosts/danix-hp
 
+          # Secrets management
+          inputs.agenix.nixosModules.default
+
           # Home Manager as a NixOS module
           home-manager.nixosModules.home-manager
 
@@ -120,6 +131,9 @@
         modules = [
           # Host config (imports hardware + modules/nixos/*.nix)
           ./hosts/legionix
+
+          # Secrets management
+          inputs.agenix.nixosModules.default
 
           # Home Manager as a NixOS module
           home-manager.nixosModules.home-manager
