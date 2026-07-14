@@ -63,6 +63,21 @@ let
       hyprctl switchxkblayout keyd-virtual-keyboard next
     '';
   };
+
+  btToggleScript = pkgs.writeShellApplication {
+    name = "waybar-bt-toggle";
+    runtimeInputs = [ pkgs.bluez pkgs.util-linux ];
+    text = ''
+      if bluetoothctl show | grep -q "Powered: yes"; then
+        bluetoothctl power off
+      else
+        # The ideapad platform driver soft-blocks the adapter; clear it
+        # before powering on (a seated user may write /dev/rfkill via uaccess)
+        rfkill unblock bluetooth
+        bluetoothctl power on
+      fi
+    '';
+  };
 in
 {
   programs.waybar = {
@@ -87,6 +102,7 @@ in
 
       modules-right = [
         "custom/kblayout"
+        "bluetooth"
         "network"
         "pulseaudio"
         "battery"
@@ -115,6 +131,19 @@ in
         interval = 1;
         format = "{}";
         on-click = "${kbCycleScript}/bin/waybar-kblayout-next";
+      };
+
+      bluetooth = {
+        format = "󰂯";
+        format-disabled = "󰂲";
+        format-off = "󰂲";
+        format-connected = "󰂱 {num_connections}";
+        tooltip-format = "{controller_alias}\t{status}";
+        tooltip-format-connected = "{controller_alias}\t{status}\n\n{device_enumerate}";
+        tooltip-format-enumerate-connected = "{device_alias}";
+        tooltip-format-enumerate-connected-battery = "{device_alias}\t{device_battery_percentage}%";
+        on-click = "${btToggleScript}/bin/waybar-bt-toggle";
+        on-click-right = "blueman-manager";
       };
 
       network = {
@@ -198,6 +227,7 @@ in
 
       #clock,
       #custom-kblayout,
+      #bluetooth,
       #network,
       #pulseaudio,
       #battery {
@@ -221,6 +251,19 @@ in
       #pulseaudio,
       #battery {
         color: #c7ced8;
+      }
+
+      #bluetooth {
+        color: #c7ced8;
+      }
+
+      #bluetooth.off,
+      #bluetooth.disabled {
+        color: #7d8594;
+      }
+
+      #bluetooth.connected {
+        color: #f8fafc;
       }
 
       #battery.warning {

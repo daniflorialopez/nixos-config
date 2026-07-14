@@ -11,6 +11,7 @@
     ../../modules/nixos/virtualisation.nix
     ../../modules/nixos/security.nix
     ../../modules/nixos/gaming.nix
+    ../../modules/nixos/bluetooth.nix
     ../../modules/nixos/disko.nix
     ../../modules/nixos/tlp.nix
     ../../modules/nixos/fonts.nix

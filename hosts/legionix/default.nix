@@ -13,6 +13,7 @@
     ../../modules/nixos/gaming.nix
     ../../modules/nixos/tailscale.nix
     ../../modules/nixos/restic.nix
+    ../../modules/nixos/bluetooth.nix
 
     ../../modules/nixos/disko.nix
     ../../modules/nixos/tlp.nix
