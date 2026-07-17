@@ -6,8 +6,7 @@ let
   cursorSize = 32;
 in
 {
-  gtk.enable = true;
-
+  # gtk.enable lives in theme.nix with the rest of the GTK theming
   home.pointerCursor = {
     package = cursorPackage;
     name = cursorName;

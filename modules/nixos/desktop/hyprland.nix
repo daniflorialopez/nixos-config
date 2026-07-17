@@ -7,6 +7,10 @@
     xwayland.enable = true; # keep compatibility for X11-only apps
   };
 
+  # Needed for the GTK dark-mode preference (HM dconf settings; libadwaita
+  # apps read color-scheme through the gtk portal)
+  programs.dconf.enable = true;
+
   # Wayland portals (screen sharing, file pickers, etc)
   xdg.portal = {
     enable = true;

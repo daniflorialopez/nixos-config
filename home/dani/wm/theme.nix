@@ -1,5 +1,33 @@
-{ ... }:
+{ pkgs, ... }:
 {
+  # Dark theming for GTK apps (pcmanfm, pavucontrol, blueman, ...)
+  gtk = {
+    enable = true;
+    theme = {
+      name = "adw-gtk3-dark";
+      package = pkgs.adw-gtk3;
+    };
+    iconTheme = {
+      name = "Papirus-Dark";
+      package = pkgs.papirus-icon-theme;
+    };
+    gtk3.extraConfig.gtk-application-prefer-dark-theme = 1;
+    gtk4.extraConfig.gtk-application-prefer-dark-theme = 1;
+  };
+
+  # libadwaita apps ignore gtk-theme and follow this preference instead
+  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+
+  # Qt apps follow suit
+  qt = {
+    enable = true;
+    platformTheme.name = "adwaita";
+    style = {
+      name = "adwaita-dark";
+      package = pkgs.adwaita-qt;
+    };
+  };
+
   # Shared palette (GTK CSS variables) for Waybar — Tokyo Night, matching
   # the Alacritty colorscheme so the desktop chrome and terminal agree.
   xdg.configFile."waybar/palette.css".text = ''
