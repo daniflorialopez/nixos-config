@@ -90,6 +90,7 @@
 
     * {
       all: unset;
+      font-family: "CaskaydiaMono Nerd Font";
     }
 
     scrollbar {
