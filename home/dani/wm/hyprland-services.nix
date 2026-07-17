@@ -30,6 +30,16 @@ let
 in
 {
   
+  # The walker HM module enables xdg.portal with only the hyprland backend,
+  # which shadows the system portal setup (NIX_XDG_DESKTOP_PORTAL_DIR points
+  # at the per-user profile). Without the gtk backend the portal serves no
+  # Settings interface, so GTK4 apps (e.g. pavucontrol) never see the dark
+  # preference. Add gtk and prefer hyprland for what it implements.
+  xdg.portal = {
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    config.hyprland.default = [ "hyprland" "gtk" ];
+  };
+
   # Mako: HM config + systemd service
   services.mako = {
     enable = true;                 # writes config + installs package
