@@ -20,7 +20,7 @@ let
       outdir="$HOME/Pictures/Screenshots"
       mkdir -p "$outdir"
 
-      region="$(slurp -c '#ff0000ff')" || exit 0
+      region="$(slurp -c '#ff9e64ff')" || exit 0
       outfile="$outdir/satty-$(date +%Y%m%d-%H%M%S).png"
 
       export GSK_RENDERER=ngl
@@ -261,6 +261,26 @@ in
         "blur, notifications"
         "ignorezero, notifications"
       ];
+
+      animations = {
+        enabled = true;
+
+        bezier = [
+          # fast start, gentle landing — snappy without feeling abrupt
+          "easeOutQuint, 0.23, 1, 0.32, 1"
+        ];
+
+        # durations are in deciseconds
+        animation = [
+          "windows, 1, 3, easeOutQuint, popin 92%"
+          "windowsOut, 1, 2.5, easeOutQuint, popin 92%"
+          "fade, 1, 2.5, default"
+          "border, 1, 4, default"
+          "workspaces, 1, 3.5, easeOutQuint, slide"
+          "specialWorkspace, 1, 3, easeOutQuint, slidevert"
+          "layers, 1, 2.5, easeOutQuint, popin 93%"
+        ];
+      };
 
       misc = {
         disable_hyprland_logo = true;
