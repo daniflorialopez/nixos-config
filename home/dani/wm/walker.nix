@@ -90,7 +90,10 @@
 
     * {
       all: unset;
-      font-family: "CaskaydiaMono Nerd Font";
+      /* Same family as the terminal. Note: Caskaydia's capitals
+         (A/M/N/V/W) have flat-cut apexes by design - they can look
+         "cropped" but nothing is being clipped */
+      font-family: "CaskaydiaMono Nerd Font Mono";
     }
 
     scrollbar {
@@ -150,8 +153,10 @@
 
     .item-text {
       color: @theme_fg_color;
-      font-size: 14px;
-      font-weight: 600;
+      /* regular weight at the input's size: semibold makes Caskaydia's
+         flat-topped capitals read as cropped at list sizes */
+      font-size: 15px;
+      font-weight: 400;
     }
 
     .item-subtext {
