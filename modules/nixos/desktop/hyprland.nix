@@ -11,6 +11,9 @@
   # apps read color-scheme through the gtk portal)
   programs.dconf.enable = true;
 
+  # Without a PAM service, hyprlock cannot validate the password to unlock
+  security.pam.services.hyprlock = { };
+
   # Wayland portals (screen sharing, file pickers, etc)
   xdg.portal = {
     enable = true;

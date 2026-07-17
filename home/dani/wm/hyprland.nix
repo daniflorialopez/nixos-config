@@ -38,6 +38,7 @@ in
 {
   imports = [
     ./hyprland-services.nix
+    ./hyprlock.nix
     ./theme.nix
     ./walker.nix
     ./waybar.nix
@@ -178,6 +179,9 @@ in
 
         # wl-kbptr
         "$mod SHIFT, M, wl-kbptr mouse actions, exec, wl-kbptr"
+
+        # Lock screen
+        "$mod, Escape, Lock screen, exec, hyprlock"
 
         # Notifications (code:48 = the ' key on the us layout, same physical key on es)
         "$mod, code:48, Dismiss newest notification, exec, makoctl dismiss"
