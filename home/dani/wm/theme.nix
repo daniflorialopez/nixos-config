@@ -12,7 +12,13 @@
       package = pkgs.papirus-icon-theme;
     };
     gtk3.extraConfig.gtk-application-prefer-dark-theme = 1;
-    gtk4.extraConfig.gtk-application-prefer-dark-theme = 1;
+    gtk4.extraConfig = {
+      gtk-application-prefer-dark-theme = 1;
+      # adw-gtk3 ships no GTK4 CSS, so plain-GTK4 apps (e.g. pavucontrol)
+      # would fall back to built-in light; name the built-in theme so its
+      # dark variant resolves. libadwaita apps ignore this and use dconf.
+      gtk-theme-name = "Default";
+    };
   };
 
   # libadwaita apps ignore gtk-theme and follow this preference instead
