@@ -215,38 +215,48 @@ in
       };
 
       decoration = {
-        active_opacity = 1.0;
-        inactive_opacity = 0.94;
+        # Clear glass: real transparency on every window so the wallpaper
+        # stays visible; blur kept whisper-light (size 3, one pass) so the
+        # mountains/sunset remain recognizable and only fine detail softens
+        active_opacity = 0.94;
+        inactive_opacity = 0.88;
         fullscreen_opacity = 1.0;
 
         blur = {
-          enabled = false;
-          # enabled = true;
-          # size = 6;
-          # passes = 2;
-          # ignore_opacity = true;
-          # new_optimizations = true;
-          # xray = false;
-          # noise = 0.0117;
-          # contrast = 0.89;
-          # brightness = 0.82;
-          # vibrancy = 0.10;
+          enabled = true;
+          size = 3;
+          passes = 1;
+          ignore_opacity = true;
+          new_optimizations = true;
+          xray = false;
+          noise = 0.0117;
+          contrast = 1.0;
+          brightness = 1.0;
+          vibrancy = 0.15;
         };
 
         rounding = 12;
         shadow = {
-          enabled = false;
-          # enabled = true;
-          # range = 1;
-          # sharp = true;
-          # render_power = 4;
-          # ignore_window = true;
-          # color = "rgba(000000aa)";
-          # color_inactive = "rgba(00000055)";
-          # offset = "0 0";
-          # scale = 1.0;
+          enabled = true;
+          range = 14;
+          render_power = 3;
+          color = "rgba(00000066)";
+          color_inactive = "rgba(00000033)";
+          offset = "0 3";
         };
       };
+
+      # Glass for the chrome too: blur behind waybar, walker and mako
+      # (ignorezero keeps fully-transparent regions, e.g. rounded
+      # corners, from being blurred into grey halos)
+      layerrule = [
+        "blur, waybar"
+        "ignorezero, waybar"
+        "blur, walker"
+        "ignorealpha 0.4, walker"
+        "blur, notifications"
+        "ignorezero, notifications"
+      ];
 
       misc = {
         disable_hyprland_logo = true;

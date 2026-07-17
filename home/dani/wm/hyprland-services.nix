@@ -36,7 +36,7 @@ in
     settings = {
       # Tokyo Night, matching waybar (see waybar/palette.css)
       font = "CaskaydiaMono Nerd Font 11";
-      background-color = "#1a1b26f0";
+      background-color = "#1a1b26e0";
       text-color = "#c0caf5";
       border-color = "#7aa2f7";
       border-size = 2;

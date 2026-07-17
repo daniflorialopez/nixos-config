@@ -4,7 +4,7 @@
   # the Alacritty colorscheme so the desktop chrome and terminal agree.
   xdg.configFile."waybar/palette.css".text = ''
     @define-color bg #1a1b26;
-    @define-color bg_alpha rgba(26, 27, 38, 0.94);
+    @define-color bg_alpha rgba(26, 27, 38, 0.85);
     @define-color surface rgba(36, 40, 59, 0.70);
     @define-color fg #c0caf5;
     @define-color subtle #a9b1d6;
