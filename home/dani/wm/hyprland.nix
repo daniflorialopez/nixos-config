@@ -178,6 +178,11 @@ in
 
         # wl-kbptr
         "$mod SHIFT, M, wl-kbptr mouse actions, exec, wl-kbptr"
+
+        # Notifications (code:48 = the ' key on the us layout, same physical key on es)
+        "$mod, code:48, Dismiss newest notification, exec, makoctl dismiss"
+        "$mod SHIFT, code:48, Dismiss all notifications, exec, makoctl dismiss -a"
+        "$mod CTRL, code:48, Restore last dismissed notification, exec, makoctl restore"
       ];
 
       bindm = [
