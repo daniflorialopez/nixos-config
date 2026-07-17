@@ -207,8 +207,11 @@ in
 
         border_size = 3;
 
-        "col.active_border" = "rgba(00a6ffff)";
-        "col.inactive_border" = "rgba(6c7086aa)";
+        # Tokyo Night all-warm "sunset" gradient (yellow→orange→red): cool
+        # colors read grey against the blueish wallpaper, so the border is
+        # fully warm; the blue accent lives in waybar/walker/mako instead
+        "col.active_border" = "rgba(e0af68ff) rgba(ff9e64ff) rgba(f7768eff) 45deg";
+        "col.inactive_border" = "rgba(565f89aa)";
       };
 
       decoration = {

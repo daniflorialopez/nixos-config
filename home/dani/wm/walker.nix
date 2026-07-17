@@ -77,15 +77,16 @@
   
 
   xdg.configFile."walker/themes/dani-soft/style.css".text = ''
-    @define-color window_bg_color rgba(17, 17, 27, 0.97);
-    @define-color panel_bg_color rgba(30, 30, 46, 0.93);
-    @define-color accent_bg_color rgba(137, 180, 250, 0.14);
-    @define-color accent_line_color rgba(137, 180, 250, 0.24);
-    @define-color theme_fg_color #cdd6f4;
-    @define-color subtext_color rgba(205, 214, 244, 0.62);
+    /* Tokyo Night (see waybar/palette.css) */
+    @define-color window_bg_color rgba(22, 22, 30, 0.97);
+    @define-color panel_bg_color rgba(36, 40, 59, 0.93);
+    @define-color accent_bg_color rgba(122, 162, 247, 0.14);
+    @define-color accent_line_color rgba(122, 162, 247, 0.24);
+    @define-color theme_fg_color #c0caf5;
+    @define-color subtext_color rgba(169, 177, 214, 0.65);
     @define-color border_color rgba(255, 255, 255, 0.07);
-    @define-color walker_outer_border rgba(0, 191, 255, 1.0);
-    @define-color walker_outer_glow rgba(0, 191, 255, 0.18);
+    @define-color walker_outer_border rgba(122, 162, 247, 1.0);
+    @define-color walker_outer_glow rgba(122, 162, 247, 0.18);
 
     * {
       all: unset;
@@ -101,7 +102,7 @@
       border-radius: 20px;
       padding: 16px;
       box-shadow:
-        0 0 0 1px rgba(56, 189, 248, 0.16),
+        0 0 0 1px rgba(122, 162, 247, 0.16),
         0 0 24px @walker_outer_glow,
         0 18px 50px rgba(0, 0, 0, 0.30),
         0 8px 24px rgba(0, 0, 0, 0.16);

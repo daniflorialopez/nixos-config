@@ -177,25 +177,27 @@ in
     };
 
     style = ''
+      @import "palette.css";
+
       * {
         border: none;
         border-radius: 0;
         min-height: 0;
-        font-family: "JetBrainsMono Nerd Font"; 
+        font-family: "CaskaydiaMono Nerd Font";
         font-size: 13px;
         font-weight: 500;
       }
 
       window#waybar {
-        background: rgba(16, 18, 22, 0.94);
-        color: #d7dce2;
-        border-bottom: 1px solid rgba(215, 220, 226, 0.08);
+        background: @bg_alpha;
+        color: @subtle;
+        border-bottom: 1px solid @border;
       }
 
       tooltip {
-        background: #111318;
-        color: #e6ebf2;
-        border: 1px solid rgba(230, 235, 242, 0.10);
+        background: @bg;
+        color: @fg;
+        border: 1px solid @border;
       }
 
       #workspaces {
@@ -204,25 +206,25 @@ in
 
       #workspaces button {
         background: transparent;
-        color: #7d8594;
+        color: @muted;
         padding: 0 10px;
         margin: 0 6px 0 0;
         border-bottom: 2px solid transparent;
       }
 
       #workspaces button:hover {
-        background: rgba(255, 255, 255, 0.04);
-        color: #e6ebf2;
+        background: alpha(@fg, 0.06);
+        color: @fg;
         box-shadow: none;
       }
 
       #workspaces button.active {
-        color: #f8fafc;
-        border-bottom: 2px solid #98a2b3;
+        color: @fg;
+        border-bottom: 2px solid @accent;
       }
 
       #workspaces button.persistent:not(.empty) {
-        color: #f8fafc;
+        color: @subtle;
       }
 
       #clock,
@@ -232,46 +234,35 @@ in
       #pulseaudio,
       #battery {
         background: transparent;
-        color: #cfd6df;
+        color: @subtle;
         padding: 0 10px;
         margin: 0;
       }
 
       #clock {
-        color: #f4f7fb;
+        color: @fg;
         letter-spacing: 0.2px;
       }
 
       #custom-kblayout {
         min-width: 26px;
-        color: #b9c2cd;
-      }
-
-      #network,
-      #pulseaudio,
-      #battery {
-        color: #c7ced8;
-      }
-
-      #bluetooth {
-        color: #c7ced8;
       }
 
       #bluetooth.off,
       #bluetooth.disabled {
-        color: #7d8594;
+        color: @muted;
       }
 
       #bluetooth.connected {
-        color: #f8fafc;
+        color: @accent;
       }
 
       #battery.warning {
-        color: #d8b56d;
+        color: @warning;
       }
 
       #battery.critical {
-        color: #d17c88;
+        color: @critical;
       }
 
       .modules-right {
