@@ -38,7 +38,8 @@
           inner_color = "rgba(26, 27, 38, 0.85)";
           font_color = "rgb(192, 202, 245)";
           fade_on_empty = false;
-          placeholder_text = "<span foreground='##565f89'>Password…</span>";
+          # #737aa2 is the contrast floor for hint text (see terminal calibration)
+          placeholder_text = "<span foreground='##737aa2'>Password…</span>";
           check_color = "rgba(224, 175, 104, 1.0)";
           fail_color = "rgba(247, 118, 142, 1.0)";
           fail_text = "$FAIL <b>($ATTEMPTS)</b>";
@@ -61,7 +62,8 @@
         }
         {
           monitor = "";
-          text = ''cmd[update:60000] date +"%A, %d %B"'';
+          # same date wording as the SDDM greeter: "Saturday 18 July"
+          text = ''cmd[update:60000] date +"%A %-d %B"'';
           font_size = 20;
           font_family = "CaskaydiaMono Nerd Font";
           color = "rgba(169, 177, 214, 1.0)";

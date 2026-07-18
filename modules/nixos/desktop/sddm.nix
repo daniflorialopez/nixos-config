@@ -28,7 +28,7 @@ let
       DimBackground = "0.0";
 
       HeaderTextColor = "#c0caf5";
-      DateTextColor = "#c0caf5";
+      DateTextColor = "#a9b1d6"; # subordinate to the clock, like hyprlock
       TimeTextColor = "#c0caf5";
 
       FormBackgroundColor = "#1a1b26";
