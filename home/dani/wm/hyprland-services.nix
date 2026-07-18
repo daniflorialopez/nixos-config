@@ -76,6 +76,31 @@ in
     Install.WantedBy = [ target ];
   };
 
+  # Hyprsunset: warm color temperature after dark. Identity during the
+  # day so the calibrated palette stays true; two warm steps at night —
+  # gentle at dusk, deeper before bed. Runs as a user service bound to
+  # the session; `hyprctl hyprsunset identity` kills it manually when
+  # doing color-sensitive work at night.
+  services.hyprsunset = {
+    enable = true;
+    settings = {
+      profile = [
+        {
+          time = "7:30";
+          identity = true;
+        }
+        {
+          time = "21:00";
+          temperature = 4200;
+        }
+        {
+          time = "23:30";
+          temperature = 3700;
+        }
+      ];
+    };
+  };
+
   # Polkit agent (for auth dialogs)
   systemd.user.services.polkit-gnome-agent = {
     Unit = {
