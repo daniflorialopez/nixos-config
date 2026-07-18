@@ -223,6 +223,14 @@ in
         border-bottom: 2px solid @accent;
       }
 
+      /* a window elsewhere demands attention: the sunset "look here"
+         tier (like zellij's attention frame), distinct from the blue
+         position marker */
+      #workspaces button.urgent {
+        color: @attention;
+        border-bottom: 2px solid @attention;
+      }
+
       #workspaces button.persistent:not(.empty) {
         color: @subtle;
       }

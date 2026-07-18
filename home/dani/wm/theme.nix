@@ -46,6 +46,7 @@
     @define-color accent #7aa2f7;
     @define-color warning #e0af68;
     @define-color critical #f7768e;
+    @define-color attention #ff9e64;
     @define-color border rgba(192, 202, 245, 0.10);
   '';
 }
