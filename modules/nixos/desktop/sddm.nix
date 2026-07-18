@@ -87,7 +87,11 @@ in
     enable = true;
     package = pkgs.kdePackages.sddm;
     theme = "sddm-astronaut-theme";
-    wayland.enable = true; # wayland-capable greeter - Hyprland session
+    # X11 greeter: weston's kiosk shell stacks every greeter window on one
+    # output (laptop panel stays black) and kwin is unstable on the closed
+    # NVIDIA driver; the X11 greeter places one window per screen reliably.
+    # Only the login screen runs on X11 - the Hyprland session stays Wayland.
+    wayland.enable = false;
 
     settings = {
       Theme = {
