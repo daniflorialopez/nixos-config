@@ -11,6 +11,32 @@ in
   programs.yazi = {
     enable = true;
 
+    # Tokyo Night accents (see home/dani/wm/theme.nix for the palette)
+    theme = {
+      mgr = {
+        cwd = { fg = "#ff9e64"; bold = true; };
+        hovered = { fg = "#1a1b26"; bg = "#7aa2f7"; bold = true; };
+        preview_hovered = { fg = "#1a1b26"; bg = "#565f89"; };
+        find_keyword = { fg = "#e0af68"; bold = true; };
+        find_position = { fg = "#ff9e64"; };
+        marker_selected = { fg = "#9ece6a"; bg = "#9ece6a"; };
+        marker_copied = { fg = "#e0af68"; bg = "#e0af68"; };
+        marker_cut = { fg = "#f7768e"; bg = "#f7768e"; };
+        tab_active = { fg = "#1a1b26"; bg = "#7aa2f7"; };
+        tab_inactive = { fg = "#c0caf5"; bg = "#24283b"; };
+        border_style = { fg = "#565f89"; };
+      };
+
+      status = {
+        mode_normal = { fg = "#1a1b26"; bg = "#7aa2f7"; bold = true; };
+        mode_select = { fg = "#1a1b26"; bg = "#9ece6a"; bold = true; };
+        mode_unset = { fg = "#1a1b26"; bg = "#ff9e64"; bold = true; };
+        progress_label = { fg = "#c0caf5"; bold = true; };
+        progress_normal = { fg = "#7aa2f7"; bg = "#1a1b26"; };
+        progress_error = { fg = "#f7768e"; bg = "#1a1b26"; };
+      };
+    };
+
     settings = {
       opener = {
         edit = [
