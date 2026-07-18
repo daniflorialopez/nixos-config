@@ -9,6 +9,13 @@
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  # 1s menu instead of the default 5: still catchable with a keypress
+  # for generation rollbacks, without the every-boot wait
+  boot.loader.timeout = 1;
+
+  # Don't block graphical.target ~5s waiting for the network: nothing
+  # at login time needs it, Wi-Fi connects on its own moments later
+  systemd.services.NetworkManager-wait-online.enable = false;
 
   programs.fish.enable = true;
 
