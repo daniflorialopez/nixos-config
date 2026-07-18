@@ -111,6 +111,30 @@
         zoxide init fish | source
       end
 
+      # ---- Tokyo Night syntax colors, calibrated to WCAG AAA (>=7:1
+      # on #1a1b26) — same hues, lightness raised where canon fell short
+      set -g fish_color_normal c0caf5
+      set -g fish_color_command 7ea5f7
+      set -g fish_color_keyword bb9af7
+      set -g fish_color_quote 9ece6a
+      set -g fish_color_redirection ff9e64
+      set -g fish_color_end ff9e64
+      set -g fish_color_error f88298
+      set -g fish_color_param c0caf5
+      set -g fish_color_comment a0a5c0
+      set -g fish_color_operator ff9e64
+      set -g fish_color_escape bb9af7
+      set -g fish_color_autosuggestion a0a5c0
+      set -g fish_color_cancel f88298
+      set -g fish_color_search_match --background=3d59a1
+      set -g fish_color_selection --background=283457
+      set -g fish_color_valid_path --underline
+
+      set -g fish_pager_color_progress ff9e64
+      set -g fish_pager_color_prefix ff9e64
+      set -g fish_pager_color_completion c0caf5
+      set -g fish_pager_color_description a0a5c0
+      set -g fish_pager_color_selected_background --background=283457
     '';
 
     shellInitLast = ''
