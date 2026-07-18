@@ -50,18 +50,23 @@
           yellow = "0xe0af68";
           blue = "0x7aa2f7";
           magenta = "0xad8ee6";
-          cyan = "0x449dab";
-          white = "0x787c99";
+          # cyan reads as teal on purpose (tokyonight-moon family): Dani
+          # can't tell blue-ish cyan from blue/white fast. white lightened
+          # from canon 0x787c99 (4.2:1) for legibility
+          cyan = "0x53c7ad";
+          white = "0xa2a5b9";
         };
 
         bright = {
-          black = "0x444b6a";
+          # lightened from canon 0x444b6a (2.5:1) — bright black is what
+          # CLIs use for "muted" text and it was nearly invisible
+          black = "0x737aa2";
           red = "0xff7a93";
           green = "0xb9f27c";
           yellow = "0xff9e64";
           blue = "0x7da6ff";
           magenta = "0xbb9af7";
-          cyan = "0x0db9d7";
+          cyan = "0x4fd6be";
           white = "0xacb0d0";
         };
       };
