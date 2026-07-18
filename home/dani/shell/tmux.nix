@@ -88,8 +88,27 @@ in
     setw -g mode-keys vi
     set -g status-keys vi
 
-    # (Optional) you can add theme tweaks here later if you want.
-    # This file is YOUR playground for Oh My Tmux overrides.
+    # ================= Tokyo Night theme =======================
+    # Oh My Tmux colour slots remapped to the shared palette
+    # (see home/dani/wm/theme.nix)
+
+    tmux_conf_theme_colour_1="#1a1b26"   # background
+    tmux_conf_theme_colour_2="#24283b"   # window background
+    tmux_conf_theme_colour_3="#a9b1d6"   # inactive text (kept bright for legibility)
+    tmux_conf_theme_colour_4="#7aa2f7"   # accent (active pane, highlights)
+    tmux_conf_theme_colour_5="#e0af68"   # session name
+    tmux_conf_theme_colour_6="#1a1b26"
+    tmux_conf_theme_colour_7="#c0caf5"   # foreground
+    tmux_conf_theme_colour_8="#1a1b26"
+    tmux_conf_theme_colour_9="#e0af68"
+    tmux_conf_theme_colour_10="#ff9e64"  # prefix/mode indicator
+    tmux_conf_theme_colour_11="#9ece6a"  # copy mode
+    tmux_conf_theme_colour_12="#a9b1d6"
+    tmux_conf_theme_colour_13="#c0caf5"
+    tmux_conf_theme_colour_14="#1a1b26"
+    tmux_conf_theme_colour_15="#c0caf5"
+    tmux_conf_theme_colour_16="#f7768e"  # alerts
+    tmux_conf_theme_colour_17="#c0caf5"
   '';
 }
 
