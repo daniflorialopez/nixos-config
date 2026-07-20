@@ -119,15 +119,21 @@ let
     '';
   };
 
-  # Backups go rest:https over the tailnet, so tailscale being down is
-  # actionable -> only then does the module appear
+  # Always visible: dim while up (glanceable confirmation it's actually
+  # running, since backups at 20:00 depend on it), red + IP-less when down
   tailscaleStatus = pkgs.writeShellApplication {
     name = "waybar-tailscale";
     runtimeInputs = [ pkgs.tailscale pkgs.jq ];
     text = ''
-      state="$(tailscale status --json 2>/dev/null | jq -r '.BackendState // "NoDaemon"')" || state="NoDaemon"
+      st="$(tailscale status --json 2>/dev/null)" || st=""
+      if [ -z "$st" ]; then
+        printf '{"text":"󰦞","class":"down","tooltip":"tailscaled not running"}\n'
+        exit 0
+      fi
+      state="$(printf '%s' "$st" | jq -r '.BackendState // "NoDaemon"')"
       if [ "$state" = "Running" ]; then
-        printf '{"text":"","tooltip":""}\n'
+        ip="$(printf '%s' "$st" | jq -r '.TailscaleIPs[0] // "?"')"
+        printf '{"text":"󰦝","class":"up","tooltip":"tailscale up · %s"}\n' "$ip"
       else
         printf '{"text":"󰦞","class":"down","tooltip":"tailscale: %s"}\n' "$state"
       fi
@@ -419,7 +425,8 @@ in
       #mpris { color: @muted; font-style: italic; }
       #custom-kblayout { min-width: 26px; }
       #custom-gpu.hot { color: @critical; }
-      #custom-tailscale.down { color: @muted; }
+      #custom-tailscale.up { color: @muted; }
+      #custom-tailscale.down { color: @critical; }
 
       #bluetooth.off,
       #bluetooth.disabled {
