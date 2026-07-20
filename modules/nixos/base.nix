@@ -17,6 +17,11 @@
   # at login time needs it, Wi-Fi connects on its own moments later
   systemd.services.NetworkManager-wait-online.enable = false;
 
+  # No swap meant memory spikes (VM + desktop + Steam) had nowhere to
+  # bleed off and hard-locked the machine instead of degrading. zram
+  # gives compressed RAM-backed swap as a relief valve for bursts.
+  zramSwap.enable = true;
+
   programs.fish.enable = true;
 
   services.qemuGuest.enable = true;
