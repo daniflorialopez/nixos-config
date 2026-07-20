@@ -24,5 +24,10 @@
 
   # virtio disk inside libvirt (stable across VM rebuilds, unlike by-id)
   disko.devices.disk.main.device = "/dev/vda";
+
+  # Fresh installs (the rehearsal wipes this disk repeatedly) come up
+  # with a usable console login; with mutableUsers this only applies
+  # when the user is first created, so it never touches existing hosts
+  users.users.dani.initialPassword = "changeme";
 }
 
