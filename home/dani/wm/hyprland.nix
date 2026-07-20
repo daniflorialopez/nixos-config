@@ -163,8 +163,14 @@ in
         "$mod, Space, Walker and Elephant, exec, walker"
         "$mod, W, Kill Program, killactive"
         # "$mod, M, exit"
-        "$mod, F, Full width, fullscreen, 1"
-        "$mod ALT, F, Force full screen, fullscreen, 0"
+        # mode 0 = true fullscreen: ignores waybar's reserved strip and
+        # goes edge-to-edge, with the glass bar floating over it as a HUD.
+        # mode 1 (maximize) respects the reserved strip instead, which
+        # looks broken against the floating islands (hard square edge
+        # butting against a mostly-empty reserved strip) - kept on the
+        # alt bind for the rare case a maximize-not-fullscreen is wanted.
+        "$mod, F, True full screen, fullscreen, 0"
+        "$mod ALT, F, Maximize (keeps bar strip), fullscreen, 1"
         # "$mod, Space, togglefloating"
         "$mod, M, File Manager, exec, $fileManager"
         "$mod SHIFT, O, Obsidian, exec, obsidian"
