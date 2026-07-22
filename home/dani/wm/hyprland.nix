@@ -322,6 +322,12 @@ in
         "center 1, class:^(firefox)$, title:^(Save As|Guardar como).*$"
         "bordersize 0, fullscreenstate:1 *"
         "rounding 0, fullscreenstate:1 *"
+
+        # Media stays true-color: the glass treatment (0.94/0.88 + blur)
+        # washes out video, photos and PDFs when windowed/unfocused, so
+        # viewers and the screenshot editor render at full opacity
+        "opacity 1.0 override 1.0 override, class:^(mpv|imv|org\\.pwmt\\.zathura|com\\.gabm\\.satty|com\\.obsproject\\.Studio)$"
+        "opacity 1.0 override 1.0 override, title:^(Picture-in-Picture)$"
       ];
     };
   };
