@@ -432,6 +432,14 @@ in
         padding: 0 12px 0 6px;
       }
 
+      /* no title (empty workspace / nothing focused): drop the module's
+         reserved padding so the island ends cleanly at the last
+         workspace pill instead of trailing dead space */
+      #window.empty,
+      window#waybar.empty #window {
+        padding: 0;
+      }
+
       #clock {
         color: @fg;
         letter-spacing: 0.2px;
