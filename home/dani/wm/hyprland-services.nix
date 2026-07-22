@@ -46,6 +46,9 @@ in
     settings = {
       # Tokyo Night, matching waybar (see waybar/palette.css)
       font = "CaskaydiaMono Nerd Font 11";
+      # app icons resolve from the same theme GTK uses (theme.nix)
+      icon-path = "${pkgs.papirus-icon-theme}/share/icons/Papirus-Dark";
+      max-icon-size = 40;
       background-color = "#1a1b26e0";
       text-color = "#c0caf5";
       border-color = "#7aa2f7";

@@ -22,6 +22,21 @@
 
 { pkgs, ... }:
 let
+  # nm-applet and blueman-applet autostart via uwsm's XDG-autostart
+  # target and park duplicate wired/bluetooth icons in the tray; the
+  # bar's own network/bluetooth modules already cover both (styled, with
+  # click actions), so shadow the system autostart entries. Hidden=true
+  # is the spec's "treat as deleted" — the packages stay installed for
+  # blueman-manager / nm-connection-editor.
+  hideAutostart = name: {
+    "autostart/${name}.desktop".text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=${name}
+      Hidden=true
+    '';
+  };
+
   kbLayoutScript = pkgs.writeShellApplication {
     name = "waybar-kblayout";
     runtimeInputs = [ pkgs.hyprland pkgs.jq ];
@@ -73,7 +88,9 @@ let
           ;;
       esac
 
-      printf '{"text":"   %s","tooltip":"%s","class":"%s"}\n' \
+      # keyboard glyph + layout code (the old format had three bare
+      # spaces where an icon was lost, reading as a hole in the bar)
+      printf '{"text":"󰌌  %s","tooltip":"%s","class":"%s"}\n' \
         "$short" "$keymap" "$class"
     '';
   };
@@ -165,6 +182,8 @@ let
   };
 in
 {
+  xdg.configFile = hideAutostart "nm-applet" // hideAutostart "blueman";
+
   programs.waybar = {
     enable = true;
     systemd.enable = true;
@@ -190,10 +209,14 @@ in
         "clock"
       ];
 
+      # mpris sits at the island's left edge: it appears/disappears with
+      # playback, and the right-anchored island grows leftward, so the
+      # status icons keep their absolute positions instead of being
+      # shoved around by the song title popping in mid-cluster
       modules-right = [
+        "mpris"
         "custom/backup"
         "custom/tailscale"
-        "mpris"
         "custom/gpu"
         "custom/kblayout"
         "bluetooth"
@@ -299,6 +322,9 @@ in
         format-ethernet = "󰈀  wired";
         format-disconnected = "󰖪  offline";
         tooltip-format = "{ifname} · {ipaddr}";
+        # GUI path to connections now that nm-applet no longer sits in
+        # the tray (parity with the bluetooth module's right-click)
+        on-click-right = "nm-connection-editor";
       };
 
       pulseaudio = {
@@ -355,6 +381,8 @@ in
         border: 1px solid @border;
         border-radius: 12px;   /* = decoration.rounding */
         padding: 0 8px;
+        /* no box-shadow: GTK draws it as a square halo that ignores the
+           border-radius, reading as a rectangle around the pill */
       }
 
       tooltip {
@@ -370,6 +398,9 @@ in
         padding: 0 9px;
         margin: 4px 2px;
         border-radius: 8px;
+        /* ease the pill in/out instead of snapping (matches the
+           easeOutQuint feel of the window animations) */
+        transition: background-color 0.2s ease, color 0.2s ease;
       }
 
       #workspaces button:hover {
