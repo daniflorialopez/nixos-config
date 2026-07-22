@@ -215,13 +215,16 @@ in
         gaps_in = 6;
         gaps_out = 12;
 
-        border_size = 3;
+        border_size = 2;
 
-        # Tokyo Night all-warm "sunset" gradient (yellow→orange→red): cool
-        # colors read grey against the blueish wallpaper, so the border is
-        # fully warm; the blue accent lives in waybar/walker/mako instead
-        "col.active_border" = "rgba(e0af68ff) rgba(ff9e64ff) rgba(f7768eff) 45deg";
-        "col.inactive_border" = "rgba(565f89aa)";
+        # Neutral slate borders (picked over the old sunset gradient in a
+        # live A/B, 2026-07-22): the gradient painted a different hue on
+        # each edge and read as noise. Focus is signaled by value, not
+        # hue — active slate vs near-invisible gutter — Windows-calm.
+        # The sunset now lives only in the attention tier (waybar urgent/
+        # backup, zellij frame_highlight, walker border, btop graphs).
+        "col.active_border" = "rgba(565f89ff)";
+        "col.inactive_border" = "rgba(3b426188)";
       };
 
       decoration = {
