@@ -39,8 +39,11 @@
         };
 
         selection = {
-          text = "0xc0caf5";
-          background = "0x7aa2f7";
+          # dark-blue wash that keeps the text's own colors readable
+          # (same #283457 fish uses for its selection); the old solid
+          # #7aa2f7 fill put pale lavender on mid-blue at ~1.6:1
+          text = "CellForeground";
+          background = "0x283457";
         };
 
         normal = {
