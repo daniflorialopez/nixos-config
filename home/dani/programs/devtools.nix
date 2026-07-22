@@ -20,6 +20,30 @@ in
     python3
   ];
 
+  # Tokyo Night, same role mapping as zellij: blue for the active pane
+  # frame, orange only for "look here" (search), #283457 selection wash
+  programs.lazygit = {
+    enable = true;
+    settings = {
+      gui = {
+        nerdFontsVersion = "3";
+        theme = {
+          activeBorderColor = [ "#7aa2f7" "bold" ];
+          inactiveBorderColor = [ "#565f89" ];
+          searchingActiveBorderColor = [ "#ff9e64" "bold" ];
+          optionsTextColor = [ "#7aa2f7" ];
+          selectedLineBgColor = [ "#283457" ];
+          cherryPickedCommitFgColor = [ "#7aa2f7" ];
+          cherryPickedCommitBgColor = [ "#283457" ];
+          markedBaseCommitFgColor = [ "#7aa2f7" ];
+          markedBaseCommitBgColor = [ "#e0af68" ];
+          unstagedChangesColor = [ "#f7768e" ];
+          defaultFgColor = [ "#c0caf5" ];
+        };
+      };
+    };
+  };
+
   programs.git = {
     enable = true;
     settings.user.name = "Daniel Floria Lopez";

@@ -7,6 +7,28 @@
 
     defaultCommand = "fd --type f --hidden --follow --exclude .git";
 
+    # Tokyo Night, same role mapping as the rest of the desktop:
+    # #283457 selection wash (fish/alacritty selection), orange for
+    # matches (yazi find tier), blue for the prompt/position accents,
+    # #a0a5c0 as the AAA-calibrated muted
+    colors = {
+      "fg" = "#a9b1d6";
+      "fg+" = "#c0caf5";
+      "bg" = "-1";
+      "bg+" = "#283457";
+      "hl" = "#ff9e64";
+      "hl+" = "#ff9e64";
+      "info" = "#a0a5c0";
+      "header" = "#a0a5c0";
+      "prompt" = "#7aa2f7";
+      "pointer" = "#ff9e64";
+      "marker" = "#9ece6a";
+      "spinner" = "#ff9e64";
+      "border" = "#565f89";
+      "separator" = "#565f89";
+      "scrollbar" = "#565f89";
+    };
+
     historyWidgetOptions = [
       "--layout=reverse"
       "--height=40%"

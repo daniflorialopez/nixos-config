@@ -6,15 +6,13 @@
     eza
     fd
     ripgrep
-    bat
     fzf
     zoxide
     jq
     yq
     tree
 
-    # system and monitoring
-    btop
+    # system and monitoring (btop lives in btop.nix with its theme)
     htop
     lsof
     ncdu
@@ -40,9 +38,9 @@
     # security
     gnupg
 
-    # version control
+    # version control (lazygit lives in devtools.nix as programs.lazygit
+    # so its Tokyo Night theme travels with the package)
     git
-    lazygit
 
     # misc
     unzip
@@ -56,6 +54,14 @@
     poppler-utils
     qpdf
   ];
+
+  # "ansi" maps bat's syntax colors onto the terminal's 16-color palette,
+  # i.e. the calibrated Tokyo Night in alacritty.nix — instead of the
+  # default Monokai, which fights the scheme
+  programs.bat = {
+    enable = true;
+    config.theme = "ansi";
+  };
 
   home.sessionVariables = {
     EDITOR    = "nvim";

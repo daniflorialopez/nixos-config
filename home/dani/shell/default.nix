@@ -1,5 +1,6 @@
 {
   imports = [
+    ./btop.nix
     ./cli.nix
     ./tmux.nix
     ./starship.nix
