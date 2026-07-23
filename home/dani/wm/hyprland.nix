@@ -162,7 +162,7 @@ in
 
         # Window actions
         # "$mod SHIFT, Space, togglefloating,"
-        # "$mod, P, pseudo,"          # pseudo-tiling
+        # "$mod, P, pseudo,"          # pseudo-tiling (P is now clipboard history)
         # "$mod, J, togglesplit,"     # dwindle split direction
         "$mod, Tab, Cycle next window, cyclenext"
         "$mod SHIFT, Tab, Cycle previous window, cyclenext, prev"
@@ -243,9 +243,11 @@ in
         # Screenshots
         ", Print, Screenshot with Satty, exec, screenshot-satty"
 
-        # Clipboard history (elephant provider; see clipboard.nix)
-        "$mod, V, Clipboard history, exec, walker -m clipboard"
-        "$mod SHIFT, V, Wipe clipboard history, exec, clipboard-wipe"
+        # Clipboard history (elephant provider; see clipboard.nix).
+        # Not on V: keyd rewrites Super+C/V to Ctrl/Shift+Insert before
+        # Hyprland sees them (keyd.nix), so any $mod+V bind is dead.
+        "$mod, P, Clipboard history, exec, walker -m clipboard"
+        "$mod SHIFT, P, Wipe clipboard history, exec, clipboard-wipe"
 
         # Keybinds palette (code:61 = the / key on the us layout, same physical key on es)
         "$mod, code:61, Keybinds palette, exec, keybinds-menu"
