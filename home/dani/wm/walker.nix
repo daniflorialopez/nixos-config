@@ -85,8 +85,10 @@
     @define-color theme_fg_color #c0caf5;
     @define-color subtext_color rgba(169, 177, 214, 0.65);
     @define-color border_color rgba(255, 255, 255, 0.07);
-    @define-color walker_outer_border rgba(255, 158, 100, 1.0);
-    @define-color walker_outer_glow rgba(255, 158, 100, 0.18);
+    /* Popup frame left the sunset attention tier (2026-07-24): walker is
+       user-invoked chrome, not an alert, so it wears the same neutral
+       slate as the active window border — orange only means "needs you" */
+    @define-color walker_outer_border rgba(86, 95, 137, 1.0);
 
     * {
       all: unset;
@@ -106,8 +108,6 @@
       border-radius: 20px;
       padding: 16px;
       box-shadow:
-        0 0 0 1px rgba(255, 158, 100, 0.16),
-        0 0 24px @walker_outer_glow,
         0 18px 50px rgba(0, 0, 0, 0.30),
         0 8px 24px rgba(0, 0, 0, 0.16);
     }
