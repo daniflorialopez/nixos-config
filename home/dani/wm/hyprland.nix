@@ -38,6 +38,7 @@ in
 {
   imports = [
     ./hyprland-services.nix
+    ./clipboard.nix
     ./hyprlock.nix
     ./theme.nix
     ./walker.nix
@@ -182,6 +183,10 @@ in
 
         # Screenshots
         ", Print, Screenshot with Satty, exec, screenshot-satty"
+
+        # Clipboard history (elephant provider; see clipboard.nix)
+        "$mod, V, Clipboard history, exec, walker -m clipboard"
+        "$mod SHIFT, V, Wipe clipboard history, exec, clipboard-wipe"
 
         # wl-kbptr
         "$mod SHIFT, M, wl-kbptr mouse actions, exec, wl-kbptr"
