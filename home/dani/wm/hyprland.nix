@@ -36,9 +36,12 @@ let
 
   # Searchable keybinds palette: reads the live binds from hyprctl (so it
   # also covers binds declared outside this file, e.g. whatsapp.nix),
-  # renders "CHORD  description" in walker's dmenu and executes the
-  # chosen bind. Descriptions come from bindd; plain binds fall back to
-  # showing their dispatcher.
+  # renders "CHORD  description" grouped under topic headers in walker's
+  # dmenu, and executes the chosen bind. Topics are inferred from the
+  # dispatcher (and the command for exec binds); the ten per-digit
+  # workspace binds collapse into one row each, and chords that trigger
+  # the same action (vim keys + arrows) merge into a single row.
+  # Headers and collapsed rows are inert: selecting them just closes.
   keybindsMenu = pkgs.writeShellApplication {
     name = "keybinds-menu";
     # walker comes from the session PATH (flake package), not nixpkgs
@@ -57,7 +60,10 @@ let
         | @tsv
       ')"
 
-      display="$(awk -F'\t' '
+      map="$(mktemp)"
+      trap 'rm -f "$map"' EXIT
+
+      display="$(awk -F'\t' -v MAP="$map" '
         function mods(m,    s) {
           s = ""
           if (int(m / 64) % 2) s = s "SUPER+"
@@ -66,23 +72,84 @@ let
           if (m % 2)           s = s "SHIFT+"
           return s
         }
+        function keylabel(k, kc) {
+          if (k == "") k = "code:" kc
+          if (k == "code:48") return "\047"
+          if (k == "code:61") return "/"
+          if (k == "left") return "←"
+          if (k == "right") return "→"
+          if (k == "up") return "↑"
+          if (k == "down") return "↓"
+          return k
+        }
+        function topic(dsp, a) {
+          if (dsp == "workspace" || dsp == "movetoworkspace") return "Workspaces"
+          if (dsp == "movefocus" || dsp == "cyclenext") return "Focus"
+          if (dsp ~ /^(movewindow|resizeactive|killactive|fullscreen|togglefloating|pseudo|togglesplit|togglespecialworkspace)/) return "Windows"
+          if (dsp == "exec") {
+            if (a ~ /wpctl|playerctl/) return "Media"
+            if (a ~ /clipboard/) return "Clipboard"
+            if (a ~ /brightnessctl|hyprlock|makoctl|switchxkblayout|screenshot|wl-kbptr|keybinds-menu/) return "System"
+            return "Apps"
+          }
+          return "Other"
+        }
+        function addrow(t, chord, desc, dsp, a,    i) {
+          i = ++rn[t]
+          c[t, i] = chord; d[t, i] = desc; md[t, i] = dsp; ma[t, i] = a
+        }
         {
-          key = $2
-          if (key == "") key = "code:" $3
-          if (key == "code:48") key = "\047"
-          if (key == "code:61") key = "/"
+          m = $1; dsp = $5; a = $6
           desc = $4
-          if (desc == "") desc = $5 ($6 == "" ? "" : " " $6)
-          printf "%-24s %s\n", mods($1) key, desc
+          if (desc == "") desc = dsp (a == "" ? "" : " " a)
+          t = topic(dsp, a)
+
+          # ten per-digit rows -> one summary row (inert: pressing the
+          # chord yourself is faster than picking a workspace in a menu)
+          if (dsp == "workspace" && $2 ~ /^[0-9]$/) {
+            if (!wsdone++) addrow(t, mods(m) "1…0", "Switch to workspace 1-10", "", "")
+            next
+          }
+          if (dsp == "movetoworkspace" && $2 ~ /^[0-9]$/) {
+            if (!mwsdone++) addrow(t, mods(m) "1…0", "Move window to workspace 1-10", "", "")
+            next
+          }
+
+          # same action reachable from several chords (vim keys + arrows):
+          # append the extra key to the first row instead of a new row
+          sig = m SUBSEP desc SUBSEP dsp SUBSEP a
+          if (sig in sigat) {
+            split(sigat[sig], p, SUBSEP)
+            c[p[1], p[2]] = c[p[1], p[2]] " / " keylabel($2, $3)
+            next
+          }
+          addrow(t, mods(m) keylabel($2, $3), desc, dsp, a)
+          sigat[sig] = t SUBSEP rn[t]
+        }
+        END {
+          n = split("Apps Clipboard Workspaces Focus Windows Media System Other", order, " ")
+          pad = "                              "
+          for (o = 1; o <= n; o++) {
+            t = order[o]
+            if (!rn[t]) continue
+            printf "── %s ──\n", t
+            print "" > MAP
+            for (i = 1; i <= rn[t]; i++) {
+              w = 26 - length(c[t, i]); if (w < 1) w = 1
+              printf "%s%s%s\n", c[t, i], substr(pad, 1, w), d[t, i]
+              printf "%s\t%s\n", md[t, i], ma[t, i] > MAP
+            }
+          }
         }
       ' <<<"$tsv")"
 
       idx="$(walker -d -i -p 'Keybinds' <<<"$display")" || exit 0
       case "$idx" in *[!0-9]* | "") exit 0 ;; esac
 
-      line="$(sed -n "$((idx + 1))p" <<<"$tsv")"
-      dispatcher="$(printf '%s' "$line" | cut -f5)"
-      arg="$(printf '%s' "$line" | cut -f6)"
+      sel="$(sed -n "$((idx + 1))p" "$map")"
+      dispatcher="$(printf '%s' "$sel" | cut -f1)"
+      arg="$(printf '%s' "$sel" | cut -s -f2)"
+      [ -n "$dispatcher" ] || exit 0
 
       if [ -n "$arg" ]; then
         exec hyprctl dispatch "$dispatcher" "$arg"
@@ -291,7 +358,8 @@ in
         # each edge and read as noise. Focus is signaled by value, not
         # hue — active slate vs near-invisible gutter — Windows-calm.
         # The sunset now lives only in the attention tier (waybar urgent/
-        # backup, zellij frame_highlight, walker border, btop graphs).
+        # backup, zellij frame_highlight, btop graphs — walker's frame
+        # joined the slate tier on 2026-07-24).
         "col.active_border" = "rgba(565f89ff)";
         "col.inactive_border" = "rgba(3b426188)";
       };
