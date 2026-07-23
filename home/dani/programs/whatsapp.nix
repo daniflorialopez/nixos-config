@@ -30,7 +30,7 @@ in
     startupNotify = true;
   };
 
-  wayland.windowManager.hyprland.settings.bind = [
-    "$mod SHIFT, W, exec, ${whatsapp-web}/bin/whatsapp-web"
+  wayland.windowManager.hyprland.settings.bindd = [
+    "$mod SHIFT, W, WhatsApp Web, exec, ${whatsapp-web}/bin/whatsapp-web"
   ];
 }

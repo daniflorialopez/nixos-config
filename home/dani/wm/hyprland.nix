@@ -33,6 +33,64 @@ let
         --output-filename "$outfile"
     '';
   };
+
+  # Searchable keybinds palette: reads the live binds from hyprctl (so it
+  # also covers binds declared outside this file, e.g. whatsapp.nix),
+  # renders "CHORD  description" in walker's dmenu and executes the
+  # chosen bind. Descriptions come from bindd; plain binds fall back to
+  # showing their dispatcher.
+  keybindsMenu = pkgs.writeShellApplication {
+    name = "keybinds-menu";
+    # walker comes from the session PATH (flake package), not nixpkgs
+    runtimeInputs = with pkgs; [
+      hyprland
+      jq
+      gawk
+      gnused
+      coreutils
+    ];
+    text = ''
+      tsv="$(hyprctl binds -j | jq -r '
+        .[]
+        | select(.mouse | not)
+        | [(.modmask | tostring), .key, (.keycode | tostring), .description, .dispatcher, .arg]
+        | @tsv
+      ')"
+
+      display="$(awk -F'\t' '
+        function mods(m,    s) {
+          s = ""
+          if (int(m / 64) % 2) s = s "SUPER+"
+          if (int(m / 4) % 2)  s = s "CTRL+"
+          if (int(m / 8) % 2)  s = s "ALT+"
+          if (m % 2)           s = s "SHIFT+"
+          return s
+        }
+        {
+          key = $2
+          if (key == "") key = "code:" $3
+          if (key == "code:48") key = "\047"
+          if (key == "code:61") key = "/"
+          desc = $4
+          if (desc == "") desc = $5 ($6 == "" ? "" : " " $6)
+          printf "%-24s %s\n", mods($1) key, desc
+        }
+      ' <<<"$tsv")"
+
+      idx="$(walker -d -i -p 'Keybinds' <<<"$display")" || exit 0
+      case "$idx" in *[!0-9]* | "") exit 0 ;; esac
+
+      line="$(sed -n "$((idx + 1))p" <<<"$tsv")"
+      dispatcher="$(printf '%s' "$line" | cut -f5)"
+      arg="$(printf '%s' "$line" | cut -f6)"
+
+      if [ -n "$arg" ]; then
+        exec hyprctl dispatch "$dispatcher" "$arg"
+      else
+        exec hyprctl dispatch "$dispatcher"
+      fi
+    '';
+  };
 in
 
 {
@@ -70,30 +128,33 @@ in
       exec-once = [
       ];
 
-      bind = [
+      # Everything is bindd (bind + description): the descriptions feed
+      # the keybinds palette ($mod+/), so a plain bind here would show
+      # up as a bare dispatcher in the menu.
+      bindd = [
         # Workspaces
-        "$mod, 1, workspace, 1"
-        "$mod, 2, workspace, 2"
-        "$mod, 3, workspace, 3"
-        "$mod, 4, workspace, 4"
-        "$mod, 5, workspace, 5"
-        "$mod, 6, workspace, 6"
-        "$mod, 7, workspace, 7"
-        "$mod, 8, workspace, 8"
-        "$mod, 9, workspace, 9"
-        "$mod, 0, workspace, 10"
+        "$mod, 1, Workspace 1, workspace, 1"
+        "$mod, 2, Workspace 2, workspace, 2"
+        "$mod, 3, Workspace 3, workspace, 3"
+        "$mod, 4, Workspace 4, workspace, 4"
+        "$mod, 5, Workspace 5, workspace, 5"
+        "$mod, 6, Workspace 6, workspace, 6"
+        "$mod, 7, Workspace 7, workspace, 7"
+        "$mod, 8, Workspace 8, workspace, 8"
+        "$mod, 9, Workspace 9, workspace, 9"
+        "$mod, 0, Workspace 10, workspace, 10"
 
         # Move to workspaces
-        "$mod SHIFT, 1, movetoworkspace, 1"
-        "$mod SHIFT, 2, movetoworkspace, 2"
-        "$mod SHIFT, 3, movetoworkspace, 3"
-        "$mod SHIFT, 4, movetoworkspace, 4"
-        "$mod SHIFT, 5, movetoworkspace, 5"
-        "$mod SHIFT, 6, movetoworkspace, 6"
-        "$mod SHIFT, 7, movetoworkspace, 7"
-        "$mod SHIFT, 8, movetoworkspace, 8"
-        "$mod SHIFT, 9, movetoworkspace, 9"
-        "$mod SHIFT, 0, movetoworkspace, 10"
+        "$mod SHIFT, 1, Move window to workspace 1, movetoworkspace, 1"
+        "$mod SHIFT, 2, Move window to workspace 2, movetoworkspace, 2"
+        "$mod SHIFT, 3, Move window to workspace 3, movetoworkspace, 3"
+        "$mod SHIFT, 4, Move window to workspace 4, movetoworkspace, 4"
+        "$mod SHIFT, 5, Move window to workspace 5, movetoworkspace, 5"
+        "$mod SHIFT, 6, Move window to workspace 6, movetoworkspace, 6"
+        "$mod SHIFT, 7, Move window to workspace 7, movetoworkspace, 7"
+        "$mod SHIFT, 8, Move window to workspace 8, movetoworkspace, 8"
+        "$mod SHIFT, 9, Move window to workspace 9, movetoworkspace, 9"
+        "$mod SHIFT, 0, Move window to workspace 10, movetoworkspace, 10"
 
         # --- Scratchpad (special workspace) ---
         # "$mod, S, togglespecialworkspace,"
@@ -103,62 +164,60 @@ in
         # "$mod SHIFT, Space, togglefloating,"
         # "$mod, P, pseudo,"          # pseudo-tiling
         # "$mod, J, togglesplit,"     # dwindle split direction
-        "$mod, Tab, cyclenext,"
-        "$mod SHIFT, Tab, cyclenext, prev"
+        "$mod, Tab, Cycle next window, cyclenext"
+        "$mod SHIFT, Tab, Cycle previous window, cyclenext, prev"
 
         # --- Focus (vim keys) ---
-        "$mod, h, movefocus, l"
-        "$mod, l, movefocus, r"
-        "$mod, k, movefocus, u"
-        "$mod, j, movefocus, d"
+        "$mod, h, Focus left, movefocus, l"
+        "$mod, l, Focus right, movefocus, r"
+        "$mod, k, Focus up, movefocus, u"
+        "$mod, j, Focus down, movefocus, d"
 
         # --- Move window (vim keys) ---
-        "$mod SHIFT, h, movewindow, l"
-        "$mod SHIFT, l, movewindow, r"
-        "$mod SHIFT, k, movewindow, u"
-        "$mod SHIFT, j, movewindow, d"
+        "$mod SHIFT, h, Move window left, movewindow, l"
+        "$mod SHIFT, l, Move window right, movewindow, r"
+        "$mod SHIFT, k, Move window up, movewindow, u"
+        "$mod SHIFT, j, Move window down, movewindow, d"
 
         # --- Resize active window (vim keys) ---
-        "$mod CTRL, h, resizeactive, -30 0"
-        "$mod CTRL, l, resizeactive, 30 0"
-        "$mod CTRL, k, resizeactive, 0 -30"
-        "$mod CTRL, j, resizeactive, 0 30"
+        "$mod CTRL, h, Resize narrower, resizeactive, -30 0"
+        "$mod CTRL, l, Resize wider, resizeactive, 30 0"
+        "$mod CTRL, k, Resize shorter, resizeactive, 0 -30"
+        "$mod CTRL, j, Resize taller, resizeactive, 0 30"
 
         # --- Focus (arrow keys) ---
-        "$mod, left, movefocus, l"
-        "$mod, right, movefocus, r"
-        "$mod, up, movefocus, u"
-        "$mod, down, movefocus, d"
+        "$mod, left, Focus left, movefocus, l"
+        "$mod, right, Focus right, movefocus, r"
+        "$mod, up, Focus up, movefocus, u"
+        "$mod, down, Focus down, movefocus, d"
 
         # --- Move window (arrow keys) ---
-        "$mod SHIFT, left, movewindow, l"
-        "$mod SHIFT, right, movewindow, r"
-        "$mod SHIFT, up, movewindow, u"
-        "$mod SHIFT, down, movewindow, d"
+        "$mod SHIFT, left, Move window left, movewindow, l"
+        "$mod SHIFT, right, Move window right, movewindow, r"
+        "$mod SHIFT, up, Move window up, movewindow, u"
+        "$mod SHIFT, down, Move window down, movewindow, d"
 
         # --- Resize active window (arrow keys) ---
-        "$mod CTRL, left, resizeactive, -30 0"
-        "$mod CTRL, right, resizeactive, 30 0"
-        "$mod CTRL, up, resizeactive, 0 -30"
-        "$mod CTRL, down, resizeactive, 0 30"
+        "$mod CTRL, left, Resize narrower, resizeactive, -30 0"
+        "$mod CTRL, right, Resize wider, resizeactive, 30 0"
+        "$mod CTRL, up, Resize shorter, resizeactive, 0 -30"
+        "$mod CTRL, down, Resize taller, resizeactive, 0 30"
 
         # --- Media keys (PipeWire + playerctl) ---
-        ", XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
-        ", XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
-        ", XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-        ", XF86AudioPlay, exec, playerctl play-pause"
-        ", XF86AudioNext, exec, playerctl next"
-        ", XF86AudioPrev, exec, playerctl previous"
+        ", XF86AudioRaiseVolume, Volume up, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
+        ", XF86AudioLowerVolume, Volume down, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
+        ", XF86AudioMute, Toggle mute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+        ", XF86AudioPlay, Play / pause, exec, playerctl play-pause"
+        ", XF86AudioNext, Next track, exec, playerctl next"
+        ", XF86AudioPrev, Previous track, exec, playerctl previous"
 
         # --- Brightness ---
-        ", XF86MonBrightnessUp, exec, brightnessctl set +10%"
-        ", XF86MonBrightnessDown, exec, brightnessctl set 10%-"
+        ", XF86MonBrightnessUp, Brightness up, exec, brightnessctl set +10%"
+        ", XF86MonBrightnessDown, Brightness down, exec, brightnessctl set 10%-"
 
         # --- Change keyboard layout ---
-        "$mod SHIFT, Z, exec, hyprctl switchxkblayout current next"
-      ];
+        "$mod SHIFT, Z, Next keyboard layout, exec, hyprctl switchxkblayout current next"
 
-      bindd = [
         # Basic binds
         "$mod, Return, Alacritty, exec, $terminal"
         "$mod, Space, Walker and Elephant, exec, walker"
@@ -187,6 +246,9 @@ in
         # Clipboard history (elephant provider; see clipboard.nix)
         "$mod, V, Clipboard history, exec, walker -m clipboard"
         "$mod SHIFT, V, Wipe clipboard history, exec, clipboard-wipe"
+
+        # Keybinds palette (code:61 = the / key on the us layout, same physical key on es)
+        "$mod, code:61, Keybinds palette, exec, keybinds-menu"
 
         # wl-kbptr
         "$mod SHIFT, M, wl-kbptr mouse actions, exec, wl-kbptr"
@@ -361,6 +423,7 @@ in
 
     # other utilities
     wl-kbptr
+    keybindsMenu
 
   ];
 

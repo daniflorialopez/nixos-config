@@ -139,7 +139,7 @@ EOF
     wallPicker
   ];
 
-  wayland.windowManager.hyprland.settings.bind = [
-    "$mod CTRL, W, exec, ${lib.getExe wallPicker}"
+  wayland.windowManager.hyprland.settings.bindd = [
+    "$mod CTRL, W, Wallpaper picker, exec, ${lib.getExe wallPicker}"
   ];
 }
