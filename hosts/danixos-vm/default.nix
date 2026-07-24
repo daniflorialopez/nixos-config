@@ -6,6 +6,9 @@
 
     # LUKS2 + btrfs layout (the legionix migration rehearsal)
     ../../modules/nixos/disko-luks.nix
+    # remote unlock over SSH from the initrd (rehearsal for legionix;
+    # on migration day legionix also adds "r8169" below)
+    ../../modules/nixos/initrd-ssh.nix
 
     # common system modules
     ../../modules/nixos/users/dani.nix
@@ -24,6 +27,9 @@
 
   # virtio disk inside libvirt (stable across VM rebuilds, unlike by-id)
   disko.devices.disk.main.device = "/dev/vda";
+
+  # virtio NIC in the initrd so the remote-unlock sshd has a network
+  boot.initrd.availableKernelModules = [ "virtio_net" ];
 
   # Fresh installs (the rehearsal wipes this disk repeatedly) come up
   # with a usable console login; with mutableUsers this only applies
