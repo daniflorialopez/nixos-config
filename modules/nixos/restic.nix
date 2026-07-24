@@ -44,10 +44,15 @@
       RandomizedDelaySec = "30m";
     };
 
+    # If the repo is locked (e.g. a manual restic run overlapping the timer),
+    # wait up to 30m for the lock instead of failing immediately.
+    extraBackupArgs = [ "--retry-lock 30m" ];
+
     pruneOpts = [
       "--keep-daily 7"
       "--keep-weekly 4"
       "--keep-monthly 6"
+      "--retry-lock 30m"
     ];
   };
 
