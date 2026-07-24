@@ -46,10 +46,11 @@
     # false, and the initrd only inherits DHCP from that — without this
     # the sshd would listen on an interface that never got an address.
     udhcpc.enable = true;
-    # Bound the no-cable case: default udhcpc retries add ~9s before the
-    # console prompt when no link is up (matters for legionix undocked,
-    # after the boot-slack trimming). 2 tries x 1s ≈ 2-3s worst case;
-    # wired DHCP still completes on the first try.
-    udhcpc.extraArgs = [ "-t" "2" "-T" "1" ];
+    # Bound the no-cable case (matters for legionix undocked, after the
+    # boot-slack trimming) without losing the lease race: the VM rehearsal
+    # showed 2 tries x 1s is marginal — one boot got a lease, the next got
+    # "udhcpc: no lease, failing". 4 tries x 2s waits long enough for a
+    # slow DHCP answer, ~8-10s worst case when no cable is plugged.
+    udhcpc.extraArgs = [ "-t" "4" "-T" "2" ];
   };
 }
