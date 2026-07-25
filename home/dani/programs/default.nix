@@ -9,6 +9,7 @@
     ./comma.nix
     ./whatsapp.nix
     ./apps.nix
+    ./mangohud.nix
     ./mimeapps.nix
     ./yazi.nix
   ];
