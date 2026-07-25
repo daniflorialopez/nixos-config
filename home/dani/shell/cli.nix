@@ -31,6 +31,7 @@
     openssh
     netcat-gnu
     socat
+    nftables # `nft` CLI
 
     # file transfer / sync
     rsync
