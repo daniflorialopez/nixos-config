@@ -11,6 +11,7 @@
     ../../modules/nixos/virtualisation.nix
     ../../modules/nixos/security.nix
     ../../modules/nixos/gaming.nix
+    ../../modules/nixos/efootball-block.nix
     ../../modules/nixos/tailscale.nix
     ../../modules/nixos/restic.nix
     ../../modules/nixos/bluetooth.nix

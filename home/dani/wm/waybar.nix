@@ -180,6 +180,42 @@ let
         "$temp" "$class" "$util" "$mem"
     '';
   };
+
+  # eFootball TCP-relay blocker toggle (see modules/nixos/efootball-block.nix).
+  # Always visible on the gaming host: dim when off, accented when on — a
+  # 5000-port TCP block that might silently be up is worse than one pixel of
+  # permanent bar. Self-hides on hosts that don't define the unit (laptop, VM)
+  # so the bar renders identically there, matching the gpu module's approach.
+  efbStatus = pkgs.writeShellApplication {
+    name = "waybar-efootball";
+    runtimeInputs = [ pkgs.systemd ];
+    text = ''
+      if ! systemctl cat efootball-block.service >/dev/null 2>&1; then
+        printf '{"text":"","tooltip":""}\n'
+        exit 0
+      fi
+      if systemctl is-active --quiet efootball-block.service; then
+        printf '{"text":"󰙩","class":"on","tooltip":"eFootball: TCP relay blocked — UDP/P2P matches only\\nClick to allow"}\n'
+      else
+        printf '{"text":"󰙩","class":"off","tooltip":"eFootball: TCP relay allowed\\nClick to block"}\n'
+      fi
+    '';
+  };
+
+  # start/stop is passwordless for wheel via the unit-scoped polkit rule;
+  # the RTMIN+9 signal flips the module colour instantly (matches signal = 9)
+  efbToggle = pkgs.writeShellApplication {
+    name = "waybar-efootball-toggle";
+    runtimeInputs = [ pkgs.systemd pkgs.procps ];
+    text = ''
+      if systemctl is-active --quiet efootball-block.service; then
+        systemctl stop efootball-block.service
+      else
+        systemctl start efootball-block.service
+      fi
+      pkill -RTMIN+9 waybar || true
+    '';
+  };
 in
 {
   xdg.configFile = hideAutostart "nm-applet" // hideAutostart "blueman";
@@ -217,6 +253,7 @@ in
         "mpris"
         "custom/backup"
         "custom/tailscale"
+        "custom/efootball"
         "custom/gpu"
         "custom/kblayout"
         "bluetooth"
@@ -277,6 +314,15 @@ in
         return-type = "json";
         interval = 30;
         format = "{}";
+      };
+
+      "custom/efootball" = {
+        exec = "${efbStatus}/bin/waybar-efootball";
+        return-type = "json";
+        interval = 30;      # slow poll; the signal handles the click case
+        signal = 9;         # matches pkill -RTMIN+9 in the toggle
+        format = "{}";
+        on-click = "${efbToggle}/bin/waybar-efootball-toggle";
       };
 
       mpris = {
@@ -449,6 +495,7 @@ in
       #mpris,
       #custom-gpu,
       #custom-tailscale,
+      #custom-efootball,
       #custom-kblayout,
       #bluetooth,
       #network,
@@ -466,6 +513,8 @@ in
       #custom-gpu.hot { color: @critical; }
       #custom-tailscale.up { color: @muted; }
       #custom-tailscale.down { color: @critical; }
+      #custom-efootball.on { color: @accent; }
+      #custom-efootball.off { color: @muted; }
 
       #bluetooth.off,
       #bluetooth.disabled {
