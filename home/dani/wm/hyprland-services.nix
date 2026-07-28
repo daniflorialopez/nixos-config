@@ -12,7 +12,7 @@ let
   # covers logging in docked and makes it a no-op on HDMI-less hosts.
   dockHandler = pkgs.writeShellApplication {
     name = "hypr-dock-handler";
-    runtimeInputs = with pkgs; [ hyprland jq socat coreutils ];
+    runtimeInputs = with pkgs; [ hyprland jq socat coreutils systemd ];
     text = ''
       repin() {
         hyprctl monitors -j | jq -e 'any(.[]; .name == "HDMI-A-1")' >/dev/null || return 0
@@ -33,6 +33,10 @@ let
           monitoradded*HDMI-A-1*)
             sleep 1   # let the monitor rule (mode/position) settle first
             repin
+            # waybar duplicates bar surfaces on a re-added output (seen
+            # live: three stacked bars after replug); a restart redraws
+            # one bar per monitor
+            systemctl --user try-restart waybar.service || true
             ;;
         esac
       done

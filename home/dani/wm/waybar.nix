@@ -22,7 +22,7 @@
 #   - hyprland/window:  muted title next to the workspaces for context.
 #   - tray:             invisible while empty.
 
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
   # nm-applet and blueman-applet autostart via uwsm's XDG-autostart
   # target and park duplicate wired/bluetooth icons in the tray; the
@@ -255,6 +255,15 @@ in
   xdg.configFile = hideAutostart "nm-applet" // hideAutostart "blueman";
 
   home.packages = [ dndToggle ];   # Super+N (hyprland.nix) needs it on PATH
+
+  # The HM waybar service only restarts when the unit file changes, not
+  # the config it reads — a switch would leave a stale bar running
+  # (missing freshly added modules) until a manual restart. Trigger on
+  # the rendered config + style instead.
+  systemd.user.services.waybar.Unit.X-Restart-Triggers = [
+    "${config.xdg.configFile."waybar/config".source}"
+    "${config.xdg.configFile."waybar/style.css".source}"
+  ];
 
   programs.waybar = {
     enable = true;
