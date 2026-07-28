@@ -58,17 +58,16 @@ day): a second key slot holding a long random recovery key.
 # generate a recovery key → store in Bitwarden BEFORE the next step
 tr -dc 'a-z0-9' < /dev/urandom | head -c 32 | sed 's/.\{4\}/&-/g;s/-$//' > /tmp/rk; cat /tmp/rk; echo
 
-# push existing passphrase + new key, add slot, verify, clean up
-printf 'rehearsal' | vmsys 'cat > /dev/shm/ok'
-vmsys 'cat > /dev/shm/nk' < /tmp/rk
-vmsys 'echo changeme | sudo -S -p "" cryptsetup luksAddKey /dev/vda2 /dev/shm/nk --key-file /dev/shm/ok; and echo SLOT-ADDED'
-vmsys 'echo changeme | sudo -S -p "" cryptsetup open --test-passphrase --key-file /dev/shm/nk /dev/vda2; and echo RECOVERY-KEY-UNLOCKS; rm -f /dev/shm/ok /dev/shm/nk'
+# push new key + existing passphrase, add slot, verify, clean up — ALL in
+# one ssh session: /dev/shm files from one session are not guaranteed to
+# survive into the next (bit us twice in rehearsals). Recovery key comes
+# in via stdin; the throwaway VM passphrase is embedded inline.
+vmsys 'cat > /dev/shm/nk; printf "%s" rehearsal > /dev/shm/ok; echo changeme | sudo -S -p "" cryptsetup luksAddKey /dev/vda2 /dev/shm/nk --key-file /dev/shm/ok; and echo SLOT-ADDED; echo changeme | sudo -S -p "" cryptsetup open --test-passphrase --key-file /dev/shm/nk /dev/vda2; and echo RECOVERY-KEY-UNLOCKS; rm -f /dev/shm/ok /dev/shm/nk' < /tmp/rk
 rm /tmp/rk
 ```
 
-(Push the key and test it in the *same* ssh session if you script this
-further — /dev/shm files created in one session are not guaranteed to
-survive into the next.)
+(On legionix this is done at the machine's own keyboard — no ssh push,
+no /dev/shm dance.)
 
 The drill itself — do this by hand, that's the point:
 
