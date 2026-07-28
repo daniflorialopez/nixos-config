@@ -87,9 +87,9 @@ let
           if (dsp == "movefocus" || dsp == "cyclenext") return "Focus"
           if (dsp ~ /^(movewindow|resizeactive|killactive|fullscreen|togglefloating|pseudo|togglesplit|togglespecialworkspace)/) return "Windows"
           if (dsp == "exec") {
-            if (a ~ /wpctl|playerctl/) return "Media"
+            if (a ~ /wpctl|playerctl|output-volume/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
-            if (a ~ /brightnessctl|hyprlock|makoctl|switchxkblayout|screenshot|wl-kbptr|keybinds-menu/) return "System"
+            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu/) return "System"
             return "Apps"
           }
           return "Other"
@@ -169,6 +169,7 @@ in
     ./walker.nix
     ./waybar.nix
     ./cursor.nix
+    ./swayosd.nix
   ];
 
   home.file.".config/uwsm/env-hyprland".text = ''
@@ -270,17 +271,18 @@ in
         "$mod CTRL, up, Resize shorter, resizeactive, 0 -30"
         "$mod CTRL, down, Resize taller, resizeactive, 0 30"
 
-        # --- Media keys (PipeWire + playerctl) ---
-        ", XF86AudioRaiseVolume, Volume up, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
-        ", XF86AudioLowerVolume, Volume down, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
-        ", XF86AudioMute, Toggle mute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+        # --- Media keys (swayosd OSD + playerctl) ---
+        ", XF86AudioRaiseVolume, Volume up, exec, swayosd-client --output-volume raise"
+        ", XF86AudioLowerVolume, Volume down, exec, swayosd-client --output-volume lower"
+        ", XF86AudioMute, Toggle mute, exec, swayosd-client --output-volume mute-toggle"
         ", XF86AudioPlay, Play / pause, exec, playerctl play-pause"
         ", XF86AudioNext, Next track, exec, playerctl next"
         ", XF86AudioPrev, Previous track, exec, playerctl previous"
 
-        # --- Brightness ---
-        ", XF86MonBrightnessUp, Brightness up, exec, brightnessctl set +10%"
-        ", XF86MonBrightnessDown, Brightness down, exec, brightnessctl set 10%-"
+        # --- Brightness (same 10% steps as the old brightnessctl binds;
+        # '=' keeps clap from reading the leading dash as a flag) ---
+        ", XF86MonBrightnessUp, Brightness up, exec, swayosd-client --brightness=+10"
+        ", XF86MonBrightnessDown, Brightness down, exec, swayosd-client --brightness=-10"
 
         # --- Change keyboard layout ---
         "$mod SHIFT, Z, Next keyboard layout, exec, hyprctl switchxkblayout current next"
@@ -329,6 +331,8 @@ in
         "$mod, code:48, Dismiss newest notification, exec, makoctl dismiss"
         "$mod SHIFT, code:48, Dismiss all notifications, exec, makoctl dismiss -a"
         "$mod CTRL, code:48, Restore last dismissed notification, exec, makoctl restore"
+        # dnd-toggle comes from waybar.nix (shared with the bar's bell icon)
+        "$mod, N, Toggle do-not-disturb, exec, dnd-toggle"
       ];
 
       bindm = [
@@ -406,6 +410,8 @@ in
         "ignorealpha 0.4, walker"
         "blur, notifications"
         "ignorezero, notifications"
+        "blur, swayosd"
+        "ignorezero, swayosd"
       ];
 
       animations = {

@@ -29,5 +29,10 @@
 
   # Electron apps use Wayland:
   environment.sessionVariables.NIXOS_OZONE_WL = "1";
+
+  # swayosd's brightness path writes /sys/class/backlight itself; its
+  # packaged udev rule opens the node to the video group (the server
+  # runs per-user from home-manager, which can't install udev rules)
+  services.udev.packages = [ pkgs.swayosd ];
 }
 
