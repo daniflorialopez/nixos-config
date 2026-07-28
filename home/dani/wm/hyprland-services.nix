@@ -63,6 +63,12 @@ in
 
       "urgency=low".border-color = "#565f89";
       "urgency=critical".border-color = "#f7768e";
+
+      # Do-not-disturb: notifications arriving in this mode are hidden but
+      # never expire (default-timeout=0), so they all appear when the mode
+      # is left — leaving DND shows what was missed. Toggled by the waybar
+      # bell or Super+N (dnd-toggle, defined in waybar.nix).
+      "mode=dnd".invisible = true;
     };
   };
   systemd.user.services.mako = {

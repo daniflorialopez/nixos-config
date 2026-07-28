@@ -10,6 +10,8 @@
 # them stays clear.
 #
 # New modules, all "silent when healthy":
+#   - custom/dnd:       mako do-not-disturb bell; dim when off, accented
+#                       while on (a silent DND left on = missed messages).
 #   - custom/backup:    invisible unless ~/BACKUP-FAILED.txt has content,
 #                       then a red pill. Click opens the log, right-click
 #                       acknowledges (truncates) it.
@@ -181,6 +183,38 @@ let
     '';
   };
 
+  # Do-not-disturb: mako mode toggle. Always visible in both states for
+  # the same reason as the efootball module — DND silently left on means
+  # silently missing notifications. Pending count comes from makoctl list
+  # (hidden notifications stay active thanks to default-timeout=0).
+  dndStatus = pkgs.writeShellApplication {
+    name = "waybar-dnd";
+    runtimeInputs = [ pkgs.mako pkgs.jq ];
+    text = ''
+      if makoctl mode 2>/dev/null | grep -qx dnd; then
+        n="$(makoctl list 2>/dev/null | jq '.data[0] | length' || echo 0)"
+        printf '{"text":"󰂛","class":"on","tooltip":"do not disturb · %s pending\\nClick to resume notifications"}\n' "$n"
+      else
+        printf '{"text":"󰂚","class":"off","tooltip":"notifications on\\nClick for do-not-disturb"}\n'
+      fi
+    '';
+  };
+
+  # On PATH (home.packages) so the Super+N bind in hyprland.nix can call
+  # it too; the RTMIN+8 signal flips the bar icon instantly either way
+  dndToggle = pkgs.writeShellApplication {
+    name = "dnd-toggle";
+    runtimeInputs = [ pkgs.mako pkgs.procps ];
+    text = ''
+      if makoctl mode | grep -qx dnd; then
+        makoctl mode -r dnd
+      else
+        makoctl mode -a dnd
+      fi
+      pkill -RTMIN+8 waybar || true
+    '';
+  };
+
   # eFootball TCP-relay blocker toggle (see modules/nixos/efootball-block.nix).
   # Always visible on the gaming host: dim when off, accented when on — a
   # 5000-port TCP block that might silently be up is worse than one pixel of
@@ -220,6 +254,8 @@ in
 {
   xdg.configFile = hideAutostart "nm-applet" // hideAutostart "blueman";
 
+  home.packages = [ dndToggle ];   # Super+N (hyprland.nix) needs it on PATH
+
   programs.waybar = {
     enable = true;
     systemd.enable = true;
@@ -251,6 +287,7 @@ in
       # shoved around by the song title popping in mid-cluster
       modules-right = [
         "mpris"
+        "custom/dnd"
         "custom/backup"
         "custom/tailscale"
         "custom/efootball"
@@ -298,6 +335,15 @@ in
             months = "<span color='#c0caf5'><b>{}</b></span>";
           };
         };
+      };
+
+      "custom/dnd" = {
+        exec = "${dndStatus}/bin/waybar-dnd";
+        return-type = "json";
+        interval = 30;      # slow poll; the signal handles the toggle case
+        signal = 8;         # matches pkill -RTMIN+8 in dnd-toggle
+        format = "{}";
+        on-click = "${dndToggle}/bin/dnd-toggle";
       };
 
       "custom/backup" = {
@@ -493,6 +539,7 @@ in
       }
 
       #mpris,
+      #custom-dnd,
       #custom-gpu,
       #custom-tailscale,
       #custom-efootball,
@@ -515,6 +562,8 @@ in
       #custom-tailscale.down { color: @critical; }
       #custom-efootball.on { color: @accent; }
       #custom-efootball.off { color: @muted; }
+      #custom-dnd.on { color: @accent; }
+      #custom-dnd.off { color: @muted; }
 
       #bluetooth.off,
       #bluetooth.disabled {
