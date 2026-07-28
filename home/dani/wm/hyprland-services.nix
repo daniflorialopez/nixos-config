@@ -2,6 +2,42 @@
 let
   unstablePkgs = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   target = config.wayland.systemd.target; # defaults to "graphical-session.target"
+
+  # Dock/undock workspace repair. Undocking is fine on its own — Hyprland
+  # migrates HDMI-A-1's workspaces to eDP-1 when the monitor vanishes —
+  # but on re-dock nothing moves them back, leaving everything piled on
+  # the laptop screen. This listens on Hyprland's event socket and, when
+  # HDMI-A-1 (re)appears, returns its workspaces (1, 4-10, per the
+  # workspace rules in hyprland.nix). Also runs once at startup, which
+  # covers logging in docked and makes it a no-op on HDMI-less hosts.
+  dockHandler = pkgs.writeShellApplication {
+    name = "hypr-dock-handler";
+    runtimeInputs = with pkgs; [ hyprland jq socat coreutils ];
+    text = ''
+      repin() {
+        hyprctl monitors -j | jq -e 'any(.[]; .name == "HDMI-A-1")' >/dev/null || return 0
+        hyprctl workspaces -j | jq -r '.[].id' | while read -r ws; do
+          case "$ws" in
+            1|4|5|6|7|8|9|10)
+              hyprctl dispatch moveworkspacetomonitor "$ws HDMI-A-1" >/dev/null
+              ;;
+          esac
+        done
+      }
+
+      repin
+
+      sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+      socat -U - "UNIX-CONNECT:$sock" | while read -r line; do
+        case "$line" in
+          monitoradded*HDMI-A-1*)
+            sleep 1   # let the monitor rule (mode/position) settle first
+            repin
+            ;;
+        esac
+      done
+    '';
+  };
   wallApply = pkgs.writeShellApplication {
     name = "wall-apply";
     runtimeInputs = [ pkgs.hyprland ];
@@ -80,6 +116,20 @@ in
     };
     Service = {
       ExecStart = "${pkgs.mako}/bin/mako";
+      Restart = "on-failure";
+    };
+    Install.WantedBy = [ target ];
+  };
+
+  systemd.user.services.hypr-dock-handler = {
+    Unit = {
+      Description = "Re-pin workspaces to HDMI-A-1 on dock";
+      PartOf = [ target ];
+      After = [ target ];
+      ConditionEnvironment = "WAYLAND_DISPLAY";
+    };
+    Service = {
+      ExecStart = "${dockHandler}/bin/hypr-dock-handler";
       Restart = "on-failure";
     };
     Install.WantedBy = [ target ];
