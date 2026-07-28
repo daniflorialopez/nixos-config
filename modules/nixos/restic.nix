@@ -1,5 +1,22 @@
 { config, pkgs, inputs, ... }:
 
+let
+  # Shared smoke alarm for any restic unit: desktop notification plus a
+  # line in ~/BACKUP-FAILED.txt — the file the waybar backup pill watches,
+  # so backup failures and check failures surface through the same signal.
+  failureNotify = unit: {
+    serviceConfig = {
+      Type = "oneshot";
+      User = "dani";
+    };
+    environment.DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus";
+    script = ''
+      echo "${unit} FAILED on $(date)" >> /home/dani/BACKUP-FAILED.txt
+      ${pkgs.libnotify}/bin/notify-send --urgency=critical "Backup failed" \
+        "${unit} failed. Check: journalctl -u ${unit} -e" || true
+    '';
+  };
+in
 {
   age.secrets.restic-password.file = ../../secrets/restic-password.age;
   age.secrets.restic-env.file = ../../secrets/restic-env.age;
@@ -56,23 +73,42 @@
     ];
   };
 
-  # Alert when the nightly backup fails: desktop notification, plus a
-  # marker file in the home directory in case no graphical session is
-  # running when the failure happens.
-  systemd.services.restic-backup-failure-notify = {
+  systemd.services.restic-backup-failure-notify = failureNotify "restic-backups-remote";
+  systemd.services.restic-check-failure-notify = failureNotify "restic-check-remote";
+
+  systemd.services.restic-backups-remote.onFailure = [ "restic-backup-failure-notify.service" ];
+
+  # Weekly integrity check: verifies the repo structure and actually reads
+  # back a random 5% of the pack data, so silent corruption in the remote
+  # repo is caught within weeks instead of on restore day. Separate from
+  # the nightly backup (runCheck would re-read data every night — needless
+  # bandwidth); --retry-lock rides out an overlapping backup run.
+  systemd.services.restic-check-remote = {
+    onFailure = [ "restic-check-failure-notify.service" ];
     serviceConfig = {
       Type = "oneshot";
-      User = "dani";
+      CacheDirectory = "restic-check-remote";
+      CacheDirectoryMode = "0700";
+      EnvironmentFile = config.age.secrets.restic-env.path;
     };
-    environment.DBUS_SESSION_BUS_ADDRESS = "unix:path=/run/user/1000/bus";
+    environment.RESTIC_CACHE_DIR = "/var/cache/restic-check-remote";
     script = ''
-      echo "restic-backups-remote FAILED on $(date)" >> /home/dani/BACKUP-FAILED.txt
-      ${pkgs.libnotify}/bin/notify-send --urgency=critical "Backup failed" \
-        "restic-backups-remote failed. Check: journalctl -u restic-backups-remote -e" || true
+      ${pkgs.restic}/bin/restic check \
+        --password-file ${config.age.secrets.restic-password.path} \
+        --read-data-subset=5% \
+        --retry-lock 30m
     '';
   };
 
-  systemd.services.restic-backups-remote.onFailure = [ "restic-backup-failure-notify.service" ];
+  systemd.timers.restic-check-remote = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      # Sunday midday: far from the nightly 20:00 backups, machine likely on
+      OnCalendar = "Sun *-*-* 12:00:00";
+      Persistent = true;
+      RandomizedDelaySec = "30m";
+    };
+  };
 
   environment.systemPackages = [
     pkgs.restic
