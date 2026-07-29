@@ -29,6 +29,7 @@
     # desktop environment
     ./desktop.nix
     ./gpu.nix
+    ./rescue.nix
   ];
 
   networking.hostName = "legionix";
