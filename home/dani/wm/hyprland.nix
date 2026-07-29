@@ -34,6 +34,19 @@ let
     '';
   };
 
+  # hyprpicker colour picker: pick a pixel, copy its hex to the clipboard,
+  # confirm with a toast. -a autocopies; stdout carries the value for the
+  # notification.
+  colorPick = pkgs.writeShellApplication {
+    name = "color-pick";
+    runtimeInputs = with pkgs; [ hyprpicker libnotify ];
+    text = ''
+      col="$(hyprpicker -a -f hex)" || exit 0
+      [ -n "$col" ] || exit 0
+      notify-send -t 2500 "Colour picked" "$col · copied to clipboard"
+    '';
+  };
+
   # Searchable keybinds palette: reads the live binds from hyprctl (so it
   # also covers binds declared outside this file, e.g. whatsapp.nix),
   # renders "CHORD  description" grouped under topic headers in walker's
@@ -90,7 +103,7 @@ let
             if (a ~ /wpctl|playerctl|output-volume/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
             if (a ~ /-m windows/) return "Windows"
-            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu/) return "System"
+            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu|color-pick/) return "System"
             return "Apps"
           }
           return "Other"
@@ -315,6 +328,10 @@ in
         # Screenshots
         ", Print, Screenshot with Satty, exec, screenshot-satty"
 
+        # Pickers (Super+. mirrors walker's '.' symbols prefix; D = dropper)
+        "$mod, Period, Emoji & symbols, exec, walker -m symbols"
+        "$mod, D, Colour picker (hyprpicker), exec, color-pick"
+
         # Clipboard history (elephant provider; see clipboard.nix).
         # Not on V: keyd rewrites Super+C/V to Ctrl/Shift+Insert before
         # Hyprland sees them (keyd.nix), so any $mod+V bind is dead.
@@ -488,6 +505,8 @@ in
     wl-clipboard
     screenshotSatty
     satty
+    colorPick
+    hyprpicker
 
     # tray / network
     networkmanagerapplet
