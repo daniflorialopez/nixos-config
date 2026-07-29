@@ -252,7 +252,8 @@ let
   };
 
   # Lenovo battery conservation (legionix only). The ideapad_laptop driver
-  # exposes one toggle that caps charging at ~60% — the low-stress hold
+  # exposes one toggle that caps charging at ~80% (this firmware's fixed
+  # threshold, measured; not tunable) — the low-stress hold
   # point for a machine that lives docked (a Li-ion cell parked at 100%
   # ages faster from calendar wear even without cycling). The sysfs node is
   # made wheel-writable by modules/nixos/battery-conservation.nix, so this
@@ -268,9 +269,9 @@ let
         exit 0
       fi
       if [ "$(cat "$node")" = "1" ]; then
-        printf '{"text":"󰌪","class":"on","tooltip":"Battery care ON — charge capped ~60%%\\nClick to allow a full charge"}\n'
+        printf '{"text":"󰌪","class":"on","tooltip":"Battery care ON — charge capped ~80%%\\nClick to allow a full charge"}\n'
       else
-        printf '{"text":"󰚥","class":"off","tooltip":"Full charge allowed — battery held near 100%%\\nClick to cap at ~60%% (protect the battery)"}\n'
+        printf '{"text":"󰚥","class":"off","tooltip":"Full charge allowed — battery held near 100%%\\nClick to cap at ~80%% (protect the battery)"}\n'
       fi
     '';
   };
@@ -499,7 +500,7 @@ in
         format-plugged = "󰂄 {capacity}%";
         format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
         tooltip-format = "{timeTo} · {power:.1f} W";
-        on-click = "${conservationToggle}/bin/conservation-toggle";  # toggle the ~60% charge cap
+        on-click = "${conservationToggle}/bin/conservation-toggle";  # toggle the ~80% charge cap
       };
 
       tray = {
