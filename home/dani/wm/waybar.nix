@@ -250,6 +250,47 @@ let
       pkill -RTMIN+9 waybar || true
     '';
   };
+
+  # Lenovo battery conservation (legionix only). The ideapad_laptop driver
+  # exposes one toggle that caps charging at ~60% — the low-stress hold
+  # point for a machine that lives docked (a Li-ion cell parked at 100%
+  # ages faster from calendar wear even without cycling). The sysfs node is
+  # made wheel-writable by modules/nixos/battery-conservation.nix, so this
+  # flips it without root. Self-hides on hosts without the node (danix-hp, VM),
+  # matching the efootball module's approach.
+  conservationStatus = pkgs.writeShellApplication {
+    name = "waybar-conservation";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      node=/sys/bus/platform/devices/VPC2004:00/conservation_mode
+      if [ ! -e "$node" ]; then
+        printf '{"text":"","tooltip":""}\n'
+        exit 0
+      fi
+      if [ "$(cat "$node")" = "1" ]; then
+        printf '{"text":"󰌪","class":"on","tooltip":"Battery care ON — charge capped ~60%%\\nClick to allow a full charge"}\n'
+      else
+        printf '{"text":"󰚥","class":"off","tooltip":"Full charge allowed — battery held near 100%%\\nClick to cap at ~60%% (protect the battery)"}\n'
+      fi
+    '';
+  };
+
+  # Flips the node the boot service opened to wheel; RTMIN+10 refreshes the
+  # bar instantly (matches signal = 10 on the module).
+  conservationToggle = pkgs.writeShellApplication {
+    name = "conservation-toggle";
+    runtimeInputs = [ pkgs.coreutils pkgs.procps ];
+    text = ''
+      node=/sys/bus/platform/devices/VPC2004:00/conservation_mode
+      [ -e "$node" ] || exit 0
+      if [ "$(cat "$node")" = "1" ]; then
+        echo 0 > "$node"
+      else
+        echo 1 > "$node"
+      fi
+      pkill -RTMIN+10 waybar || true
+    '';
+  };
 in
 {
   xdg.configFile = hideAutostart "nm-applet" // hideAutostart "blueman";
@@ -305,6 +346,7 @@ in
         "bluetooth"
         "network"
         "pulseaudio"
+        "custom/conservation"
         "battery"
         "tray"
       ];
@@ -380,6 +422,15 @@ in
         on-click = "${efbToggle}/bin/waybar-efootball-toggle";
       };
 
+      "custom/conservation" = {
+        exec = "${conservationStatus}/bin/waybar-conservation";
+        return-type = "json";
+        interval = 30;      # slow poll; the signal handles the click case
+        signal = 10;        # matches pkill -RTMIN+10 in the toggle
+        format = "{}";
+        on-click = "${conservationToggle}/bin/conservation-toggle";
+      };
+
       mpris = {
         format = "{status_icon}  {artist} · {title}";
         format-paused = "{status_icon}  {artist} · {title}";
@@ -448,6 +499,7 @@ in
         format-plugged = "󰂄 {capacity}%";
         format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
         tooltip-format = "{timeTo} · {power:.1f} W";
+        on-click = "${conservationToggle}/bin/conservation-toggle";  # toggle the ~60% charge cap
       };
 
       tray = {
@@ -552,6 +604,7 @@ in
       #custom-gpu,
       #custom-tailscale,
       #custom-efootball,
+      #custom-conservation,
       #custom-kblayout,
       #bluetooth,
       #network,
@@ -571,6 +624,8 @@ in
       #custom-tailscale.down { color: @critical; }
       #custom-efootball.on { color: @accent; }
       #custom-efootball.off { color: @muted; }
+      #custom-conservation.on { color: @accent; }
+      #custom-conservation.off { color: @muted; }
       #custom-dnd.on { color: @accent; }
       #custom-dnd.off { color: @muted; }
 
