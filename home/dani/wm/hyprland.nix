@@ -89,6 +89,7 @@ let
           if (dsp == "exec") {
             if (a ~ /wpctl|playerctl|output-volume/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
+            if (a ~ /-m windows/) return "Windows"
             if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu/) return "System"
             return "Apps"
           }
@@ -232,8 +233,10 @@ in
         # "$mod SHIFT, Space, togglefloating,"
         # "$mod, P, pseudo,"          # pseudo-tiling (P is now clipboard history)
         # "$mod, J, togglesplit,"     # dwindle split direction
-        "$mod, Tab, Cycle next window, cyclenext"
-        "$mod SHIFT, Tab, Cycle previous window, cyclenext, prev"
+        # Tab opens a searchable window switcher (walker's windows provider);
+        # Shift+Tab keeps a quick raw reverse-cycle for fast two-window flicks
+        "$mod, Tab, Window switcher, exec, walker -m windows"
+        "$mod SHIFT, Tab, Cycle to previous window, cyclenext, prev"
 
         # --- Focus (vim keys) ---
         "$mod, h, Focus left, movefocus, l"
