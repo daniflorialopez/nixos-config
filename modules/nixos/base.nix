@@ -33,6 +33,7 @@
     vim
     wget
     curl
+    net-tools # ifconfig, netstat, route, arp
   ];
   
   nixpkgs.config.allowUnfree = true;
