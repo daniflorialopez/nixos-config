@@ -411,15 +411,28 @@ in
     enable = true;
     runAsService = true;
 
-    # Patched build: upstream walker cannot theme a grid tile at all. It only
-    # ever looks for item_<provider>.xml in a theme dir, never the _grid
-    # variant, and the key it derives from a grid filename keeps the "_grid"
-    # suffix ("menus:scratchpads_grid"), which nothing looks up. Both together
-    # mean a custom grid layout is silently ignored and walker falls back to
-    # its built-in icon+text tile. The patch fixes both. Drop it once upstream
-    # does — without it the scratchpad board renders as a labelled list.
+    # Patched build. Two independent upstream bugs, kept as separate patches so
+    # either can be dropped on its own once upstream fixes it.
+    #
+    # walker-grid-key: upstream cannot theme a grid tile at all. It only ever
+    # looks for item_<provider>.xml in a theme dir, never the _grid variant, and
+    # the key it derives from a grid filename keeps the "_grid" suffix
+    # ("menus:scratchpads_grid"), which nothing looks up. Both together mean a
+    # custom grid layout is silently ignored and walker falls back to its
+    # built-in icon+text tile. Without this the board renders as a labelled list.
+    #
+    # walker-window-per-theme: walker builds one window per theme, but tracks
+    # visibility in a single global flag and resolves the current window by the
+    # *requested* theme. Opening one picker while another is on screen closed
+    # the wrong (never-visible) window, orphaning the open one — which then got
+    # restyled, because the GTK CSS provider is global to the display. Without
+    # this, Super+S over Super+Space (or the reverse) leaves a stray window
+    # wearing the other picker's stylesheet until you press a bind twice.
     package = inputs.walker.packages.${pkgs.stdenv.system}.default.overrideAttrs (old: {
-      patches = (old.patches or [ ]) ++ [ ./walker-grid-key.patch ];
+      patches = (old.patches or [ ]) ++ [
+        ./walker-grid-key.patch
+        ./walker-window-per-theme.patch
+      ];
     });
 
     config = {

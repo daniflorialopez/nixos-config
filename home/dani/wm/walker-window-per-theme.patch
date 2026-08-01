@@ -1,0 +1,85 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -59,13 +59,13 @@ use crate::state::{
+     set_parameter_min_width, set_parameter_width, set_password_mode, set_placeholder, set_provider,
+     set_select_single, set_theme,
+ };
+ use crate::theme::{setup_css, setup_css_provider, setup_themes};
+ use crate::ui::window::{
+     check_error, handle_grid_setting, quit, set_input_text, set_keybind_hint, set_placeholder_text,
+-    setup_window, with_window,
++    setup_window, visible_theme, with_window,
+ };
+ 
+ static GLOBAL_DMENU_SENDER: RwLock<Option<Sender<String>>> = RwLock::new(None);
+ 
+ thread_local! {
+     static HOLD_GUARD: OnceCell<ApplicationHoldGuard> = const { OnceCell::new() };
+@@ -395,12 +395,36 @@ fn add_flags(app: &Application) {
+     );
+ }
+ 
+ fn handle_command_line(app: &Application, cmd: &ApplicationCommandLine) -> i32 {
+     let options = cmd.options_dict();
+ 
++    // A picker from a different theme may still be on screen. walker keeps one
++    // window per theme but a single global visibility flag, and `with_window`
++    // resolves by the *requested* theme, so the close-when-open path in
++    // `activate` would hide the incoming theme's window - one that was never
++    // visible - and leave the open one orphaned on screen, where it then gets
++    // restyled, the GTK CSS provider being global to the display.
++    //
++    // Close it here rather than in `activate`, and crucially *before* this
++    // invocation's options are stored below: `quit` clears provider, nosearch,
++    // nohints and the geometry overrides, which has to happen to the state of
++    // the invocation that is ending, not to the one we are about to open.
++    if let Some(visible) = visible_theme() {
++        let requested = options
++            .lookup_value("theme", Some(VariantTy::STRING))
++            .and_then(|v| v.str().map(str::to_string))
++            .filter(|t| has_theme(t))
++            .unwrap_or_else(get_theme);
++
++        if visible != requested {
++            set_theme(visible);
++            quit(app, false);
++        }
++    }
++
+     set_is_stay_open_explicit_provider(false);
+ 
+     if let Some(val) = options.lookup_value("provider", Some(VariantTy::STRING)) {
+         let p = val.str().unwrap().to_string();
+ 
+         set_is_stay_open_explicit_provider(get_provider() != p);
+--- a/src/ui/window.rs
++++ b/src/ui/window.rs
+@@ -130,12 +130,28 @@ where
+                 println!("default theme not found");
+                 process::exit(130);
+             })
+     })
+ }
+ 
++/// The theme whose window is currently on screen, if any.
++///
++/// There is one window per theme but only a single global `is_visible` flag,
++/// and `with_window` resolves by the *requested* theme, so the close path has
++/// no way to tell which window it is actually closing. This lets it ask.
++pub fn visible_theme() -> Option<String> {
++    WINDOWS.with(|windows| {
++        windows
++            .get()
++            .unwrap()
++            .iter()
++            .find(|(_, w)| w.window.is_visible())
++            .map(|(k, _)| k.clone())
++    })
++}
++
+ #[derive(Debug)]
+ pub enum ListContainer {
+     Grid(GridView),
+     List(ListView),
+ }
+ 
