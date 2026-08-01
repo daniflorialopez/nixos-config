@@ -54,6 +54,8 @@ does from the code alone.
 | [docs/modules.md](docs/modules.md)        | Reference for **every** file in `modules/nixos/` — purpose, key options, how to test. |
 | [docs/home.md](docs/home.md)              | Reference for **every** file in `home/dani/` — shell, programs, WM.         |
 | [docs/design-system.md](docs/design-system.md) | The Tokyo Night palette and the role rules (blue = accent, orange = attention-only, slate borders) every app follows. |
+| [docs/scratchpads.md](docs/scratchpads.md) | The `$mod+S` scratchpad board: special workspaces, the elephant menu, and walker's theming rules (including the ones that bite). |
+| [docs/upstream/](docs/upstream/README.md)  | Bugs found in third-party software, written up ready to file, with the patches we carry locally. |
 | [docs/operations.md](docs/operations.md)  | Day-to-day: rebuilding, backups, secrets, disk health, garbage collection, testing a change. |
 | [docs/luks-runbook.md](docs/luks-runbook.md) | **Copy-paste LUKS runbook** — remote unlock, the three recovery drills, and the legionix migration-day sequence. The source of truth when reinstalling with encryption. |
 | [docs/roadmap.md](docs/roadmap.md)        | Staged work (LUKS status, impermanence), known issues, and install post-mortems.   |

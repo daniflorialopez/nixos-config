@@ -20,6 +20,25 @@ sudo nixos-rebuild boot --flake .#<host>
 sudo nixos-rebuild switch --rollback     # or pick an older entry in the 1s boot menu
 ```
 
+Before switching a change that touches shared modules:
+
+```bash
+check-all                      # nix flake check + build ALL three hosts
+check-all /path/to/flake       # or point it somewhere else
+```
+
+This repo builds three hosts from one flake, and a change must not break the
+non-NVIDIA host or the VM. `check-all` catches that before you switch rather
+than after (`modules/nixos/rebuild-ergonomics.nix`).
+
+Every `switch` prints a **closure diff** — what packages were added, removed or
+changed version — via an `nvd` activation hook, so plain `nixos-rebuild` gets
+the same summary `nh` gives. For an ad-hoc diff:
+
+```bash
+nvd diff /run/current-system /nix/var/nix/profiles/system-<N>-link
+```
+
 Updating inputs:
 
 ```bash

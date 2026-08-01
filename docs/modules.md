@@ -114,6 +114,64 @@ bluetooth module's right-click). Not on the VM.
 USB autosuspend both in TLP (`USB_AUTOSUSPEND = "0"`) and at the kernel level
 (`usbcore.autosuspend=-1`) — fixes sleeping wireless mice.
 
+## battery-conservation.nix — Lenovo charge cap
+
+This laptop lives docked at the wall, and a Li-ion cell held at 100 % ages from
+calendar wear at high voltage even though it barely cycles. The `ideapad_laptop`
+driver exposes one toggle at
+`/sys/bus/platform/devices/VPC2004:00/conservation_mode`, which on this Legion's
+firmware caps charging at **~80 %** (measured 2026-07-29).
+
+- There are **no** `charge_control_*_threshold` nodes on this hardware, so the
+  threshold is not tunable and TLP cannot help — this binary toggle is all the
+  firmware offers.
+- At boot the unit `chgrp wheel` + `chmod g+w` the sysfs node, so the waybar
+  click (`conservation-toggle`, `wm/waybar.nix`) can flip it without root, then
+  enables conservation — capping at ~80 % is the right daily state for a docked
+  machine.
+- **Before travel:** click the waybar leaf to allow a full charge and top up.
+  It re-enables on the next boot, which is the intended default.
+- The `[ -e ]` guard makes the unit a harmless no-op on any host without the
+  node.
+
+Verify: `cat /sys/bus/platform/devices/VPC2004:00/conservation_mode` (1 = capped).
+
+## efootball-block.nix — opt-in matchmaking block
+
+Blocks eFootball's **TCP relay** matchmaking path, per session. Matchmaking can
+land on direct P2P, peer-server-peer over UDP, or peer-server-peer over TCP;
+the TCP relay path is the laggy one. Dropping outbound traffic to its ports
+means matchmaking never settles there and falls back to UDP/P2P.
+
+- Ports (`tcp dport { 5736, 30000-35000 }`) are **community-sourced and
+  undocumented by Konami**, so they may go stale —
+  [source](https://github.com/SuNingXJBT/eFootball_Block_TCP_Matches).
+- Its **own nft table** (`inet efb`), not an addition to the NixOS firewall
+  ruleset: independent, added and removed atomically, and no need to flip
+  `networking.nftables.enable`.
+- systemd oneshot + `RemainAfterExit` gives start/stop semantics and free state
+  tracking via `systemctl is-active` — which is what the waybar module reads.
+- A polkit rule scopes passwordless start/stop of **this one unit** to `wheel`,
+  so the waybar click works with no password prompt and without a broad
+  NOPASSWD sudoers rule.
+- Deliberately **not** `wantedBy = multi-user.target`: the safe default is off
+  and a reboot clears it. A 5000-port TCP block left on permanently would
+  eventually break something unrelated and be very hard to diagnose.
+
+Imported by the gaming host (`legionix`) only.
+
+## rebuild-ergonomics.nix — see what a rebuild changes
+
+- **Closure diff on every switch.** An activation hook runs `nvd diff` while
+  `/run/current-system` still points at the old system, against the one being
+  activated — so a plain `sudo nixos-rebuild switch` prints what packages were
+  added, removed or changed version. `nh os switch` already does this; the hook
+  covers the plain path too. `nvd` is on `PATH` for manual diffs.
+- **`check-all`** — builds **every** host plus `nix flake check` before you
+  switch. This is a multi-host flake and a change must not break the non-NVIDIA
+  host (`danix-hp`) or the VM; this catches that here instead of after a switch.
+  Defaults to `~/nixos-config`, or pass a flake path.
+
 ## virtualisation.nix — VMs & containers
 
 `libvirtd`, `docker` (pinned `docker_29`), `podman`, and `virt-manager` (GUI).
@@ -201,6 +259,13 @@ legionix switches to it on migration day.
   `restic-backup-failure-notify` — a critical desktop notification **and** a
   line appended to `~/BACKUP-FAILED.txt` (which the waybar backup module turns
   into a red pill).
+- **Weekly integrity check** (`restic-check-remote`): `restic check` with
+  `--read-data-subset=5%`, so it verifies the repo structure *and* actually
+  reads a rotating slice of the data — structure-only checks can pass over
+  bit-rotted packs. It routes through the **same** failure-notify path as the
+  backup itself, so a check failure surfaces as the same red pill; a backup
+  that runs nightly but silently restores nothing is the failure mode this
+  exists to catch.
 
 Day-to-day commands and the restore test: [operations.md](operations.md#backups-restic).
 

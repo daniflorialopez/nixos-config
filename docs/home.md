@@ -195,6 +195,16 @@ The core Hyprland config plus two generated helper scripts:
 - **`screenshot-satty`** — `slurp` region select (orange selection box) →
   `grim` → `satty` editor, saved to `~/Pictures/Screenshots` and copied. Bound
   to `Print`.
+- **`scratchpad`** / **`scratchpad-toggle`** (`$mod+S`) — twelve apps on hidden
+  special workspaces, picked from a walker icon grid. `scratchpad-toggle` hides
+  whatever scratchpad is showing, or opens the board if none is. Geometry is
+  set by the script after the window maps, not by `windowrulev2`, because
+  Chromium sets its app-id late and static rules miss it. Full detail in
+  **[scratchpads.md](scratchpads.md)**.
+- **`quick-note`** / **`bitwarden-web`** — wrappers for two board entries
+  (`nvim ~/notes/scratch.md`; the Bitwarden web vault as a Chromium PWA, since
+  `bitwarden-desktop` bundles an Electron flagged insecure).
+- **`color-pick`** (`$mod+D`) — `hyprpicker` eyedropper; copies the hex.
 - **`keybinds-menu`** (`$mod+/`) — a searchable keybind palette. Reads the
   **live** binds from `hyprctl binds -j`, decodes modmasks, groups them under
   topic headers (Apps/Clipboard/Workspaces/Focus/Windows/Media/System), merges
@@ -214,6 +224,10 @@ Config highlights:
   (`Return`=terminal, `Space`=walker, `M`=files, `B`=firefox profiles, …).
 - **`$mod+P` = clipboard history** (not V — keyd steals Super+V, see
   [keyd.nix](modules.md#keydnix)). `$mod+Escape` = hyprlock.
+- **Pickers, all through walker:** `$mod+Tab` searchable window switcher
+  (`$mod SHIFT+Tab` stays a raw reverse-cycle for fast two-window flicks),
+  `$mod+.` emoji & symbols (mirrors walker's `.` prefix), `$mod+D` colour
+  picker, `$mod+S` the scratchpad board, `$mod+N` do-not-disturb toggle.
 - **Look:** slate borders (active `#565f89`, inactive near-invisible) —
   **the sunset gradient was removed from borders** in a 2026-07-22 A/B; focus
   is signaled by value not hue. Glass everywhere (opacity 0.94/0.88 + light
@@ -235,6 +249,15 @@ User systemd services bound to the graphical session:
   palette true), 4200 K at 21:00, 3700 K at 23:30.
   `hyprctl hyprsunset identity` overrides it for color-sensitive night work.
 - **polkit-gnome-agent** — auth dialogs.
+- **hypr-dock-handler** — dock/undock workspace repair. *Un*docking is fine on
+  its own: Hyprland migrates HDMI-A-1's workspaces to the panel when the
+  monitor vanishes. But on **re-dock nothing moves them back**, leaving
+  everything piled on the laptop screen. Listens on Hyprland's event socket
+  for `monitoradded` and re-pins workspaces 1 and 4–10 to HDMI-A-1 (matching
+  the workspace rules in `hyprland.nix`), after a 1 s wait for the monitor
+  rule to settle. Then restarts waybar, which **duplicates** bar surfaces on a
+  re-added output (three stacked bars, seen live). Also runs once at startup,
+  which covers logging in docked and makes it a no-op on HDMI-less hosts.
 - Also re-adds the **gtk portal backend** (the walker HM module otherwise
   narrows `xdg.portal` to hyprland-only, which breaks the dark preference for
   GTK4 apps like pavucontrol).
@@ -259,6 +282,17 @@ Three **floating glass islands** (left/center/right), Tokyo Night via
   backups need it), red when down.
 - `custom/gpu` — NVIDIA temp on legionix; self-hides elsewhere.
 - `mpris` — appears only while media plays.
+- `custom/dnd` — mako do-not-disturb bell (also `$mod+N`): dim when off,
+  accented when on, with the pending count in the tooltip. Deliberately
+  visible in **both** states — a silent DND left on means silently missed
+  messages. Nothing expires while it is on (`default-timeout = 0`), so the
+  queue is intact when you come back. Toggling signals `RTMIN+8` so the icon
+  flips instantly instead of waiting for the 30 s poll.
+- `custom/efootball` — click toggles the TCP-relay matchmaking block
+  ([efootball-block.nix](modules.md#efootball-blocknix)); self-hides on hosts
+  without the unit.
+- `custom/conservation` — click toggles Lenovo battery conservation
+  ([battery-conservation.nix](modules.md#battery-conservationnix)).
 - `custom/kblayout` — US/ES layout, click to cycle.
 - `bluetooth` (click toggles, clearing the ideapad rfkill soft-block; right =
   blueman), `network` (right = nm-connection-editor), `pulseaudio`, `battery`,
@@ -266,14 +300,52 @@ Three **floating glass islands** (left/center/right), Tokyo Night via
 - Also hides the duplicate nm-applet/blueman **tray autostart** entries (the
   bar's own modules cover both).
 
+### swayosd.nix — volume/brightness OSD
+
+The `XF86` volume and brightness keys used to work **silently**. Those binds in
+`hyprland.nix` now go through `swayosd-client`, which applies the change *and*
+pops an overlay; `swayosd-server` (a HM user service) draws it.
+
+Styled to the design system — a glass Tokyo Night pill matching the waybar
+islands (same background, border, radius; blue progress on a slate trough).
+The `blur` + `ignorezero` layerrule pair lives in `hyprland.nix` next to
+waybar's.
+
+**Needs the system layer:** brightness writes `/sys/class/backlight` directly,
+so `modules/nixos/desktop/hyprland.nix` installs swayosd's udev rule and `dani`
+joins the `video` group. Home Manager alone cannot grant that.
+
 ### walker.nix — launcher
 
 The `walker` launcher + `elephant` provider backend. Providers: desktop apps,
-runner, calc, clipboard, windows, symbols. Prefix routing (`;` provider list,
-`>` run, `=` calc, `:` clipboard, `.` symbols, `$` windows). Custom
-`dani-soft` Tokyo Night GTK theme — **slate popup frame** (joined the neutral
-tier 2026-07-24; orange means "needs you", and a launcher doesn't). `$mod+Space`
-opens it; `$mod+P` opens it in clipboard mode.
+runner, calc, clipboard, windows, symbols, menus. Prefix routing (`;` provider
+list, `>` run, `=` calc, `:` clipboard, `.` symbols, `$` windows).
+
+**Two themes.** `dani-soft` is the search pickers' Tokyo Night GTK theme —
+**slate popup frame** (joined the neutral tier 2026-07-24; orange means "needs
+you", and a launcher doesn't). `dani-grid` is the `$mod+S` scratchpad board: a
+4×3 icon grid with its own `layout.xml`, because in walker the window geometry
+belongs to the theme, not to the stylesheet. Both are declared through
+`programs.walker.themes` rather than raw `xdg.configFile`, so that editing one
+restarts the walker daemon on switch — walker scans themes only at startup, and
+an unknown `--theme` silently falls back to its built-in default.
+
+**`--theme` is passed on every bind.** Walker sets the theme only when the flag
+is present and never resets it, so an unpinned launcher would inherit whichever
+theme ran last.
+
+**Two local patches** (`walker-grid-key.patch`, `walker-window-per-theme.patch`)
+fix upstream bugs that otherwise make the board render as a labelled list, and
+make opening one picker over another leave a stray restyled window. Kept as
+separate files so either can be dropped when upstream fixes it. Written up in
+[docs/upstream/](upstream/README.md).
+
+Entry points: `$mod+Space` launcher, `$mod+P` clipboard, `$mod+Tab` window
+switcher, `$mod+.` emoji & symbols, `$mod+/` keybind palette, `$mod+S` the
+scratchpad board.
+
+See **[scratchpads.md](scratchpads.md)** for the board, the interlocking
+geometry numbers, and the theming rules that bite.
 
 ### clipboard.nix — clipboard hygiene
 
