@@ -47,6 +47,111 @@ let
     '';
   };
 
+  # Plain-Hyprland scratchpads (no pyprland): toggle a named special
+  # workspace, and on first use spawn the app into it and own its geometry
+  # directly. We float/size/centre here rather than via windowrules because
+  # static rules race Chromium's late-set Wayland app-id (WhatsApp opened at
+  # the wrong size); driving it from here is deterministic and app-agnostic.
+  # Usage: scratchpad <name> <width%> <height%> <command…>
+  scratchpad = pkgs.writeShellApplication {
+    name = "scratchpad";
+    runtimeInputs = with pkgs; [ hyprland jq coreutils ];
+    text = ''
+      name="$1"; wpct="$2"; hpct="$3"
+      shift 3
+      ws="special:$name"
+
+      # Already spawned: just toggle its visibility.
+      if hyprctl clients -j | jq -e --arg ws "$ws" 'any(.[]; .workspace.name == $ws)' >/dev/null; then
+        hyprctl dispatch togglespecialworkspace "$name"
+        exit 0
+      fi
+
+      # First use: reveal the special workspace and spawn the app into it.
+      hyprctl dispatch togglespecialworkspace "$name"
+      hyprctl dispatch exec "[workspace special:$name] $*"
+
+      # Wait for the window to map, then float + size + centre it.
+      addr=""
+      for _ in $(seq 1 100); do
+        addr="$(hyprctl clients -j | jq -r --arg ws "$ws" \
+          'first(.[] | select(.workspace.name == $ws)) | .address // empty')"
+        [ -n "$addr" ] && break
+        sleep 0.05
+      done
+      [ -n "$addr" ] || exit 0
+
+      dims="$(hyprctl monitors -j | jq -r --argjson wp "$wpct" --argjson hp "$hpct" \
+        'first(.[] | select(.focused))
+         | "\(((.width / .scale) * $wp / 100) | floor) \(((.height / .scale) * $hp / 100) | floor)"')"
+      tw="''${dims%% *}"; th="''${dims##* }"
+
+      hyprctl --batch "dispatch focuswindow address:$addr ; dispatch setfloating address:$addr ; dispatch resizewindowpixel exact $tw $th,address:$addr ; dispatch centerwindow"
+    '';
+  };
+
+  # Quick-note buffer for the scratchpad: nvim on a fixed scratch file
+  # (creating the notes dir if needed). Wrapped so the scratchpad command
+  # stays a simple word list — no nested quoting through hyprctl exec.
+  quickNote = pkgs.writeShellApplication {
+    name = "quick-note";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      mkdir -p "$HOME/notes"
+      exec nvim "$HOME/notes/scratch.md"
+    '';
+  };
+
+  # Bitwarden as a Chromium PWA (same pattern as whatsapp-web) — the web
+  # vault in its own isolated profile. Chosen over bitwarden-desktop, which
+  # bundles an Electron flagged insecure and would need a system-wide
+  # permittedInsecurePackages override just to build.
+  bitwardenWeb = pkgs.writeShellApplication {
+    name = "bitwarden-web";
+    runtimeInputs = [ pkgs.chromium ];
+    text = ''
+      exec chromium \
+        --ozone-platform-hint=auto \
+        --enable-wayland-ime \
+        --password-store=basic \
+        --app=https://vault.bitwarden.com \
+        --user-data-dir="${config.home.homeDirectory}/.local/share/chromium-bitwarden" \
+        "$@"
+    '';
+  };
+
+  # Super+S entry point: if a scratchpad is currently shown, hide it (so the
+  # same key both summons and dismisses); otherwise open the picker — a
+  # walker icon-tile grid rendered from the elephant "menus:scratchpads"
+  # menu (defined in xdg.configFile below). walker is on the session PATH.
+  scratchpadToggle = pkgs.writeShellApplication {
+    name = "scratchpad-toggle";
+    runtimeInputs = [ pkgs.hyprland pkgs.jq ];
+    text = ''
+      active="$(hyprctl monitors -j | jq -r '[.[].specialWorkspace.name | select(startswith("special:"))][0] // ""')"
+      if [ -n "$active" ]; then
+        hyprctl dispatch togglespecialworkspace "''${active#special:}"
+      else
+        # dani-grid is the board's own theme: window geometry lives in a
+        # theme's layout.xml, and the shared one is a fixed 600x570 box that
+        # leaves a 12-icon grid swimming in dead space. --theme must be passed
+        # on *every* walker bind (they all are) because walker only sets the
+        # theme when the flag is present and never resets it, so an unpinned
+        # launcher would inherit whichever theme ran last.
+        # --nohints drops the keybind hint bar and --nosearch the search entry:
+        # on a 12-icon board both are noise. Both have to be flags, not layout
+        # properties — walker re-shows the hint bar whenever the selection
+        # changes, and deleting the GtkEntry from layout.xml would leave the
+        # board empty (the initial query is fired by the entry's "changed"
+        # signal, so with no entry nothing ever asks elephant for the items).
+        # Neither flag leaks the way --theme does: walker sets both from the
+        # command line on every invocation and restores the search entry on
+        # close, so the Super+Space launcher is unaffected.
+        exec walker -m menus:scratchpads --theme dani-grid --nohints --nosearch
+      fi
+    '';
+  };
+
   # Searchable keybinds palette: reads the live binds from hyprctl (so it
   # also covers binds declared outside this file, e.g. whatsapp.nix),
   # renders "CHORD  description" grouped under topic headers in walker's
@@ -102,7 +207,7 @@ let
           if (dsp == "exec") {
             if (a ~ /wpctl|playerctl|output-volume/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
-            if (a ~ /-m windows/) return "Windows"
+            if (a ~ /-m windows|scratchpad/) return "Windows"
             if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu|color-pick/) return "System"
             return "Apps"
           }
@@ -157,7 +262,7 @@ let
         }
       ' <<<"$tsv")"
 
-      idx="$(walker -d -i -p 'Keybinds' <<<"$display")" || exit 0
+      idx="$(walker -d -i -p 'Keybinds' --theme dani-soft <<<"$display")" || exit 0
       case "$idx" in *[!0-9]* | "") exit 0 ;; esac
 
       sel="$(sed -n "$((idx + 1))p" "$map")"
@@ -238,9 +343,9 @@ in
         "$mod SHIFT, 9, Move window to workspace 9, movetoworkspace, 9"
         "$mod SHIFT, 0, Move window to workspace 10, movetoworkspace, 10"
 
-        # --- Scratchpad (special workspace) ---
-        # "$mod, S, togglespecialworkspace,"
-        # "$mod SHIFT, S, movetoworkspace, special"
+        # --- Scratchpads: Super+S opens a walker picker; if one is already
+        # showing, Super+S hides it instead (scratchpad-toggle) ---
+        "$mod, S, Scratchpads, exec, scratchpad-toggle"
 
         # Window actions
         # "$mod SHIFT, Space, togglefloating,"
@@ -248,7 +353,7 @@ in
         # "$mod, J, togglesplit,"     # dwindle split direction
         # Tab opens a searchable window switcher (walker's windows provider);
         # Shift+Tab keeps a quick raw reverse-cycle for fast two-window flicks
-        "$mod, Tab, Window switcher, exec, walker -m windows"
+        "$mod, Tab, Window switcher, exec, walker -m windows --theme dani-soft"
         "$mod SHIFT, Tab, Cycle to previous window, cyclenext, prev"
 
         # --- Focus (vim keys) ---
@@ -305,7 +410,7 @@ in
 
         # Basic binds
         "$mod, Return, Alacritty, exec, $terminal"
-        "$mod, Space, Walker and Elephant, exec, walker"
+        "$mod, Space, Walker and Elephant, exec, walker --theme dani-soft"
         "$mod, W, Kill Program, killactive"
         # "$mod, M, exit"
         # mode 0 = true fullscreen: ignores waybar's reserved strip and
@@ -329,13 +434,13 @@ in
         ", Print, Screenshot with Satty, exec, screenshot-satty"
 
         # Pickers (Super+. mirrors walker's '.' symbols prefix; D = dropper)
-        "$mod, Period, Emoji & symbols, exec, walker -m symbols"
+        "$mod, Period, Emoji & symbols, exec, walker -m symbols --theme dani-soft"
         "$mod, D, Colour picker (hyprpicker), exec, color-pick"
 
         # Clipboard history (elephant provider; see clipboard.nix).
         # Not on V: keyd rewrites Super+C/V to Ctrl/Shift+Insert before
         # Hyprland sees them (keyd.nix), so any $mod+V bind is dead.
-        "$mod, P, Clipboard history, exec, walker -m clipboard"
+        "$mod, P, Clipboard history, exec, walker -m clipboard --theme dani-soft"
         "$mod SHIFT, P, Wipe clipboard history, exec, clipboard-wipe"
 
         # Keybinds palette (code:61 = the / key on the us layout, same physical key on es)
@@ -477,6 +582,8 @@ in
       ];
 
       windowrulev2 = [
+        # (Scratchpad geometry — float/size/centre — is owned by the
+        # `scratchpad` helper, not windowrules: see the let block above.)
         "float, class:^(org\\.Waytrogen\\.Waytrogen)$"
         "center, class:^(org\\.Waytrogen\\.Waytrogen)$"
         "size 1200 800, class:^(org\\.Waytrogen\\.Waytrogen)$"
@@ -495,6 +602,82 @@ in
     };
   };
   
+  # The Super+S scratchpad picker (an elephant "menus" menu, rendered by
+  # walker as a 2-column icon-tile grid — see wm/walker.nix). Each entry's
+  # `open` action calls the scratchpad helper with a target width%/height%;
+  # the helper spawns the app into its special workspace and sizes it.
+  # scratchpad is given by absolute path because the elephant service that
+  # runs the action doesn't inherit the graphical session PATH (the apps it
+  # spawns via `hyprctl dispatch exec` do, so those stay bare names).
+  xdg.configFile."elephant/menus/scratchpads.toml".text = ''
+    name = "scratchpads"
+    name_pretty = "Scratchpads"
+    icon = "view-restore"
+
+    # Order matters: walker fills the grid row by row, so the first four are
+    # Dani's most-used (Bluetooth, btop, quick note, WhatsApp) and land in the
+    # top two rows. The rest follow.
+    [[entries]]
+    text = "Bluetooth"
+    icon = "bluetooth"
+    actions = { "open" = "${scratchpad}/bin/scratchpad bt 55 60 blueman-manager" }
+
+    [[entries]]
+    text = "btop"
+    icon = "utilities-system-monitor"
+    actions = { "open" = "${scratchpad}/bin/scratchpad sysmon 60 65 alacritty --class scratch-sysmon -e btop" }
+
+    [[entries]]
+    text = "Quick note"
+    icon = "accessories-text-editor"
+    actions = { "open" = "${scratchpad}/bin/scratchpad note 55 60 alacritty --class scratch-note -e quick-note" }
+
+    [[entries]]
+    text = "WhatsApp"
+    icon = "whatsapp"
+    actions = { "open" = "${scratchpad}/bin/scratchpad whatsapp 40 66 whatsapp-web" }
+
+    [[entries]]
+    text = "Bitwarden"
+    icon = "bitwarden"
+    actions = { "open" = "${scratchpad}/bin/scratchpad bitwarden 42 72 bitwarden-web" }
+
+    [[entries]]
+    text = "Terminal"
+    icon = "utilities-terminal"
+    actions = { "open" = "${scratchpad}/bin/scratchpad term 60 62 alacritty --class scratch-term --working-directory ${config.home.homeDirectory}" }
+
+    [[entries]]
+    text = "Files"
+    icon = "folder"
+    actions = { "open" = "${scratchpad}/bin/scratchpad files 65 68 alacritty --class scratch-files -e yazi" }
+
+    [[entries]]
+    text = "Audio"
+    icon = "multimedia-volume-control"
+    actions = { "open" = "${scratchpad}/bin/scratchpad audio 48 58 pavucontrol" }
+
+    [[entries]]
+    text = "Calendar"
+    icon = "org.gnome.Calendar"
+    actions = { "open" = "${scratchpad}/bin/scratchpad cal 62 68 gnome-calendar" }
+
+    [[entries]]
+    text = "GPU"
+    icon = "nvidia-settings"
+    actions = { "open" = "${scratchpad}/bin/scratchpad gpu 60 65 alacritty --class scratch-gpu -e nvtop" }
+
+    [[entries]]
+    text = "Wi-Fi"
+    icon = "network-wireless"
+    actions = { "open" = "${scratchpad}/bin/scratchpad wifi 55 60 nm-connection-editor" }
+
+    [[entries]]
+    text = "Weather"
+    icon = "org.gnome.Weather"
+    actions = { "open" = "${scratchpad}/bin/scratchpad weather 55 62 gnome-weather" }
+  '';
+
   home.packages = with pkgs; [
     # essentials
     alacritty
@@ -507,6 +690,15 @@ in
     satty
     colorPick
     hyprpicker
+    scratchpad
+    quickNote
+    bitwardenWeb
+    scratchpadToggle
+
+    # scratchpad apps not already on the system (nm-connection-editor ships
+    # with networkmanagerapplet, yazi/pavucontrol/gnome-calendar already present)
+    nvtopPackages.nvidia
+    gnome-weather
 
     # tray / network
     networkmanagerapplet

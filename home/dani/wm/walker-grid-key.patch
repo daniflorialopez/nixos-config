@@ -1,0 +1,40 @@
+--- a/src/theme/mod.rs	2026-07-31 16:32:07.596287022 +0200
++++ b/src/theme/mod.rs	2026-07-31 16:32:38.915340366 +0200
+@@ -70,20 +70,20 @@
+         "style.css".to_string(),
+         "preview.xml".to_string(),
+     ];
+ 
+     let combined = if elephant {
+         let mut result = files;
+-        let additional = PROVIDERS.get().unwrap().iter().map(|v| {
++        let additional = PROVIDERS.get().unwrap().iter().flat_map(|v| {
+             let p = if v.0.contains("menus:") {
+                 v.0.replace("menus:", "menus-")
+             } else {
+                 v.0.to_string()
+             };
+ 
+-            format!("item_{}.xml", p)
++            [format!("item_{}.xml", p), format!("item_{}_grid.xml", p)]
+         });
+         result.extend(additional);
+         result
+     } else {
+         files
+     };
+@@ -189,13 +189,13 @@
+             }
+             name if name.ends_with("_grid.xml") && name.starts_with("item_") => {
+                 if let Some(s) = read_file(file) {
+                     let key = name
+                         .strip_prefix("item_")
+                         .unwrap()
+-                        .strip_suffix(".xml")
++                        .strip_suffix("_grid.xml")
+                         .unwrap();
+ 
+                     let actual_key = if key.contains("menus-") {
+                         key.replace("menus-", "menus:")
+                     } else {
+                         key.to_string()

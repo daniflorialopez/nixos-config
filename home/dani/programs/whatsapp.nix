@@ -30,6 +30,9 @@ in
     startupNotify = true;
   };
 
+  # Super+Shift+W opens WhatsApp as a normal tiled window. The compact
+  # WhatsApp *scratchpad* is a separate thing — the Super+S menu's WhatsApp
+  # entry (defined in wm/hyprland.nix).
   wayland.windowManager.hyprland.settings.bindd = [
     "$mod SHIFT, W, WhatsApp Web, exec, ${whatsapp-web}/bin/whatsapp-web"
   ];
