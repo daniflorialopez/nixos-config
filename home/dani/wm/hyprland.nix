@@ -603,7 +603,7 @@ in
   };
   
   # The Super+S scratchpad picker (an elephant "menus" menu, rendered by
-  # walker as a 2-column icon-tile grid — see wm/walker.nix). Each entry's
+  # walker as a 4-column icon-tile grid — see wm/walker.nix). Each entry's
   # `open` action calls the scratchpad helper with a target width%/height%;
   # the helper spawns the app into its special workspace and sizes it.
   # scratchpad is given by absolute path because the elephant service that
@@ -614,9 +614,11 @@ in
     name_pretty = "Scratchpads"
     icon = "view-restore"
 
-    # Order matters: walker fills the grid row by row, so the first four are
-    # Dani's most-used (Bluetooth, btop, quick note, WhatsApp) and land in the
-    # top two rows. The rest follow.
+    # Order matters: walker fills the grid row by row, four to a row, so the
+    # first four are the most-used (Bluetooth, btop, quick note, WhatsApp) and
+    # land in the top row. The rest follow. Twelve entries = exactly 4 x 3,
+    # which is the size layout.xml sizes the window to — adding a thirteenth
+    # starts a fourth row and the board scrolls.
     [[entries]]
     text = "Bluetooth"
     icon = "bluetooth"
