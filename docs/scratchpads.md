@@ -61,7 +61,9 @@ Two entries need their own wrapper, both generated in `wm/hyprland.nix`:
 
 - **`quick-note`** — `nvim ~/notes/scratch.md`, creating `~/notes` if needed.
   Wrapped so the scratchpad command stays a flat word list with no nested
-  quoting through `hyprctl dispatch exec`.
+  quoting through `hyprctl dispatch exec`. Runs with **`-n` (no swap file)
+  plus an autosave autocmd** — see [dismissing is not
+  closing](#dismissing-is-not-closing) below.
 - **`bitwarden-web`** — the Bitwarden web vault as a Chromium PWA in its own
   profile, same pattern as `whatsapp-web`. Chosen over `bitwarden-desktop`,
   which bundles an Electron flagged insecure and would need a system-wide
@@ -71,6 +73,35 @@ Two entries need their own wrapper, both generated in `wm/hyprland.nix`:
 elephant service that runs the action does not inherit the graphical session's
 `PATH`. The apps it then spawns via `hyprctl dispatch exec` *do* inherit it, so
 those stay bare names.
+
+### Dismissing is not closing
+
+`$mod+S` **hides** a scratchpad; the process keeps running until you quit it or
+log out. That is what makes reopening instant, and it is why the hidden window
+is still found by `hyprctl clients` (the `scratchpad` helper's "already
+spawned?" check), so a second copy is never launched.
+
+The cost is that every scratchpad you have ever opened stays resident for the
+session — including `btop`, `nvtop` and the two Chromium PWAs — and that apps
+holding state get **killed rather than closed** at logout.
+
+`nvim` is the one that noticed. When it dies from a signal it deliberately
+*preserves* its swap file, so a quick-note left hidden through a reboot greeted
+the next open with `E325: ATTENTION, found a swap file`. The fix is in the
+`quick-note` wrapper: `-n` disables the swap outright, and
+
+```
+-c 'autocmd InsertLeave,TextChanged,FocusLost <buffer> silent! update'
+```
+
+writes the buffer whenever it changes — `update` is a no-op when unmodified.
+`FocusLost` fires the moment `$mod+S` hides the window, so **dismissing the
+scratchpad saves the note.** The swap has nothing left to recover that the file
+does not already hold. This is scoped to the wrapper; `nvim` everywhere else
+keeps its swap files.
+
+Anything else that should not simply be killed at logout wants the same
+treatment — autosave, or an entry that closes on dismiss instead of hiding.
 
 ### Adding an entry
 
@@ -157,4 +188,6 @@ rather than silently reverting the behaviour.
 | `$mod+Space` looks wrong after `$mod+S` | the per-theme window bug — confirm `walker-window-per-theme.patch` is in the `patches` list and that walker actually restarted. |
 | Tiles float in too much space | `columns` and the GridView/Scroll widths disagree; recompute the table above. |
 | App opens at the wrong size | it is not going through `scratchpad`, or the window took >5 s to map. |
+| Quick note opens on a swap-file prompt | an old `nvim` was killed with the swap still live — delete the orphan under `~/.local/state/nvim/swap/`. Should not recur: the wrapper runs `nvim -n`. |
+| A scratchpad app is still eating RAM | by design — dismissing hides it. Quit the app itself, or log out. |
 | Entry does nothing | icon name typo'd (renders blank) or the command is not on `PATH` for the elephant service — use an absolute store path. |

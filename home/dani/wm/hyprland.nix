@@ -98,7 +98,15 @@ let
     runtimeInputs = [ pkgs.coreutils ];
     text = ''
       mkdir -p "$HOME/notes"
-      exec nvim "$HOME/notes/scratch.md"
+      # -n: no swap file. This nvim outlives its window — dismissing the
+      # scratchpad only hides it — so it is still alive at logout and gets
+      # signalled, and nvim deliberately *preserves* the swap when it dies
+      # that way. The next open then greets you with E325. Autosave makes
+      # the swap redundant: `update` writes only when modified, and
+      # FocusLost fires when Super+S hides the window, so dismissing saves.
+      exec nvim -n \
+        -c 'autocmd InsertLeave,TextChanged,FocusLost <buffer> silent! update' \
+        "$HOME/notes/scratch.md"
     '';
   };
 
