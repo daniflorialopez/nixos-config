@@ -21,6 +21,7 @@
     ../../modules/nixos/battery-conservation.nix
     ../../modules/nixos/fonts.nix
     ../../modules/nixos/keyd.nix
+    ../../modules/nixos/mouseless.nix
     ../../modules/nixos/corne.nix
     #../../modules/nixos/keyd-vibranium-practice.nix
     ../../modules/nixos/hardware-health.nix

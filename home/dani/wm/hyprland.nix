@@ -545,6 +545,12 @@ in
         "ignorezero, notifications"
         "blur, swayosd"
         "ignorezero, swayosd"
+
+        # Mouseless puts its hint overlay on wlr-layer-shell, so the `layers`
+        # animation below would pop it in over ~250ms — long enough that the
+        # labels land after you have started typing them. It wants to be
+        # instant, not pretty.
+        "noanim, mouseless-overlay"
       ];
 
       animations = {
