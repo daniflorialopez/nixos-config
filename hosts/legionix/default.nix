@@ -21,7 +21,10 @@
     ../../modules/nixos/battery-conservation.nix
     ../../modules/nixos/fonts.nix
     ../../modules/nixos/keyd.nix
+    # Pick exactly one. mouseless.nix grants `input` to the whole login
+    # session; mouseless-scoped.nix grants it to one systemd unit instead.
     ../../modules/nixos/mouseless.nix
+    #../../modules/nixos/mouseless-scoped.nix
     ../../modules/nixos/corne.nix
     #../../modules/nixos/keyd-vibranium-practice.nix
     ../../modules/nixos/hardware-health.nix
