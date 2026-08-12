@@ -18,6 +18,8 @@
 #   - custom/tailscale: invisible while up; dim icon when down (backups
 #                       at 20:00 depend on the tailnet, so down = actionable).
 #   - custom/gpu:       NVIDIA temp on legionix; self-hides on danix-hp/VM.
+#   - custom/mouseless: invisible unless Mouseless is running; click kills it.
+#                       The only escape when it has grabbed every keyboard.
 #   - mpris:            appears only while something plays (playerctl).
 #   - hyprland/window:  muted title next to the workspaces for context.
 #   - tray:             invisible while empty.
@@ -292,6 +294,29 @@ let
       pkill -RTMIN+10 waybar || true
     '';
   };
+
+  # Panic button for Mouseless (see home/dani/wm/mouseless.nix for the full
+  # story). Mouseless takes an exclusive evdev grab on the keyboards, and a
+  # grab bypasses the kernel's own kbd and sysrq input handlers — so when it
+  # misbehaves there is no keyboard left to fix it with, Ctrl+Alt+F2 and Magic
+  # SysRq included. The mouse is never grabbed, so this button is the way out.
+  #
+  # Visible the whole time Mouseless runs, not just when it misbehaves: you
+  # cannot predict the wedge, so the button has to already be there when it
+  # happens. That also self-hides it on danix-hp and the VM, which never run
+  # it, in the manner of the gpu module above.
+  mouselessStatus = pkgs.writeShellApplication {
+    name = "waybar-mouseless";
+    runtimeInputs = [ pkgs.flatpak pkgs.gnugrep ];
+    text = ''
+      if ! flatpak ps --columns=application 2>/dev/null \
+           | grep -qx net.sonuscape.mouseless; then
+        printf '{"text":"","tooltip":""}\n'
+        exit 0
+      fi
+      printf '{"text":"󰍽","class":"armed","tooltip":"Mouseless is holding your keyboard\\nClick to kill it"}\n'
+    '';
+  };
 in
 {
   xdg.configFile = hideAutostart "nm-applet" // hideAutostart "blueman";
@@ -337,6 +362,10 @@ in
       # status icons keep their absolute positions instead of being
       # shoved around by the song title popping in mid-cluster
       modules-right = [
+        # first, i.e. the island's far-left edge: it must be a big, stable,
+        # easy mouse target on the rare occasion it appears, and putting it
+        # ahead of mpris keeps every other icon where it already was
+        "custom/mouseless"
         "mpris"
         "custom/dnd"
         "custom/backup"
@@ -405,6 +434,16 @@ in
         format = "{}";
         on-click = "alacritty -e less +G $HOME/BACKUP-FAILED.txt";
         on-click-right = "truncate -s 0 $HOME/BACKUP-FAILED.txt";
+      };
+
+      "custom/mouseless" = {
+        exec = "${mouselessStatus}/bin/waybar-mouseless";
+        return-type = "json";
+        interval = 5;       # fast poll: this must show up before it is needed
+        signal = 11;        # matches pkill -RTMIN+11 in mouseless-panic
+        format = "{}";
+        # bare name, from home.packages (home/dani/wm/mouseless.nix)
+        on-click = "mouseless-panic";
       };
 
       "custom/tailscale" = {
@@ -606,6 +645,7 @@ in
       #custom-tailscale,
       #custom-efootball,
       #custom-conservation,
+      #custom-mouseless,
       #custom-kblayout,
       #bluetooth,
       #network,
@@ -629,6 +669,10 @@ in
       #custom-conservation.off { color: @muted; }
       #custom-dnd.on { color: @accent; }
       #custom-dnd.off { color: @muted; }
+      /* warning, not critical: something holds every keyboard on the machine,
+         which is worth seeing, but it is the normal state while Mouseless is
+         running — @critical is reserved for the backup pill */
+      #custom-mouseless.armed { color: @warning; }
 
       #bluetooth.off,
       #bluetooth.disabled {

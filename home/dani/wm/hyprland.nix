@@ -297,6 +297,7 @@ in
     ./waybar.nix
     ./cursor.nix
     ./swayosd.nix
+    ./mouseless.nix
   ];
 
   home.file.".config/uwsm/env-hyprland".text = ''
