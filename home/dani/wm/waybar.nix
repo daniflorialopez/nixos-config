@@ -310,7 +310,7 @@ let
     runtimeInputs = [ pkgs.flatpak pkgs.gnugrep ];
     text = ''
       if ! flatpak ps --columns=application 2>/dev/null \
-           | grep -qx net.sonuscape.mouseless; then
+           | grep -qxF net.sonuscape.mouseless; then
         printf '{"text":"","tooltip":""}\n'
         exit 0
       fi

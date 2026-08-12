@@ -100,11 +100,46 @@ let
       exit "$rc"
     '';
   };
+
+  # What $mod+M does. Deliberately two behaviours behind one key, because the
+  # useful question is always "is Mouseless in my way right now?" and the
+  # answer differs only on the first press of the session.
+  mouseless-toggle = pkgs.writeShellApplication {
+    name = "mouseless-toggle";
+    runtimeInputs = with pkgs; [ coreutils flatpak gnugrep ];
+    text = ''
+      XDG_RUNTIME_DIR="/run/user/$(id -u)"
+      export XDG_RUNTIME_DIR
+
+      # Already up: hand it the deep link. toggle-enabled disables every
+      # hotkey except itself, which is the point — it is the in-band way to
+      # get your keyboard back without killing the app and losing the grab
+      # mid-gesture. mouseless-panic remains the out-of-band one.
+      if flatpak ps --columns=application 2>/dev/null \
+         | grep -qxF ${appId}; then
+        exec flatpak run ${appId} mouseless://toggle-enabled
+      fi
+
+      # Not up: first press of the session, so start it — through the guard,
+      # so an impatient double-press cannot race two instances into being.
+      exec ${lib.getExe mouseless-guarded}
+    '';
+  };
 in
 lib.mkIf hasFlatpak {
   # mouseless-panic must be on PATH: waybar's on-click calls it by bare name,
   # and it is what gets typed over SSH when the keyboard is gone.
-  home.packages = [ mouseless-guarded mouseless-panic ];
+  home.packages = [ mouseless-guarded mouseless-panic mouseless-toggle ];
+
+  # Lives here rather than in hyprland.nix's big bindd list so the whole
+  # Mouseless story stays in one file; home-manager merges the lists. Same
+  # shape as programs/whatsapp.nix. The M cluster is now:
+  #   $mod, M        Mouseless          (this)
+  #   $mod SHIFT, M  wl-kbptr           (hyprland.nix)
+  #   $mod ALT, M    File Manager       (hyprland.nix, moved off $mod, M)
+  wayland.windowManager.hyprland.settings.bindd = [
+    "$mod, M, Mouseless toggle, exec, ${lib.getExe mouseless-toggle}"
+  ];
 
   # Shadow the Flatpak's exported desktop entry so the launcher routes through
   # the guard. This must be xdg.dataFile, NOT xdg.desktopEntries: the latter

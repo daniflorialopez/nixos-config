@@ -431,7 +431,10 @@ in
         "$mod, F, True full screen, fullscreen, 0"
         "$mod ALT, F, Maximize (keeps bar strip), fullscreen, 1"
         # "$mod, Space, togglefloating"
-        "$mod, M, File Manager, exec, $fileManager"
+        # M is the pointer-tool cluster now: $mod+M is Mouseless (bound in
+        # wm/mouseless.nix), $mod SHIFT+M is wl-kbptr, so the file manager
+        # moves one modifier out.
+        "$mod ALT, M, File Manager, exec, $fileManager"
         "$mod SHIFT, O, Obsidian, exec, obsidian"
 
         # Different Firefox profiles: personal, lab, work
