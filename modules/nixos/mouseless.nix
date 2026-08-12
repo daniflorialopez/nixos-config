@@ -12,8 +12,9 @@
 # Do not reach for `pkgs.mouseless`. That is an unrelated MIT-licensed Go tool
 # (github.com/jbensmann/mouseless) that happens to share the name.
 {
-  # Flatpak asserts on xdg.portal.enable, which desktop/hyprland.nix already sets.
-  services.flatpak.enable = true;
+  # Flatpak and its remotes; asserts on xdg.portal.enable, which
+  # desktop/hyprland.nix already sets.
+  imports = [ ./flatpak.nix ];
 
   # Wayland will not hand an application global hotkeys or synthetic pointer
   # events, so Mouseless goes under the compositor: it takes an exclusive evdev

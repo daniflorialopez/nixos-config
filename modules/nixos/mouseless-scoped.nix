@@ -77,7 +77,8 @@ let
   };
 in
 {
-  services.flatpak.enable = true;
+  imports = [ ./flatpak.nix ];
+
   hardware.uinput.enable = true;
 
   # Note what is NOT here: users.users.dani.extraGroups. That is the whole
