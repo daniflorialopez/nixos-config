@@ -480,7 +480,10 @@ in
       input = {
         kb_layout = "us,es";
         # kb_options = "grp:ctrls_toggle,caps:super";
-        kb_options = "shift:both_capslock_cancel";
+        # compose:menu makes the Menu key act as Multi_key. The Corne keymap
+        # types accented characters as Compose sequences (Compose ' a -> a),
+        # so without this they arrive as literal punctuation plus a letter.
+        kb_options = "shift:both_capslock_cancel,compose:menu";
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
