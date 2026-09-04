@@ -1,0 +1,1843 @@
+===== flake.nix =====
+{
+  description = "Dani's NixOS + Home Manager config";
+
+  inputs = {
+    # Main NixOS channel – stick to release for now
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    # Home Manager, following the same nixpkgs
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.11";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+
+    lazyvim-starter = {
+      url = "github:LazyVim/starter";
+      flake = false;
+    };
+
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-index-database.url = "github:nix-community/nix-index-database";
+    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+
+    elephant.url = "github:abenz1267/elephant";
+
+    walker = {
+      url = "github:abenz1267/walker";
+      inputs.elephant.follows = "elephant";
+    };
+
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      home-manager,
+      nix-index-database,
+      ...
+    }:
+    let
+      system = "x86_64-linux";
+
+      # Every host is wired identically: hosts/<name> plus the shared
+      # agenix + Home Manager plumbing. Keeping this in one place means
+      # the VM really does mirror the real machines (the LUKS rehearsal
+      # in danixos-vm depends on that symmetry).
+      mkHost =
+        name:
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+
+          # Extra args you want modules to see (if needed later)
+          specialArgs = { inherit inputs; };
+
+          modules = [
+            # Host config (imports hardware + modules/nixos/*.nix)
+            ./hosts/${name}
+
+            # Secrets management
+            inputs.agenix.nixosModules.default
+
+            # Home Manager as a NixOS module
+            home-manager.nixosModules.home-manager
+
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+
+              home-manager.sharedModules = [
+                nix-index-database.homeModules.default
+              ];
+
+              # Tell HM what extension to use when backing up conflicting files
+              home-manager.backupFileExtension = "hm-backup";
+
+              # You can pass extra args to home modules if you want
+              home-manager.extraSpecialArgs = { inherit inputs; };
+
+              # Your home config entry point
+              home-manager.users.dani = import ./home/dani;
+            }
+          ];
+        };
+    in
+    {
+      nixosConfigurations = {
+        danixos-vm = mkHost "danixos-vm";
+        danix-hp = mkHost "danix-hp";
+        legionix = mkHost "legionix";
+      };
+    };
+}
+===== home/dani/default.nix =====
+{ 
+  config, 
+  pkgs, 
+  lib, 
+  osConfig ? null, 
+  ... 
+}:
+
+let
+  hyprEnabled = osConfig != null && (osConfig.programs.hyprland.enable or false);
+in
+{
+  imports =
+    [
+      ./shell
+      ./programs
+    ]
+    ++ lib.optionals hyprEnabled [
+      ./wm/hyprland.nix
+      ./wm/wallpaper.nix
+    ];
+
+  home.username = "dani";
+  home.homeDirectory = "/home/dani";
+  home.stateVersion = "25.05";
+
+  programs.home-manager.enable = true;
+}
+
+===== home/dani/programs/apps.nix =====
+{ pkgs, ... }:
+let
+  zathuraPkg = pkgs.zathura.override {
+    plugins = with pkgs.zathuraPkgs; [
+      zathura_pdf_mupdf
+    ];
+  };
+in
+{
+  # Tokyo Night zathura; recolor=true renders pages dark by default
+  # (Ctrl+R flips back to paper-white for print-faithful reading)
+  programs.zathura = {
+    enable = true;
+    package = zathuraPkg;
+    options = {
+      font = "CaskaydiaMono Nerd Font 11";
+
+      default-bg = "#1a1b26";
+      default-fg = "#c0caf5";
+      statusbar-bg = "#1a1b26";
+      statusbar-fg = "#a9b1d6";
+      inputbar-bg = "#1a1b26";
+      inputbar-fg = "#c0caf5";
+
+      completion-bg = "#24283b";
+      completion-fg = "#c0caf5";
+      completion-group-bg = "#1a1b26";
+      completion-group-fg = "#7aa2f7";
+      completion-highlight-bg = "#283457";
+      completion-highlight-fg = "#c0caf5";
+
+      index-bg = "#1a1b26";
+      index-fg = "#c0caf5";
+      index-active-bg = "#283457";
+      index-active-fg = "#c0caf5";
+
+      notification-bg = "#1a1b26";
+      notification-fg = "#c0caf5";
+      notification-error-bg = "#1a1b26";
+      notification-error-fg = "#f7768e";
+      notification-warning-bg = "#1a1b26";
+      notification-warning-fg = "#e0af68";
+
+      # search hits: orange = "look here" (yazi find tier), blue = the
+      # active hit (position accent), like waybar's urgent/active split
+      highlight-color = "rgba(255, 158, 100, 0.4)";
+      highlight-active-color = "rgba(122, 162, 247, 0.5)";
+
+      render-loading-bg = "#1a1b26";
+      render-loading-fg = "#565f89";
+
+      recolor = true;
+      recolor-keephue = true;
+      recolor-lightcolor = "#1a1b26";
+      recolor-darkcolor = "#c0caf5";
+    };
+  };
+
+  # imv: dark canvas + palette overlay instead of the default black/white
+  xdg.configFile."imv/config".text = ''
+    [options]
+    background = 1a1b26
+    overlay_font = CaskaydiaMono Nerd Font Mono:11
+    overlay_text_color = c0caf5
+    overlay_background_color = 1a1b26
+    overlay_background_alpha = d0
+  '';
+
+  home.packages = with pkgs; [
+    # File manager / archive manager
+    pcmanfm
+    file-roller
+
+    # PDF viewers (zathura is programs.zathura above)
+    kdePackages.okular
+
+    # Viewers / media
+    imv
+    mpv
+
+    # Office
+    libreoffice
+
+    # Yazi helpers and preview dependencies
+    file
+    xdg-utils
+    ffmpeg
+    p7zip
+    jq
+    poppler-utils
+    fd
+    ripgrep
+    fzf
+    zoxide
+    imagemagick
+  ];
+}
+===== home/dani/programs/bitwarden.nix =====
+{ pkgs, ... }:
+{
+  home.packages = [
+    pkgs.bitwarden-cli
+  ];
+}
+===== home/dani/programs/browsers.nix =====
+{ pkgs, ... }:
+
+{
+  home.packages = with pkgs; [
+    # firefox
+    google-chrome
+    ungoogled-chromium
+    brave
+  ];
+}
+
+===== home/dani/programs/comma.nix =====
+{ ... }:
+{
+  programs.nix-index.enable = true;
+  programs.nix-index-database.comma.enable = true;
+
+  home.sessionVariables.COMMA_CACHING = "1";
+}
+===== home/dani/programs/default.nix =====
+{
+  imports = [
+    ./bitwarden.nix
+    ./browsers.nix
+    ./devtools.nix
+    ./media.nix
+    ./misc.nix
+    ./firefox.nix
+    ./comma.nix
+    ./whatsapp.nix
+    ./apps.nix
+    ./mangohud.nix
+    ./mimeapps.nix
+    ./yazi.nix
+  ];
+}
+
+===== home/dani/programs/devtools.nix =====
+{ config, pkgs, inputs, lib, ... }:
+
+let
+  unstablePkgs = import inputs.nixpkgs-unstable {
+    system = pkgs.stdenv.hostPlatform.system;
+
+    # Claude Code is marked as unfree in nixpkgs.
+    config.allowUnfree = true;
+  };
+in
+
+{
+  home.packages = with pkgs; [
+    unstablePkgs.claude-code
+
+    obsidian
+    virt-manager   # GUI; the backend is managed on NixOS side
+    vscodium
+    jetbrains.idea
+    python3
+  ];
+
+  # Tokyo Night, same role mapping as zellij: blue for the active pane
+  # frame, orange only for "look here" (search), #283457 selection wash
+  programs.lazygit = {
+    enable = true;
+    settings = {
+      gui = {
+        nerdFontsVersion = "3";
+        theme = {
+          activeBorderColor = [ "#7aa2f7" "bold" ];
+          inactiveBorderColor = [ "#565f89" ];
+          searchingActiveBorderColor = [ "#ff9e64" "bold" ];
+          optionsTextColor = [ "#7aa2f7" ];
+          selectedLineBgColor = [ "#283457" ];
+          cherryPickedCommitFgColor = [ "#7aa2f7" ];
+          cherryPickedCommitBgColor = [ "#283457" ];
+          markedBaseCommitFgColor = [ "#7aa2f7" ];
+          markedBaseCommitBgColor = [ "#e0af68" ];
+          unstagedChangesColor = [ "#f7768e" ];
+          defaultFgColor = [ "#c0caf5" ];
+        };
+      };
+    };
+  };
+
+  programs.git = {
+    enable = true;
+    settings.user.name = "Daniel Floria Lopez";
+    settings.user.email = "daniflorialopez@gmail.com";
+
+    lfs = {
+      enable = true;
+    };
+  };
+
+  # --- Neovim + practical runtime tools ---
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+    viAlias = true;
+    vimAlias = true;
+
+    # Tools LazyVim commonly uses (search, file picking, etc.)
+    extraPackages = with pkgs; [
+      git
+      ripgrep
+      fd
+      fzf
+      curl
+      unzip
+      gzip
+      
+      #Treesitter requirements
+      gnutar
+      nodejs
+      tree-sitter
+      stdenv.cc # C compiler wrapper
+      gnumake   # `make` often needed for builds
+
+      # clipboard requirements
+      wl-clipboard
+      xclip
+    ];
+  };
+
+  # Optional but nice: ensure these are set globally for CLI tools (git commit, etc.)
+  home.sessionVariables = {
+    EDITOR = "nvim";
+    VISUAL = "nvim";
+  };
+
+  # --- Nix-managed LazyVim overrides (loaded by LazyVim) ---
+  #
+  # This file is generated declaratively by Home Manager.
+  # LazyVim will load it via a one-time injected `pcall(require, "config.nix")`.
+  xdg.configFile."nvim/lua/config/nix.lua" = {
+    force = true;
+    text = ''
+      vim.opt.clipboard = "unnamedplus"
+    '';
+  };
+
+  # --- Seed LazyVim starter into a WRITABLE ~/.config/nvim ---
+  #
+  # IMPORTANT:
+  # - We seed ONLY ONCE (first rebuild after you add this).
+  # - We do NOT re-sync every rebuild, so your local edits/plugins won’t be deleted.
+  # - If you ever want to re-seed from upstream starter, delete:
+  #     ~/.config/nvim/.seeded-by-nix-lazyvim
+  #
+  home.activation.lazyvimStarter = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    set -eu
+
+    NVIM_DIR="$HOME/.config/nvim"
+    MARKER="$NVIM_DIR/.seeded-by-nix-lazyvim"
+
+    mkdir -p "$NVIM_DIR"
+
+    if [ ! -e "$MARKER" ]; then
+      echo "Seeding LazyVim starter into $NVIM_DIR"
+
+      # Copy from flake input into a writable directory.
+      # Do NOT preserve perms/owner/group from the Nix store.
+      ${pkgs.rsync}/bin/rsync -r \
+        --no-perms --no-owner --no-group \
+        --exclude '.git/' \
+        ${inputs.lazyvim-starter}/ "$NVIM_DIR/"
+
+      # Ensure everything is writable by the user (lazy.nvim updates lazy-lock.json)
+      chmod -R u+rwX "$NVIM_DIR" || true
+
+      # Create marker so we don't overwrite user changes on future rebuilds
+      touch "$MARKER"
+    else
+      # Ensure lockfile remains writable (in case it ever got messed up)
+      if [ -f "$NVIM_DIR/lazy-lock.json" ]; then
+        chmod u+rw "$NVIM_DIR/lazy-lock.json" || true
+      fi
+    fi
+  '';
+
+  home.activation.lazyvimNixOverrides = lib.hm.dag.entryAfter [ "lazyvimStarter" ] ''
+    set -eu
+
+    NVIM_DIR="$HOME/.config/nvim"
+    OPTIONS="$NVIM_DIR/lua/config/options.lua"
+    INIT="$NVIM_DIR/init.lua"
+    LINE='pcall(require, "config.nix")'
+
+    if [ -f "$OPTIONS" ]; then
+      if ! grep -Fq "$LINE" "$OPTIONS"; then
+        printf '\n-- Nix-managed overrides\n%s\n' "$LINE" >> "$OPTIONS"
+      fi
+    elif [ -f "$INIT" ]; then
+      if ! grep -Fq "$LINE" "$INIT"; then
+        printf '\n-- Nix-managed overrides\n%s\n' "$LINE" >> "$INIT"
+      fi
+    fi
+  '';
+}
+
+===== home/dani/programs/firefox.nix =====
+{ pkgs, ... }:
+
+let
+  commonSettings = {
+    # keep theme choice local to each profile or device
+    "services.sync.prefs.sync.extensions.activeThemeID" = false;
+
+    # dark by default inside Firefox
+    "ui.systemUsesDarkTheme" = 1;
+
+    # Website appearance: Dark.
+    # 0 = dark, 1 = light, 2 = system, 3 = browser
+    "layout.css.prefers-color-scheme.content-override" = 0;
+  };
+in
+{
+  programs.firefox = {
+    enable = true;
+
+    policies = {
+      Extensions = {
+        Install = [
+          "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi"
+          "https://addons.mozilla.org/firefox/downloads/latest/vimium-ff/latest.xpi"
+          "https://addons.mozilla.org/firefox/downloads/latest/auto-tab-discard/latest.xpi"
+
+        ];
+      };
+
+      # Leave extension updates enabled.
+      ExtensionUpdate = true;
+    };
+
+    profiles = {
+      personal = {
+        id = 0;
+        name = "personal";
+        isDefault = true;
+        settings = commonSettings;
+      };
+
+      work = {
+        id = 1;
+        name = "work";
+        settings = commonSettings;
+      };
+
+      lab = {
+        id = 2;
+        name = "lab";
+        settings = commonSettings;
+      };
+    };
+  };
+}
+===== home/dani/programs/mangohud.nix =====
+{ ... }:
+
+{
+  # Overlay for debugging Steam/Proton games. Just installs the mangohud
+  # package (incl. 32-bit libs for older Proton titles); the overlay itself
+  # is configured inline per game via MANGOHUD_CONFIG in the Steam launch
+  # options, e.g.:
+  #   PROTON_LOG=1 SDL_VIDEODRIVER=x11 \
+  #   MANGOHUD_CONFIG=fps,frame_timing=1,gpu_name,gpu_stats,gpu_temp,cpu_stats,cpu_temp,vram,ram,vulkan_driver \
+  #   gamemoderun mangohud %command%
+  programs.mangohud.enable = true;
+}
+===== home/dani/programs/media.nix =====
+{ pkgs, ... }:
+
+{
+  home.packages = with pkgs; [
+    kdePackages.kdenlive
+    obs-studio
+    spotify
+    # TODO youtube-music, whatsapp, vesktop may be from flatpak or other pkgs
+  ];
+}
+
+===== home/dani/programs/mimeapps.nix =====
+{ pkgs, ... }:
+
+let
+  zathuraPkg = pkgs.zathura.override {
+    plugins = with pkgs.zathuraPkgs; [
+      zathura_pdf_mupdf
+    ];
+  };
+
+  nvimDesktop = "nvim-terminal.desktop";
+  firefoxDesktop = "firefox-handler.desktop";
+  pcmanfmDesktop = "pcmanfm-handler.desktop";
+  zathuraDesktop = "zathura-handler.desktop";
+  okularDesktop = "okular-handler.desktop";
+  imvDesktop = "imv-handler.desktop";
+  mpvDesktop = "mpv-handler.desktop";
+  calcDesktop = "libreoffice-calc-handler.desktop";
+  writerDesktop = "libreoffice-writer-handler.desktop";
+  impressDesktop = "libreoffice-impress-handler.desktop";
+  archiveDesktop = "archive-handler.desktop";
+in
+{
+  xdg.enable = true;
+
+  xdg.desktopEntries = {
+    nvim-terminal = {
+      name = "Neovim (Terminal)";
+      comment = "Open text-like files in Neovim inside Alacritty";
+      exec = "${pkgs.alacritty}/bin/alacritty -e ${pkgs.neovim}/bin/nvim %F";
+      terminal = false;
+      type = "Application";
+      categories = [ "Utility" "TextEditor" ];
+      mimeType = [
+        "text/plain"
+        "text/markdown"
+        "text/x-log"
+        "text/xml"
+        "application/xml"
+        "application/json"
+        "application/toml"
+        "application/x-yaml"
+        "text/x-shellscript"
+        "application/x-shellscript"
+        "text/x-python"
+        "text/x-java-source"
+        "text/javascript"
+        "application/javascript"
+        "text/x-lua"
+        "text/x-nix"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    firefox-handler = {
+      name = "Firefox Handler";
+      exec = "${pkgs.firefox}/bin/firefox %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Network" "WebBrowser" ];
+      mimeType = [
+        "text/html"
+        "application/xhtml+xml"
+        "x-scheme-handler/http"
+        "x-scheme-handler/https"
+        "x-scheme-handler/mailto"
+        "x-scheme-handler/webcal"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    pcmanfm-handler = {
+      name = "PCManFM Handler";
+      exec = "${pkgs.pcmanfm}/bin/pcmanfm %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "System" "FileManager" ];
+      mimeType = [ "inode/directory" ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    zathura-handler = {
+      name = "Zathura Handler";
+      exec = "${zathuraPkg}/bin/zathura %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Office" "Viewer" ];
+      mimeType = [ "application/pdf" ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    okular-handler = {
+      name = "Okular";
+      exec = "${pkgs.kdePackages.okular}/bin/okular %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Office" "Viewer" ];
+      mimeType = [ "application/pdf" ];
+
+      # Intentionally no NoDisplay=true, so it can show up in “Open With”.
+    };
+
+    imv-handler = {
+      name = "imv Handler";
+      exec = "${pkgs.imv}/bin/imv %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Graphics" "Viewer" ];
+      mimeType = [
+        "image/png"
+        "image/jpeg"
+        "image/gif"
+        "image/webp"
+        "image/bmp"
+        "image/tiff"
+        "image/svg+xml"
+        "image/avif"
+        "image/heic"
+        "image/heif"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    mpv-handler = {
+      name = "mpv Handler";
+      exec = "${pkgs.mpv}/bin/mpv %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "AudioVideo" "Player" ];
+      mimeType = [
+        "audio/mpeg"
+        "audio/flac"
+        "audio/wav"
+        "audio/ogg"
+        "audio/opus"
+        "audio/mp4"
+        "video/mp4"
+        "video/webm"
+        "video/x-matroska"
+        "video/quicktime"
+        "video/x-msvideo"
+        "video/mpeg"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    libreoffice-calc-handler = {
+      name = "LibreOffice Calc Handler";
+      exec = "${pkgs.libreoffice}/bin/libreoffice --calc %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Office" "Spreadsheet" ];
+      mimeType = [
+        "text/csv"
+        "application/csv"
+        "application/vnd.ms-excel"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "application/vnd.oasis.opendocument.spreadsheet"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    libreoffice-writer-handler = {
+      name = "LibreOffice Writer Handler";
+      exec = "${pkgs.libreoffice}/bin/libreoffice --writer %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Office" "WordProcessor" ];
+      mimeType = [
+        "application/msword"
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "application/vnd.oasis.opendocument.text"
+        "application/rtf"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    libreoffice-impress-handler = {
+      name = "LibreOffice Impress Handler";
+      exec = "${pkgs.libreoffice}/bin/libreoffice --impress %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Office" "Presentation" ];
+      mimeType = [
+        "application/vnd.ms-powerpoint"
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "application/vnd.oasis.opendocument.presentation"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+
+    archive-handler = {
+      name = "Archive Handler";
+      exec = "${pkgs.file-roller}/bin/file-roller %U";
+      terminal = false;
+      type = "Application";
+      categories = [ "Utility" "Archiving" ];
+      mimeType = [
+        "application/zip"
+        "application/x-7z-compressed"
+        "application/vnd.rar"
+        "application/x-rar"
+        "application/x-tar"
+        "application/gzip"
+        "application/x-gzip"
+        "application/x-bzip2"
+        "application/x-xz"
+        "application/x-iso9660-image"
+      ];
+      settings = {
+        NoDisplay = "true";
+      };
+    };
+  };
+
+  xdg.mimeApps = {
+    enable = true;
+
+    defaultApplications = {
+      "text/html" = [ firefoxDesktop ];
+      "application/xhtml+xml" = [ firefoxDesktop ];
+      "x-scheme-handler/http" = [ firefoxDesktop ];
+      "x-scheme-handler/https" = [ firefoxDesktop ];
+      "x-scheme-handler/mailto" = [ firefoxDesktop ];
+      "x-scheme-handler/webcal" = [ firefoxDesktop ];
+
+      "inode/directory" = [ pcmanfmDesktop ];
+
+      "text/plain" = [ nvimDesktop ];
+      "text/markdown" = [ nvimDesktop ];
+      "text/x-log" = [ nvimDesktop ];
+      "application/json" = [ nvimDesktop ];
+      "application/toml" = [ nvimDesktop ];
+      "application/x-yaml" = [ nvimDesktop ];
+      "text/xml" = [ nvimDesktop ];
+      "application/xml" = [ nvimDesktop ];
+      "text/x-shellscript" = [ nvimDesktop ];
+      "application/x-shellscript" = [ nvimDesktop ];
+      "text/x-python" = [ nvimDesktop ];
+      "text/x-java-source" = [ nvimDesktop ];
+      "text/javascript" = [ nvimDesktop ];
+      "application/javascript" = [ nvimDesktop ];
+      "text/x-lua" = [ nvimDesktop ];
+      "text/x-nix" = [ nvimDesktop ];
+
+      "application/pdf" = [ zathuraDesktop ];
+
+      "image/png" = [ imvDesktop ];
+      "image/jpeg" = [ imvDesktop ];
+      "image/gif" = [ imvDesktop ];
+      "image/webp" = [ imvDesktop ];
+      "image/bmp" = [ imvDesktop ];
+      "image/tiff" = [ imvDesktop ];
+      "image/svg+xml" = [ imvDesktop ];
+      "image/avif" = [ imvDesktop ];
+      "image/heic" = [ imvDesktop ];
+      "image/heif" = [ imvDesktop ];
+
+      "audio/mpeg" = [ mpvDesktop ];
+      "audio/flac" = [ mpvDesktop ];
+      "audio/wav" = [ mpvDesktop ];
+      "audio/ogg" = [ mpvDesktop ];
+      "audio/opus" = [ mpvDesktop ];
+      "audio/mp4" = [ mpvDesktop ];
+      "video/mp4" = [ mpvDesktop ];
+      "video/webm" = [ mpvDesktop ];
+      "video/x-matroska" = [ mpvDesktop ];
+      "video/quicktime" = [ mpvDesktop ];
+      "video/x-msvideo" = [ mpvDesktop ];
+      "video/mpeg" = [ mpvDesktop ];
+
+      "text/csv" = [ calcDesktop ];
+      "application/csv" = [ calcDesktop ];
+      "application/vnd.ms-excel" = [ calcDesktop ];
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" = [ calcDesktop ];
+      "application/vnd.oasis.opendocument.spreadsheet" = [ calcDesktop ];
+
+      "application/msword" = [ writerDesktop ];
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = [ writerDesktop ];
+      "application/vnd.oasis.opendocument.text" = [ writerDesktop ];
+      "application/rtf" = [ writerDesktop ];
+
+      "application/vnd.ms-powerpoint" = [ impressDesktop ];
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation" = [ impressDesktop ];
+      "application/vnd.oasis.opendocument.presentation" = [ impressDesktop ];
+
+      "application/zip" = [ archiveDesktop ];
+      "application/x-7z-compressed" = [ archiveDesktop ];
+      "application/vnd.rar" = [ archiveDesktop ];
+      "application/x-rar" = [ archiveDesktop ];
+      "application/x-tar" = [ archiveDesktop ];
+      "application/gzip" = [ archiveDesktop ];
+      "application/x-gzip" = [ archiveDesktop ];
+      "application/x-bzip2" = [ archiveDesktop ];
+      "application/x-xz" = [ archiveDesktop ];
+      "application/x-iso9660-image" = [ archiveDesktop ];
+    };
+
+    associations.added = {
+      "application/pdf" = [ okularDesktop ];
+    };
+
+  };
+}
+===== home/dani/programs/misc.nix =====
+{ pkgs, ... }:
+
+{
+  home.packages = with pkgs; [
+    restic
+
+    libreoffice
+    pcmanfm # or another file manager like thunar, nautilus, nemo, dolphin...
+    vesktop
+    warpd # modal keyboard driven interface for mouse manipulation, it works also on wayland
+  ];
+}
+
+===== home/dani/programs/whatsapp.nix =====
+{ config, pkgs, ... }:
+
+let
+  profileDir = "${config.home.homeDirectory}/.local/share/chromium-whatsapp";
+
+  whatsapp-web = pkgs.writeShellApplication {
+    name = "whatsapp-web";
+    runtimeInputs = [ pkgs.chromium ];
+    text = ''
+      exec ${pkgs.chromium}/bin/chromium \
+        --ozone-platform-hint=auto \
+        --enable-wayland-ime \
+        --password-store=basic \
+        --app=https://web.whatsapp.com \
+        --user-data-dir="${profileDir}" \
+        "$@"
+    '';
+  };
+in
+{
+  home.packages = [
+    whatsapp-web
+  ];
+
+  xdg.desktopEntries.whatsapp-web = {
+    name = "WhatsApp Web";
+    exec = "${whatsapp-web}/bin/whatsapp-web";
+    terminal = false;
+    categories = [ "Network" "InstantMessaging" ];
+    startupNotify = true;
+  };
+
+  # Super+Shift+W opens WhatsApp as a normal tiled window. The compact
+  # WhatsApp *scratchpad* is a separate thing — the Super+S menu's WhatsApp
+  # entry (defined in wm/hyprland.nix).
+  wayland.windowManager.hyprland.settings.bindd = [
+    "$mod SHIFT, W, WhatsApp Web, exec, ${whatsapp-web}/bin/whatsapp-web"
+  ];
+}
+===== home/dani/programs/yazi.nix =====
+{ pkgs, ... }:
+
+let
+  zathuraPkg = pkgs.zathura.override {
+    plugins = with pkgs.zathuraPkgs; [
+      zathura_pdf_mupdf
+    ];
+  };
+in
+{
+  programs.yazi = {
+    enable = true;
+
+    # Tokyo Night accents (see home/dani/wm/theme.nix for the palette)
+    theme = {
+      mgr = {
+        cwd = { fg = "#ff9e64"; bold = true; };
+        hovered = { fg = "#1a1b26"; bg = "#7aa2f7"; bold = true; };
+        preview_hovered = { fg = "#1a1b26"; bg = "#565f89"; };
+        find_keyword = { fg = "#e0af68"; bold = true; };
+        find_position = { fg = "#ff9e64"; };
+        marker_selected = { fg = "#9ece6a"; bg = "#9ece6a"; };
+        marker_copied = { fg = "#e0af68"; bg = "#e0af68"; };
+        marker_cut = { fg = "#f7768e"; bg = "#f7768e"; };
+        tab_active = { fg = "#1a1b26"; bg = "#7aa2f7"; };
+        tab_inactive = { fg = "#c0caf5"; bg = "#24283b"; };
+        border_style = { fg = "#565f89"; };
+      };
+
+      status = {
+        mode_normal = { fg = "#1a1b26"; bg = "#7aa2f7"; bold = true; };
+        mode_select = { fg = "#1a1b26"; bg = "#9ece6a"; bold = true; };
+        mode_unset = { fg = "#1a1b26"; bg = "#ff9e64"; bold = true; };
+        progress_label = { fg = "#c0caf5"; bold = true; };
+        progress_normal = { fg = "#7aa2f7"; bg = "#1a1b26"; };
+        progress_error = { fg = "#f7768e"; bg = "#1a1b26"; };
+      };
+    };
+
+    settings = {
+      opener = {
+        edit = [
+          {
+            run = "${pkgs.neovim}/bin/nvim \"$@\"";
+            block = true;
+            desc = "Neovim";
+            for = "linux";
+          }
+        ];
+
+        open = [
+          {
+            run = "${pkgs.xdg-utils}/bin/xdg-open \"$1\"";
+            orphan = true;
+            desc = "Open";
+            for = "linux";
+          }
+        ];
+
+        reveal = [
+          {
+            run = "${pkgs.pcmanfm}/bin/pcmanfm \"$(dirname \"$1\")\"";
+            orphan = true;
+            desc = "Reveal in PCManFM";
+            for = "linux";
+          }
+        ];
+
+        pdf = [
+          {
+            run = "${zathuraPkg}/bin/zathura \"$1\"";
+            orphan = true;
+            desc = "Zathura";
+            for = "linux";
+          }
+        ];
+
+        pdf_okular = [
+          {
+            run = "${pkgs.kdePackages.okular}/bin/okular \"$1\"";
+            orphan = true;
+            desc = "Okular";
+            for = "linux";
+          }
+        ];
+
+        image = [
+          {
+            run = "${pkgs.imv}/bin/imv \"$1\"";
+            orphan = true;
+            desc = "imv";
+            for = "linux";
+          }
+        ];
+
+        play = [
+          {
+            run = "${pkgs.mpv}/bin/mpv \"$1\"";
+            orphan = true;
+            desc = "mpv";
+            for = "linux";
+          }
+        ];
+
+        spreadsheet = [
+          {
+            run = "${pkgs.libreoffice}/bin/libreoffice --calc \"$1\"";
+            orphan = true;
+            desc = "LibreOffice Calc";
+            for = "linux";
+          }
+        ];
+
+        archive = [
+          {
+            run = "${pkgs.file-roller}/bin/file-roller \"$1\"";
+            orphan = true;
+            desc = "File Roller";
+            for = "linux";
+          }
+        ];
+      };
+
+      open.prepend_rules = [
+        # Strong explicit matches first
+        { url = "*.pdf"; use = [ "pdf" "pdf_okular" "open" ]; }
+        { url = "*.csv"; use = [ "edit" "spreadsheet" "open" ]; }
+        { url = "*.toml"; use = "edit"; }
+        { url = "*.yaml"; use = "edit"; }
+        { url = "*.yml"; use = "edit"; }
+        { url = "*.json"; use = "edit"; }
+        { url = "*.nix"; use = "edit"; }
+
+        # MIME-based rules
+        { mime = "application/pdf"; use = [ "pdf" "pdf_okular" "open" ]; }
+        { mime = "text/*"; use = "edit"; }
+        { mime = "application/json"; use = "edit"; }
+        { mime = "application/*+json"; use = "edit"; }
+        { mime = "application/xml"; use = "edit"; }
+
+        { mime = "image/*"; use = [ "image" "open" ]; }
+        { mime = "video/*"; use = [ "play" "open" ]; }
+        { mime = "audio/*"; use = [ "play" "open" ]; }
+
+        { mime = "application/vnd.ms-excel"; use = [ "spreadsheet" "open" ]; }
+        { mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; use = [ "spreadsheet" "open" ]; }
+        { mime = "application/vnd.oasis.opendocument.spreadsheet"; use = [ "spreadsheet" "open" ]; }
+
+        { mime = "application/zip"; use = [ "archive" "open" ]; }
+        { mime = "application/x-7z-compressed"; use = [ "archive" "open" ]; }
+        { mime = "application/vnd.rar"; use = [ "archive" "open" ]; }
+        { mime = "application/x-rar"; use = [ "archive" "open" ]; }
+        { mime = "application/x-tar"; use = [ "archive" "open" ]; }
+        { mime = "application/gzip"; use = [ "archive" "open" ]; }
+        { mime = "application/x-gzip"; use = [ "archive" "open" ]; }
+        { mime = "application/x-bzip2"; use = [ "archive" "open" ]; }
+        { mime = "application/x-xz"; use = [ "archive" "open" ]; }
+      ];
+    };
+  };
+}
+===== home/dani/shell/alacritty.nix =====
+{
+  ...
+}:
+
+{
+  programs.alacritty = {
+    enable = true;
+
+    settings = {
+
+      env = {
+        TERM = "xterm-256color";
+      };
+
+      font = {
+        normal = { family = "CaskaydiaMono Nerd Font Mono"; style = "Regular"; };
+        bold   = { family = "CaskaydiaMono Nerd Font Mono"; style = "Bold"; };
+        italic = { family = "CaskaydiaMono Nerd Font Mono"; style = "Italic"; };
+        size = 13.0;
+      };
+
+      window = {
+        opacity = 0.96;
+        padding = {
+          x = 8;
+          y = 8;
+        };
+      };
+
+      colors = {
+        primary = {
+          background = "0x1a1b26";
+          foreground = "0xa9b1d6";
+        };
+
+        cursor = {
+          text = "0x1a1b26";
+          cursor = "0xc0caf5";
+        };
+
+        selection = {
+          # dark-blue wash that keeps the text's own colors readable
+          # (same #283457 fish uses for its selection); the old solid
+          # #7aa2f7 fill put pale lavender on mid-blue at ~1.6:1
+          text = "CellForeground";
+          background = "0x283457";
+        };
+
+        normal = {
+          black = "0x32344a";
+          red = "0xf7768e";
+          green = "0x9ece6a";
+          yellow = "0xe0af68";
+          blue = "0x7aa2f7";
+          magenta = "0xad8ee6";
+          # cyan reads as teal on purpose (tokyonight-moon family): Dani
+          # can't tell blue-ish cyan from blue/white fast. white lightened
+          # from canon 0x787c99 (4.2:1) for legibility
+          cyan = "0x53c7ad";
+          white = "0xa2a5b9";
+        };
+
+        bright = {
+          # lightened from canon 0x444b6a (2.5:1) — bright black is what
+          # CLIs use for "muted" text and it was nearly invisible
+          black = "0x737aa2";
+          red = "0xff7a93";
+          green = "0xb9f27c";
+          yellow = "0xff9e64";
+          blue = "0x7da6ff";
+          magenta = "0xbb9af7";
+          cyan = "0x4fd6be";
+          white = "0xacb0d0";
+        };
+      };
+
+      keyboard.bindings = [
+        { key = "Insert"; mods = "Shift";   action = "Paste"; }
+        { key = "Insert"; mods = "Control"; action = "Copy";  }
+        { key = "C"; mods = "Super"; action = "Copy"; }
+        { key = "V"; mods = "Super"; action = "Paste"; }
+      ];
+
+      terminal = {
+        osc52 = "OnlyCopy";
+      };
+
+
+    };
+  };
+}
+
+===== home/dani/shell/btop.nix =====
+{ ... }:
+
+{
+  # Tokyo Night btop with the desktop's role mapping: slate boxes, blue
+  # accent for selection/highlights, and the sunset gradient
+  # (yellow -> orange -> red, same as the Hyprland active border) on the
+  # graphs that mean "load" — cpu, temperature, used memory.
+  programs.btop = {
+    enable = true;
+    settings = {
+      color_theme = "tokyo-sunset";
+      # transparent main bg: btop inherits Alacritty's glass instead of
+      # painting an opaque slab over it
+      theme_background = false;
+      vim_keys = true; # h/j/k/l, like fish/hyprland
+    };
+  };
+
+  xdg.configFile."btop/themes/tokyo-sunset.theme".text = ''
+    # Tokyo Night "sunset" — matches home/dani/wm/theme.nix palette
+    theme[main_bg]="#1a1b26"
+    theme[main_fg]="#c0caf5"
+    theme[title]="#c0caf5"
+    theme[hi_fg]="#7aa2f7"
+    theme[selected_bg]="#283457"
+    theme[selected_fg]="#c0caf5"
+    theme[inactive_fg]="#565f89"
+    theme[graph_text]="#a0a5c0"
+    theme[meter_bg]="#24283b"
+    theme[proc_misc]="#7aa2f7"
+
+    theme[cpu_box]="#565f89"
+    theme[mem_box]="#565f89"
+    theme[net_box]="#565f89"
+    theme[proc_box]="#565f89"
+    theme[div_line]="#565f89"
+
+    # temperature: calm green until it isn't
+    theme[temp_start]="#9ece6a"
+    theme[temp_mid]="#e0af68"
+    theme[temp_end]="#f7768e"
+
+    # cpu load: the sunset gradient, like the active window border
+    theme[cpu_start]="#e0af68"
+    theme[cpu_mid]="#ff9e64"
+    theme[cpu_end]="#f7768e"
+
+    # memory: free/available stay green, cached goes teal (the palette's
+    # "cyan"), used climbs the sunset
+    theme[free_start]="#9ece6a"
+    theme[free_mid]="#b9f27c"
+    theme[free_end]="#b9f27c"
+    theme[cached_start]="#4fd6be"
+    theme[cached_mid]="#4fd6be"
+    theme[cached_end]="#53c7ad"
+    theme[available_start]="#9ece6a"
+    theme[available_mid]="#b9f27c"
+    theme[available_end]="#b9f27c"
+    theme[used_start]="#e0af68"
+    theme[used_mid]="#ff9e64"
+    theme[used_end]="#f7768e"
+
+    # network: blue family down, orange family up (accent vs attention)
+    theme[download_start]="#3d59a1"
+    theme[download_mid]="#7aa2f7"
+    theme[download_end]="#7da6ff"
+    theme[upload_start]="#e0af68"
+    theme[upload_mid]="#ff9e64"
+    theme[upload_end]="#f7768e"
+
+    theme[process_start]="#7aa2f7"
+    theme[process_mid]="#bb9af7"
+    theme[process_end]="#f7768e"
+  '';
+}
+===== home/dani/shell/cli.nix =====
+{ pkgs, ... }:
+
+{
+  home.packages = with pkgs; [
+    # improved core utils
+    eza
+    fd
+    ripgrep
+    fzf
+    zoxide
+    jq
+    yq
+    tree
+
+    # system and monitoring (btop lives in btop.nix with its theme)
+    htop
+    lsof
+    ncdu
+    strace
+    ltrace
+    gdu
+    smartmontools
+
+    # networking
+    curl
+    wget
+    mtr
+    nmap
+    iperf3
+    dnsutils
+    openssh
+    netcat-gnu
+    socat
+    nftables # `nft` CLI
+
+    # file transfer / sync
+    rsync
+
+    # security
+    gnupg
+
+    # version control (lazygit lives in devtools.nix as programs.lazygit
+    # so its Tokyo Night theme travels with the package)
+    git
+
+    # misc
+    unzip
+    zip
+    file
+    rlwrap
+    wev
+    yazi
+    parted
+    byobu
+    poppler-utils
+    qpdf
+  ];
+
+  # "ansi" maps bat's syntax colors onto the terminal's 16-color palette,
+  # i.e. the calibrated Tokyo Night in alacritty.nix — instead of the
+  # default Monokai, which fights the scheme
+  programs.bat = {
+    enable = true;
+    config.theme = "ansi";
+  };
+
+  home.sessionVariables = {
+    EDITOR    = "nvim";
+    VISUAL    = "nvim";
+    PAGER     = "less -R";
+    MANPAGER  = "less -R";
+  };
+}
+
+===== home/dani/shell/default.nix =====
+{
+  imports = [
+    ./btop.nix
+    ./cli.nix
+    ./tmux.nix
+    ./starship.nix
+    ./fish.nix
+    ./zellij.nix
+    ./alacritty.nix
+  ];
+}
+
+===== home/dani/shell/fish.nix =====
+{ config, pkgs, ... }:
+
+{ 
+  programs.fzf = {
+    enable = true;
+    enableFishIntegration = false; # it is sourced later
+
+    defaultCommand = "fd --type f --hidden --follow --exclude .git";
+
+    # Tokyo Night, same role mapping as the rest of the desktop:
+    # #283457 selection wash (fish/alacritty selection), orange for
+    # matches (yazi find tier), blue for the prompt/position accents,
+    # #a0a5c0 as the AAA-calibrated muted
+    colors = {
+      "fg" = "#a9b1d6";
+      "fg+" = "#c0caf5";
+      "bg" = "-1";
+      "bg+" = "#283457";
+      "hl" = "#ff9e64";
+      "hl+" = "#ff9e64";
+      "info" = "#a0a5c0";
+      "header" = "#a0a5c0";
+      "prompt" = "#7aa2f7";
+      "pointer" = "#ff9e64";
+      "marker" = "#9ece6a";
+      "spinner" = "#ff9e64";
+      "border" = "#565f89";
+      "separator" = "#565f89";
+      "scrollbar" = "#565f89";
+    };
+
+    historyWidgetOptions = [
+      "--layout=reverse"
+      "--height=40%"
+      "--border"
+    ];
+  };
+
+  programs.fish = {
+    enable = true;
+
+    # Abbreviation
+    shellAbbrs = { 
+      gs  = "git status";
+      ga  = "git add -A";
+      gcm = "git commit -m";
+      gl  = "git log --oneline --graph --decorate";
+
+      # Non-compliant packages with Comma syntax should follow the cowsay example below
+      cowsay-run = "nix run nixpkgs#cowsay --";
+      evtest-run = "sudo nix run nixpkgs#evtest --";
+    };
+
+    # Aliases
+    shellAliases = {
+      n = "nvim";   
+      gl = "git log --oneline --graph --decorate";
+      ll = "eza -lah --icons --group-directories-first";
+      lg = "lazygit";
+    };
+
+    functions = {
+      fish_greeting = ''
+        set -l host (prompt_hostname)
+        set -l user $USER
+        set -l shell "fish"
+
+        # Friendly aliases for ugly real hostnames
+        switch $host
+          case 'nixos-desktop'
+            set host "desktop"
+          case 'thinkpad'
+            set host "laptop"
+          case 'vps-01'
+            set host "server"
+        end
+
+        # Detect remote session
+        set -l is_remote 0
+        if set -q SSH_TTY; or set -q SSH_CONNECTION; or set -q SSH_CLIENT
+          set is_remote 1
+        end
+
+        # Restrained Tokyo Night palette
+        set -l comment "#565f89"
+        set -l fg      "#c0caf5"
+        set -l blue    "#7aa2f7"
+        set -l purple  "#bb9af7"
+
+        set -l role "local"
+        set -l role_color $comment
+        if test $is_remote -eq 1
+          set role "remote"
+          set role_color $purple
+        end
+
+        set_color $comment
+        printf "╭─ "
+
+        set_color $fg
+        printf "%s" $user
+
+        set_color $comment
+        printf "@"
+
+        set_color --bold $blue
+        printf "%s" $host
+
+        set_color $comment
+        printf " · "
+
+        set_color $role_color
+        printf "%s" $role
+
+        set_color $comment
+        printf " · "
+
+        set_color $comment
+        printf "%s" $shell
+
+        set_color normal
+        echo
+      '';
+    };
+
+    # Extra initialization when an interactive fish starts
+    interactiveShellInit = ''
+      # vi-style keybindings
+      fish_vi_key_bindings
+
+      # zoxide
+      if type -q zoxide
+        zoxide init fish | source
+      end
+
+      # ---- Tokyo Night syntax colors, calibrated to WCAG AAA (>=7:1
+      # on #1a1b26) — same hues, lightness raised where canon fell short
+      set -g fish_color_normal c0caf5
+      set -g fish_color_command 7ea5f7
+      set -g fish_color_keyword bb9af7
+      set -g fish_color_quote 9ece6a
+      set -g fish_color_redirection ff9e64
+      set -g fish_color_end ff9e64
+      set -g fish_color_error f88298
+      set -g fish_color_param c0caf5
+      set -g fish_color_comment a0a5c0
+      set -g fish_color_operator ff9e64
+      set -g fish_color_escape bb9af7
+      set -g fish_color_autosuggestion a0a5c0
+      set -g fish_color_cancel f88298
+      set -g fish_color_search_match --background=3d59a1
+      set -g fish_color_selection --background=283457
+      set -g fish_color_valid_path --underline
+
+      set -g fish_pager_color_progress ff9e64
+      set -g fish_pager_color_prefix ff9e64
+      set -g fish_pager_color_completion c0caf5
+      set -g fish_pager_color_description a0a5c0
+      set -g fish_pager_color_selected_background --background=283457
+    '';
+
+    shellInitLast = ''
+      fzf --fish | source
+    '';
+  };
+}
+===== home/dani/shell/starship.nix =====
+{ ... }:
+
+{
+  programs.starship = {
+    enable = true;
+    enableFishIntegration = true;
+
+    settings = {
+      add_newline = false;
+
+      format = "$directory$git_branch$git_status$character";
+
+      # Lock the named colors to Tokyo Night instead of whatever the
+      # terminal maps them to
+      # Tokyo Night hues, AAA-calibrated for text (>=7:1 on #1a1b26).
+      # No cyan in the prompt: Dani can't tell it apart from blue/white
+      # fast — its roles went to the sunset orange (max hue distance
+      # from blue, matches the desktop accent).
+      palette = "tokyo_night";
+      palettes.tokyo_night = {
+        cyan = "#4fd6be"; # teal, for any straggler "cyan" style
+        blue = "#7ea5f7";
+        green = "#9ece6a";
+        yellow = "#e0af68";
+        red = "#f88298";
+        purple = "#bb9af7";
+        orange = "#ff9e64";
+      };
+
+      directory = {
+        truncation_length = 3;
+      	truncate_to_repo = true;
+        # blue accent: the terminal is its own dark surface, so it takes
+        # the Tokyo Night blue like waybar — sunset stays on the ❯ pop
+	      style = "bold blue";
+	      format = "[$path]($style)";
+      };
+
+      git_branch = {
+        format = " [$branch]($style)";
+        # directory + git segment form one blue "location" block: path in
+        # the filesystem (bold), branch in git history (italic)
+        style = "italic blue";
+        truncation_length = 20;
+      };
+
+      git_status = {
+        format = "([ $all_status]($style))";
+        # same blue as the branch: the whole git segment stays one unit
+        style = "blue";
+	      conflicted = "⚔ ";
+        ahead      = "↑";
+        behind     = "↓";
+        diverged   = "↕";
+        untracked  = "?";
+      	stashed    = "\\$";
+        modified   = "!";
+        staged     = "+";
+        renamed    = "» ";
+        deleted    = "🗑 ";
+      };
+
+      character = {
+        success_symbol = " [❯](bold orange)";
+        error_symbol   = " [✗](bold red)";
+        vimcmd_symbol  = " [❮](bold green)";
+        vimcmd_visual_symbol = " [❮](bold purple)";
+        vimcmd_replace_symbol = " [❮](bold red)";
+        vimcmd_replace_one_symbol = " [❮](bold red)";
+      };
+
+      ################
+      # Disable noise
+      ################
+
+      username.disabled         = true;
+      hostname.disabled         = true;
+      time.disabled             = true;
+      cmd_duration.disabled     = true;
+      nodejs.disabled           = true;
+      python.disabled           = true;
+      rust.disabled             = true;
+      java.disabled             = true;
+      docker_context.disabled   = true;
+      aws.disabled              = true;
+      gcloud.disabled           = true;
+      kubernetes.disabled       = true;
+      terraform.disabled        = true;
+      package.disabled          = true;
+    };
+  };
+}
+
+===== home/dani/shell/tmux.nix =====
+{ config, pkgs, ... }:
+
+let
+  # Oh My Tmux, fetched once, pinned to a specific commit
+  ohMyTmux = pkgs.fetchFromGitHub {
+    owner = "gpakosz";
+    repo  = ".tmux";
+
+    # 1) Put a real commit hash here from https://github.com/gpakosz/.tmux
+    #    For example: rev = "abcd1234....";
+    rev    = "5b34d9a873b8bfe608004d59b08e81389ce7b6a9";
+
+    # 2) Put the corresponding sha256 here (see instructions below)
+    sha256 = "sha256-0suqQJvB7OfUuxw8ruRbBOSjv+hHy2mfwsvJKbg5csQ=";
+  };
+in
+{
+  programs.tmux = {
+    enable = true;
+    package = pkgs.tmux;
+
+    # Nice defaults that don’t fight Oh My Tmux
+    mouse        = true;      # scrolling, clicking panes
+    keyMode      = "vi";      # vi-style keys in prompts / copy-mode
+    historyLimit = 100000;
+    escapeTime   = 0;         # better for Neovim, fzf, etc.
+    baseIndex    = 1;         # windows start at 1
+    clock24      = true;
+    terminal     = "tmux-256color";
+
+    # Plugins managed by Nix (no TPM needed)
+    plugins = with pkgs.tmuxPlugins; [
+      {
+        plugin = resurrect;
+        extraConfig = ''
+          # Better Neovim/Vim restore behavior
+          set -g @resurrect-strategy-nvim 'session'
+          set -g @resurrect-strategy-vim  'session'
+
+          # Save pane scrollback contents too
+          set -g @resurrect-capture-pane-contents 'on'
+        '';
+      }
+      {
+        plugin = continuum;
+        extraConfig = ''
+          # Auto-restore sessions on tmux start
+          set -g @continuum-restore 'on'
+
+          # Autosave every 15 minutes
+          set -g @continuum-save-interval '15'
+        '';
+      }
+      yank
+
+      extrakto
+
+      vim-tmux-navigator
+    ];
+
+    # Load Oh My Tmux as the base config
+    extraConfig = ''
+      # Make Oh My Tmux aware of its real config + local config
+      set-environment -g TMUX_CONF "${ohMyTmux}/.tmux.conf"
+      set-environment -g TMUX_CONF_LOCAL "$HOME/.tmux.conf.local"
+
+      # Load Oh My Tmux
+      source-file "${ohMyTmux}/.tmux.conf"
+    '';
+  };
+
+  # Oh My Tmux automatically loads ~/.tmux.conf.local if it exists.
+  # We let Home Manager manage that file for you.
+  home.file.".tmux.conf.local".text = ''
+    # ================= Prefix & Ergonomics =====================
+
+    # Drop Oh My Tmux's dual-prefix (C-b + C-a) and use Ctrl-Space only
+    set -gu prefix2
+    unbind C-b
+    unbind C-a
+    set -g prefix C-Space
+    bind C-Space send-prefix
+
+    # Reload config quickly
+    bind r source-file ~/.tmux.conf \; display-message "tmux.conf reloaded"
+
+    # Ensure vi-style keys in copy-mode + status (redundant but explicit)
+    setw -g mode-keys vi
+    set -g status-keys vi
+
+    # ================= Tokyo Night theme =======================
+    # Oh My Tmux colour slots remapped to the shared palette
+    # (see home/dani/wm/theme.nix)
+
+    tmux_conf_theme_colour_1="#1a1b26"   # background
+    tmux_conf_theme_colour_2="#24283b"   # window background
+    tmux_conf_theme_colour_3="#a9b1d6"   # inactive text (kept bright for legibility)
+    tmux_conf_theme_colour_4="#7aa2f7"   # accent (active pane, highlights)
+    tmux_conf_theme_colour_5="#e0af68"   # session name
+    tmux_conf_theme_colour_6="#1a1b26"
+    tmux_conf_theme_colour_7="#c0caf5"   # foreground
+    tmux_conf_theme_colour_8="#1a1b26"
+    tmux_conf_theme_colour_9="#e0af68"
+    tmux_conf_theme_colour_10="#ff9e64"  # prefix/mode indicator
+    tmux_conf_theme_colour_11="#9ece6a"  # copy mode
+    tmux_conf_theme_colour_12="#a9b1d6"
+    tmux_conf_theme_colour_13="#c0caf5"
+    tmux_conf_theme_colour_14="#1a1b26"
+    tmux_conf_theme_colour_15="#c0caf5"
+    tmux_conf_theme_colour_16="#f7768e"  # alerts
+    tmux_conf_theme_colour_17="#c0caf5"
+  '';
+}
+
+===== home/dani/shell/zellij.nix =====
+{
+  config,
+  pkgs,
+  ...
+}:
+
+{
+  programs.zellij = {
+    enable = true;
+    settings = {
+      # Custom granular theme (zellij >= 0.40 style spec) instead of the
+      # built-in tokyo-night-dark: the old 10-slot spec let zellij pick
+      # its own UI mapping — bright green tab pills and frames. Here every
+      # element is explicit. Design rule: dark surface -> blue accent
+      # (like waybar); orange only as emphasis pop.
+      theme = "tokyo-sunset";
+
+      themes.tokyo-sunset = {
+        text_unselected = {
+          base = "#a0a5c0";
+          background = "#1a1b26";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#b9f27c";
+          emphasis_2 = "#7ea5f7";
+          emphasis_3 = "#bb9af7";
+        };
+        text_selected = {
+          base = "#c0caf5";
+          background = "#283457";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#b9f27c";
+          emphasis_2 = "#7ea5f7";
+          emphasis_3 = "#bb9af7";
+        };
+        ribbon_selected = {
+          # active tab / mode pill: dark text on Tokyo Night blue
+          base = "#1a1b26";
+          background = "#7aa2f7";
+          emphasis_0 = "#f7768e";
+          emphasis_1 = "#1a1b26";
+          emphasis_2 = "#1a1b26";
+          emphasis_3 = "#1a1b26";
+        };
+        ribbon_unselected = {
+          base = "#a0a5c0";
+          background = "#24283b";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#c0caf5";
+          emphasis_2 = "#a0a5c0";
+          emphasis_3 = "#a0a5c0";
+        };
+        table_title = {
+          base = "#7ea5f7";
+          background = "#1a1b26";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#b9f27c";
+          emphasis_2 = "#7ea5f7";
+          emphasis_3 = "#bb9af7";
+        };
+        table_cell_selected = {
+          base = "#c0caf5";
+          background = "#283457";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#b9f27c";
+          emphasis_2 = "#7ea5f7";
+          emphasis_3 = "#bb9af7";
+        };
+        table_cell_unselected = {
+          base = "#a0a5c0";
+          background = "#1a1b26";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#b9f27c";
+          emphasis_2 = "#7ea5f7";
+          emphasis_3 = "#bb9af7";
+        };
+        list_selected = {
+          base = "#c0caf5";
+          background = "#283457";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#b9f27c";
+          emphasis_2 = "#7ea5f7";
+          emphasis_3 = "#bb9af7";
+        };
+        list_unselected = {
+          base = "#a0a5c0";
+          background = "#1a1b26";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#b9f27c";
+          emphasis_2 = "#7ea5f7";
+          emphasis_3 = "#bb9af7";
+        };
+        frame_selected = {
+          # active pane frame: blue accent, matching the dark-surface rule
+          base = "#7aa2f7";
+          background = "#1a1b26";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#e0af68";
+          emphasis_2 = "#f7768e";
+          emphasis_3 = "#bb9af7";
+        };
+        frame_unselected = {
+          # same muted slate as Hyprland's inactive window border
+          base = "#565f89";
+          background = "#1a1b26";
+          emphasis_0 = "#ff9e64";
+          emphasis_1 = "#e0af68";
+          emphasis_2 = "#f7768e";
+          emphasis_3 = "#bb9af7";
+        };
+        frame_highlight = {
+          # attention (resize, pinned, search hits): the sunset pop
+          base = "#ff9e64";
+          background = "#1a1b26";
+          emphasis_0 = "#e0af68";
+          emphasis_1 = "#ff9e64";
+          emphasis_2 = "#ff9e64";
+          emphasis_3 = "#ff9e64";
+        };
+        exit_code_success = {
+          base = "#9ece6a";
+          background = "#1a1b26";
+          emphasis_0 = "#b9f27c";
+          emphasis_1 = "#9ece6a";
+          emphasis_2 = "#9ece6a";
+          emphasis_3 = "#9ece6a";
+        };
+        exit_code_error = {
+          base = "#f88298";
+          background = "#1a1b26";
+          emphasis_0 = "#f7768e";
+          emphasis_1 = "#f88298";
+          emphasis_2 = "#f88298";
+          emphasis_3 = "#f88298";
+        };
+        multiplayer_user_colors = [
+          "#ff9e64"
+          "#7aa2f7"
+          "#b9f27c"
+          "#bb9af7"
+          "#e0af68"
+          "#f88298"
+          "#4fd6be"
+          "#c0caf5"
+          "#9ece6a"
+          "#7ea5f7"
+        ];
+      };
+    };
+  };
+}
