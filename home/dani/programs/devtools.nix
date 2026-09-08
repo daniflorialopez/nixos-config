@@ -12,6 +12,9 @@ in
 {
   home.packages = with pkgs; [
     unstablePkgs.claude-code
+    # Codex is free (Apache-2.0), but it ships releases far faster than the
+    # stable channel tracks: 0.92.0 there vs 0.146.0 on unstable.
+    unstablePkgs.codex
 
     obsidian
     virt-manager   # GUI; the backend is managed on NixOS side
