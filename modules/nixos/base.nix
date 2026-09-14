@@ -29,6 +29,24 @@
       # Enough time to comfortably choose NixOS or Windows.
       timeout = 2;
     };
+
+    # Native, NixOS-branded Breeze Plymouth theme.
+    plymouth = {
+      enable = true;
+      theme = "breeze";
+    };
+
+    # Suppress routine kernel chatter, but retain errors.
+    consoleLogLevel = 3;
+
+    # Don't dump initrd activity onto the screen.
+    initrd.verbose = false;
+
+    # `quiet` also makes systemd normally stay quiet while still
+    # showing status automatically when something fails or takes too long.
+    kernelParams = [
+      "quiet"
+    ];
   };
 
   # Don't block graphical.target ~5s waiting for the network: nothing

@@ -16,6 +16,11 @@ core Nix/boot settings every host shares.
   back, without the menu filling up. `consoleMode = "0"` for large, readable
   UEFI text on the Legion panel. `editor` is left at its default (`true`) on
   purpose: it's another way back into a broken system.
+- **Quiet boot behind a splash:** `plymouth` (Breeze theme), `consoleLogLevel =
+  3`, `initrd.verbose = false`, and `quiet` in `kernelParams` (the plymouth
+  module adds `splash` itself). Routine kernel and initrd chatter is hidden;
+  **errors still print**, and systemd breaks its own silence when a unit fails
+  or takes too long — so a boot that goes wrong still shows you why.
 - `NetworkManager-wait-online` disabled — nothing at login needs the network,
   so don't block `graphical.target` ~5s waiting for Wi-Fi.
 - **zramSwap enabled** — compressed RAM-backed swap. Added after memory spikes
