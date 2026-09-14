@@ -12,7 +12,19 @@
       "Bash(powerprofilesctl get)",
       "Bash(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)",
       "Bash(cat /sys/firmware/acpi/platform_profile)",
-      "Bash(cat /sys/firmware/acpi/platform_profile_choices)"
+      "Bash(cat /sys/firmware/acpi/platform_profile_choices)",
+      "Bash(awk *)",
+      "Read(//home/dani/**)",
+      "Bash(journalctl -u restic-backups-remote.service --since \"2026-07-23\" --no-pager)",
+      "Bash(journalctl -u restic-backups-remote.service --since \"2026-07-27\" --no-pager)",
+      "Bash(git -C ~/nixos-config status --short)",
+      "Bash(git -C ~/nixos-config diff --stat)",
+      "Bash(git -C ~/nixos-config diff --cached --stat)",
+      "Bash(git -C ~/nixos-config log --oneline -6)",
+      "Bash(git -C ~/nixos-config log --stat -3 --format=\"%h %s\")",
+      "Read(//sys/class/backlight/**)",
+      "Read(//var/log/journal/**)",
+      "Bash(journalctl --list-boots)"
     ],
     "deny": [
       "Bash(sudo:*)",
