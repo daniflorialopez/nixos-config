@@ -224,6 +224,12 @@ Config highlights:
   (`Return`=terminal, `Space`=walker, `M`=files, `B`=firefox profiles, …).
 - **`$mod+P` = clipboard history** (not V — keyd steals Super+V, see
   [keyd.nix](modules.md#keydnix)). `$mod+Escape` = hyprlock.
+- **`$mod SHIFT+Escape` = log out** — a two-card confirmation (Cancel ×,
+  Log out ⭘→), Cancel pre-selected, Escape closes it. It's an elephant `menus`
+  provider like the `$mod+S` board, because walker's dmenu mode takes plain
+  lines and can't carry icons. Logging out restarts the display manager rather
+  than stopping UWSM: SDDM won't put the greeter back by itself, see
+  [desktop/sddm.nix](modules.md#desktopsddmnix--login-greeter).
 - **Pickers, all through walker:** `$mod+Tab` searchable window switcher
   (`$mod SHIFT+Tab` stays a raw reverse-cycle for fast two-window flicks),
   `$mod+.` emoji & symbols (mirrors walker's `.` prefix), `$mod+D` colour

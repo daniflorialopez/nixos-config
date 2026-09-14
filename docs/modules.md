@@ -290,6 +290,22 @@ scene. Blue accents, orange only on hover (the shared role rule — see
   session stays Wayland.**
 - Bibata cursor matches the desktop (`home/dani/wm/cursor.nix`).
 - `services.xserver.enable = true` here is also what Cinnamon (X11) needs.
+- **`logout-to-greeter.service` + a unit-scoped polkit rule.** SDDM does not
+  bring the greeter back when a UWSM session ends: `uwsm start -F` inherits the
+  compositor unit's exit status, which here is essentially always non-zero
+  (Hyprland core-dumps on teardown under the NVIDIA driver, or the unit hits
+  `TimeoutStopSec` with something still alive), `sddm-helper` exits 1, and SDDM
+  reads that as a crashed session and does nothing at all — greeter never
+  restarts, X server sits on its own VT, and what's on screen is a dead console
+  with a blinking cursor. So logging out restarts `display-manager.service`
+  instead, which is the same path a reboot already takes. The polkit rule is
+  scoped to that one unit, the `start` verb, and a local active `wheel`
+  session, so `$mod SHIFT+Escape` doesn't raise a password prompt on the way
+  out. Started only by the logout menu's "Log out" action
+  (`elephant/menus/logout.toml`, written from `home/dani/wm/hyprland.nix`).
+  polkit resolves elephant's process to the active local session, so the rule
+  applies even though the action runs from `elephant.service` rather than from
+  the compositor's own scope.
 
 ### desktop/hyprland.nix — Hyprland (system side)
 

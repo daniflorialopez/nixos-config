@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   ...
 }:
@@ -108,4 +109,39 @@ in
       qtvirtualkeyboard
     ];
   };
+
+  # Logging out has to restart the whole display manager, because SDDM will
+  # not put the greeter back on its own. When a uwsm session ends, uwsm's
+  # foreground process inherits the compositor unit's exit status, which on
+  # this machine is virtually always non-zero (Hyprland core-dumps on
+  # teardown under the NVIDIA driver, or the unit hits TimeoutStopSec with a
+  # process still alive). sddm-helper then exits 1, SDDM reads that as "the
+  # session crashed" and simply sits there: greeter never restarts, X server
+  # stays up on its own VT, and the screen the user is looking at is a dead
+  # console. Observed 2026-09-08 22:57:48, twenty-four seconds of nothing
+  # until Ctrl+Alt+Del. Restarting display-manager.service sidesteps SDDM's
+  # state machine entirely and is the same path a reboot already takes.
+  systemd.services.logout-to-greeter = {
+    description = "Return to the login greeter";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${config.systemd.package}/bin/systemctl restart display-manager.service";
+    };
+    # deliberately NOT wantedBy anything - only ever started by the logout
+    # menu's "Log out" action (home/dani/wm/hyprland.nix)
+  };
+
+  # Passwordless start of this single unit for the seated user, so the logout
+  # bind doesn't raise a polkit password prompt on the way out. Scoped to the
+  # exact unit and verb, and to a local active session in wheel.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.freedesktop.systemd1.manage-units" &&
+          action.lookup("unit") == "logout-to-greeter.service" &&
+          action.lookup("verb") == "start" &&
+          subject.isInGroup("wheel") && subject.local && subject.active) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 }

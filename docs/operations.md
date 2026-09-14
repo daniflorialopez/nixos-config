@@ -138,11 +138,12 @@ nix store optimise               # dedup the store
 
 Boot entries are capped at 10 (`configurationLimit`).
 
-## Wallpaper, lock, notifications (quick reference)
+## Wallpaper, lock, logout, notifications (quick reference)
 
 - **Wallpaper:** `$mod CTRL+W` → waytrogen picker → applies to both monitors.
 - **Lock:** `$mod+Escape` (manual only; no idle auto-lock). Locks before
   suspend automatically.
+- **Log out:** `$mod SHIFT+Escape` → confirm **Log out** → SDDM login greeter.
 - **Notifications:** persist until dismissed — `$mod+'` newest,
   `$mod SHIFT+'` all, `$mod CTRL+'` restore last.
 - **Keybind palette:** `$mod+/` — searchable list of *live* binds.

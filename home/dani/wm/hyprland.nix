@@ -216,7 +216,7 @@ let
             if (a ~ /wpctl|playerctl|output-volume/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
             if (a ~ /-m windows|scratchpad/) return "Windows"
-            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu|color-pick/) return "System"
+            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:logout/) return "System"
             return "Apps"
           }
           return "Other"
@@ -421,7 +421,6 @@ in
         "$mod, Return, Alacritty, exec, $terminal"
         "$mod, Space, Walker and Elephant, exec, walker --theme dani-soft"
         "$mod, W, Kill Program, killactive"
-        # "$mod, M, exit"
         # mode 0 = true fullscreen: ignores waybar's reserved strip and
         # goes edge-to-edge, with the glass bar floating over it as a HUD.
         # mode 1 (maximize) respects the reserved strip instead, which
@@ -463,6 +462,7 @@ in
 
         # Lock screen
         "$mod, Escape, Lock screen, exec, hyprlock"
+        "$mod SHIFT, Escape, Log out (confirm), exec, walker -m menus:logout --theme dani-confirm --nohints --nosearch"
 
         # Notifications (code:48 = the ' key on the us layout, same physical key on es)
         "$mod, code:48, Dismiss newest notification, exec, makoctl dismiss"
@@ -701,6 +701,51 @@ in
     actions = { "open" = "${scratchpad}/bin/scratchpad weather 55 62 gnome-weather" }
   '';
 
+  # The $mod SHIFT+Escape logout confirmation, as an elephant menu so the two
+  # answers can carry icons - walker's dmenu mode takes plain lines only.
+  # Cancel is first so the pre-selected card is the harmless one, and Escape
+  # closes walker without running anything either way.
+  #
+  # The bind passes --nosearch, so there is no prompt line and no live filter
+  # to mistype into; the two labelled cards are the whole interface. Keep the
+  # entries' text unambiguous on its own, since nothing above them explains
+  # what is being asked.
+  #
+  # Declared through `programs.elephant.provider.menus.toml` rather than as an
+  # xdg.configFile, because elephant.service's X-Restart-Triggers hashes that
+  # option and nothing hashes a raw config file. Written the other way the
+  # menu file lands on switch but the running daemon never rereads it, so the
+  # picker comes up empty until the next reboot - elephant logs the giveaway,
+  # `providers p=menus:logout results=0`. (scratchpads.toml above still has
+  # this problem; it just gets masked by how rarely the board changes.)
+  #
+  # Logging out restarts the display manager rather than stopping UWSM,
+  # because SDDM will not bring the greeter back on its own; the reasoning
+  # lives on logout-to-greeter.service in modules/nixos/desktop/sddm.nix.
+  # Both commands are absolute paths for the same reason the scratchpad
+  # helper above is: elephant runs the action and does not inherit the
+  # graphical session PATH. polkit still resolves elephant's process to the
+  # active local session, so the unit-scoped rule applies and there is no
+  # password prompt on the way out.
+  programs.elephant.provider.menus.toml.logout = {
+    name = "logout";
+    name_pretty = "Log out";
+    icon = "system-log-out-symbolic";
+
+    entries = [
+      {
+        text = "Cancel";
+        icon = "window-close-symbolic";
+        actions.open = "${pkgs.coreutils}/bin/true";
+      }
+      {
+        text = "Log out";
+        icon = "system-log-out-symbolic";
+        actions.open = "${pkgs.systemd}/bin/systemctl start --no-block logout-to-greeter.service";
+      }
+    ];
+  };
+
   home.packages = with pkgs; [
     # essentials
     alacritty
@@ -741,4 +786,3 @@ in
   ];
 
 }
-
