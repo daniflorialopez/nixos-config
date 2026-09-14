@@ -1,0 +1,13 @@
+# Wallpapers are third-party images of unknown licence (wallhaven downloads and
+# similar), and ~34 MB — the bulk of this repo's history. Keeping them out means
+# the repo can be published without redistributing someone else's art. The files
+# stay on disk in the working tree; they are simply not committed.
+#
+# NOTE: a flake only copies *git-tracked* files into the store, so anything in
+# Nix that reads a path under this directory breaks once these are untracked:
+#   - home/dani/wm/wallpaper.nix   sources the whole directory into
+#                                  ~/Pictures/Wallpapers
+#   - modules/nixos/desktop/sddm.nix  references wallhaven-jevzkp.jpg by name
+# Point those at a runtime path (e.g. ~/Pictures/Wallpapers, populated by hand)
+# or at a fetched derivation before dropping the tracked copies.
+home/dani/assets/wallpapers/
