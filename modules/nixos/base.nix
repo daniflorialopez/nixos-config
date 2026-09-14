@@ -54,8 +54,20 @@
 
     # `quiet` also makes systemd normally stay quiet while still
     # showing status automatically when something fails or takes too long.
+    #
+    # udev.log_level=3 (err) silences systemd-udevd's "Starting systemd-udevd
+    # version N" line, which was flashing up as a text console just before the
+    # splash. Neither `quiet` nor initrd.verbose suppresses it: the scripted
+    # stage-1 tees its fifo to the *saved console fd* as well as to /dev/kmsg,
+    # so that output reaches the screen directly and never passes through
+    # printk's loglevel. Worse, it is the write itself that matters - fbcon
+    # logs "Deferring console take-over" and holds the firmware logo until
+    # something writes to the console, at which point it takes over and the
+    # logo is replaced by a text VT. Silencing udevd at the source keeps the
+    # takeover deferred until plymouth is up.
     kernelParams = [
       "quiet"
+      "udev.log_level=3"
     ];
   };
 
