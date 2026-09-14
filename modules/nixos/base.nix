@@ -30,10 +30,20 @@
       timeout = 2;
     };
 
-    # Native, NixOS-branded Breeze Plymouth theme.
+    # Trying bgrt (was: breeze, the NixOS-branded default).
+    #
+    # bgrt *is* spinner - its ImageDir points at spinner's own directory, and
+    # the only difference is UseFirmwareBackground, so picking between the two
+    # is purely "with or without the firmware's boot logo". This machine does
+    # publish one: /sys/firmware/acpi/bgrt/image is a valid 670x134 LEGION
+    # wordmark. Both also carry NixOS's snowflake watermark, which the module
+    # overlays into the spinner theme directory.
+    #
+    # No themePackages change needed - the module's theme dir already includes
+    # plymouth's own themes alongside breeze.
     plymouth = {
       enable = true;
-      theme = "breeze";
+      theme = "bgrt";
     };
 
     # Suppress routine kernel chatter, but retain errors.
