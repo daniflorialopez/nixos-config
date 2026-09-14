@@ -630,76 +630,38 @@ in
   # scratchpad is given by absolute path because the elephant service that
   # runs the action doesn't inherit the graphical session PATH (the apps it
   # spawns via `hyprctl dispatch exec` do, so those stay bare names).
-  xdg.configFile."elephant/menus/scratchpads.toml".text = ''
-    name = "scratchpads"
-    name_pretty = "Scratchpads"
-    icon = "view-restore"
+  #
+  # Declared through `programs.elephant.provider.menus.toml` rather than as an
+  # xdg.configFile: elephant.service's X-Restart-Triggers hashes that option
+  # and nothing hashes a raw config file, so written the other way an edit to
+  # this board lands on switch while the running daemon keeps serving the old
+  # twelve entries until something restarts it. See the same note on the
+  # logout menu below.
+  programs.elephant.provider.menus.toml.scratchpads = {
+    name = "scratchpads";
+    name_pretty = "Scratchpads";
+    icon = "view-restore";
 
     # Order matters: walker fills the grid row by row, four to a row, so the
     # first four are the most-used (Bluetooth, btop, quick note, WhatsApp) and
     # land in the top row. The rest follow. Twelve entries = exactly 4 x 3,
     # which is the size layout.xml sizes the window to — adding a thirteenth
     # starts a fourth row and the board scrolls.
-    [[entries]]
-    text = "Bluetooth"
-    icon = "bluetooth"
-    actions = { "open" = "${scratchpad}/bin/scratchpad bt 55 60 blueman-manager" }
-
-    [[entries]]
-    text = "btop"
-    icon = "utilities-system-monitor"
-    actions = { "open" = "${scratchpad}/bin/scratchpad sysmon 60 65 alacritty --class scratch-sysmon -e btop" }
-
-    [[entries]]
-    text = "Quick note"
-    icon = "accessories-text-editor"
-    actions = { "open" = "${scratchpad}/bin/scratchpad note 55 60 alacritty --class scratch-note -e quick-note" }
-
-    [[entries]]
-    text = "WhatsApp"
-    icon = "whatsapp"
-    actions = { "open" = "${scratchpad}/bin/scratchpad whatsapp 40 66 whatsapp-web" }
-
-    [[entries]]
-    text = "Bitwarden"
-    icon = "bitwarden"
-    actions = { "open" = "${scratchpad}/bin/scratchpad bitwarden 42 72 bitwarden-web" }
-
-    [[entries]]
-    text = "Terminal"
-    icon = "utilities-terminal"
-    actions = { "open" = "${scratchpad}/bin/scratchpad term 60 62 alacritty --class scratch-term --working-directory ${config.home.homeDirectory}" }
-
-    [[entries]]
-    text = "Files"
-    icon = "folder"
-    actions = { "open" = "${scratchpad}/bin/scratchpad files 65 68 alacritty --class scratch-files -e yazi" }
-
-    [[entries]]
-    text = "Audio"
-    icon = "multimedia-volume-control"
-    actions = { "open" = "${scratchpad}/bin/scratchpad audio 48 58 pavucontrol" }
-
-    [[entries]]
-    text = "Calendar"
-    icon = "org.gnome.Calendar"
-    actions = { "open" = "${scratchpad}/bin/scratchpad cal 62 68 gnome-calendar" }
-
-    [[entries]]
-    text = "GPU"
-    icon = "nvidia-settings"
-    actions = { "open" = "${scratchpad}/bin/scratchpad gpu 60 65 alacritty --class scratch-gpu -e nvtop" }
-
-    [[entries]]
-    text = "Wi-Fi"
-    icon = "network-wireless"
-    actions = { "open" = "${scratchpad}/bin/scratchpad wifi 55 60 nm-connection-editor" }
-
-    [[entries]]
-    text = "Weather"
-    icon = "org.gnome.Weather"
-    actions = { "open" = "${scratchpad}/bin/scratchpad weather 55 62 gnome-weather" }
-  '';
+    entries = [
+      { text = "Bluetooth"; icon = "bluetooth"; actions.open = "${scratchpad}/bin/scratchpad bt 55 60 blueman-manager"; }
+      { text = "btop"; icon = "utilities-system-monitor"; actions.open = "${scratchpad}/bin/scratchpad sysmon 60 65 alacritty --class scratch-sysmon -e btop"; }
+      { text = "Quick note"; icon = "accessories-text-editor"; actions.open = "${scratchpad}/bin/scratchpad note 55 60 alacritty --class scratch-note -e quick-note"; }
+      { text = "WhatsApp"; icon = "whatsapp"; actions.open = "${scratchpad}/bin/scratchpad whatsapp 40 66 whatsapp-web"; }
+      { text = "Bitwarden"; icon = "bitwarden"; actions.open = "${scratchpad}/bin/scratchpad bitwarden 42 72 bitwarden-web"; }
+      { text = "Terminal"; icon = "utilities-terminal"; actions.open = "${scratchpad}/bin/scratchpad term 60 62 alacritty --class scratch-term --working-directory ${config.home.homeDirectory}"; }
+      { text = "Files"; icon = "folder"; actions.open = "${scratchpad}/bin/scratchpad files 65 68 alacritty --class scratch-files -e yazi"; }
+      { text = "Audio"; icon = "multimedia-volume-control"; actions.open = "${scratchpad}/bin/scratchpad audio 48 58 pavucontrol"; }
+      { text = "Calendar"; icon = "org.gnome.Calendar"; actions.open = "${scratchpad}/bin/scratchpad cal 62 68 gnome-calendar"; }
+      { text = "GPU"; icon = "nvidia-settings"; actions.open = "${scratchpad}/bin/scratchpad gpu 60 65 alacritty --class scratch-gpu -e nvtop"; }
+      { text = "Wi-Fi"; icon = "network-wireless"; actions.open = "${scratchpad}/bin/scratchpad wifi 55 60 nm-connection-editor"; }
+      { text = "Weather"; icon = "org.gnome.Weather"; actions.open = "${scratchpad}/bin/scratchpad weather 55 62 gnome-weather"; }
+    ];
+  };
 
   # The $mod SHIFT+Escape logout confirmation, as an elephant menu so the two
   # answers can carry icons - walker's dmenu mode takes plain lines only.

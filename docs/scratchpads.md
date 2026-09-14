@@ -42,9 +42,12 @@ That is why the same key both summons and dismisses.
 
 ## The menu
 
-The board is an **elephant `menus` provider**, written to
-`~/.config/elephant/menus/scratchpads.toml` from `wm/hyprland.nix`. Each entry
-is a label, an icon name, and an `open` action.
+The board is an **elephant `menus` provider**, declared as
+`programs.elephant.provider.menus.toml.scratchpads` in `wm/hyprland.nix` and
+generated to `~/.config/elephant/menus/scratchpads.toml`. Each entry is a
+label, an icon name, and an `open` action. Declaring it through that option
+rather than as a raw `xdg.configFile` is what makes an edit here take effect on
+switch — see [Rules that bite](#rules-that-bite).
 
 | | | | |
 | --- | --- | --- | --- |
@@ -148,9 +151,9 @@ twelve panels all competing, nothing read as selected.
   daemon never rereads it and the picker comes up **empty**. Declare menus
   through `programs.elephant.provider.menus.toml.<name>` instead: that option
   *is* folded into the unit's `X-Restart-Triggers`, so a switch restarts
-  elephant. The logout menu does this; **`scratchpads.toml` still does not**,
-  so an edit to the board needs a manual `systemctl --user restart elephant`
-  (or a reboot) to show up.
+  elephant. **Both menus now do this** — the board was migrated after the
+  logout menu tripped over it — so editing an entry below takes effect on
+  switch, with no manual restart.
 - **Walker scans themes once, at daemon startup.** A theme edit is invisible
   until the daemon restarts, and an unknown `--theme` silently falls back to
   walker's built-in default — a labelled list. This is why the themes are
