@@ -142,6 +142,15 @@ twelve panels all competing, nothing read as selected.
 - **`--theme` must be passed on every walker bind.** All six pass it. Walker
   sets the theme only when the flag is present and never resets it, so an
   unpinned launcher inherits whichever theme ran last.
+- **Elephant reads its menus once, at daemon startup — and nothing hashes a
+  raw config file.** A menu written as `xdg.configFile."elephant/menus/*.toml"`
+  lands on switch, but `elephant.service` is not restarted, so the running
+  daemon never rereads it and the picker comes up **empty**. Declare menus
+  through `programs.elephant.provider.menus.toml.<name>` instead: that option
+  *is* folded into the unit's `X-Restart-Triggers`, so a switch restarts
+  elephant. The logout menu does this; **`scratchpads.toml` still does not**,
+  so an edit to the board needs a manual `systemctl --user restart elephant`
+  (or a reboot) to show up.
 - **Walker scans themes once, at daemon startup.** A theme edit is invisible
   until the daemon restarts, and an unknown `--theme` silently falls back to
   walker's built-in default — a labelled list. This is why the themes are
@@ -154,9 +163,21 @@ twelve panels all competing, nothing read as selected.
   `layout.xml` leaves the board *empty* — the initial query is fired by that
   entry's `changed` signal, so with no entry nothing ever asks elephant for
   the items. Both flags are per-invocation and reset on every launch, so
-  neither leaks to the other pickers.
+  neither leaks to the other pickers. **`--nosearch` also stops the entry
+  receiving keystrokes**, not merely drawing it — verified by typing into one,
+  which fires no new query. That is the logout confirm's reason for using it:
+  a *visible* prompt leaves the entry live, so one stray keypress narrows two
+  answers to one, which Return then fires.
 - **XML comments may not contain `--`.** The Nix build will not catch it; the
   theme just fails to parse at runtime.
+- **Prefer `-symbolic` icon names on anything drawn larger than 24px.** Papirus
+  ships many `actions/` icons only up to 24×24 while a same-named `apps/` icon
+  exists at 32/48/64 — so a card-sized request silently falls through to the
+  `apps/` variant, which is often **full colour**. That is how the logout
+  confirm ended up with a green `system-log-out` glyph (green = the success
+  role) on its destructive answer. Symbolic icons are monochrome, scale
+  cleanly, and follow the CSS `color` property, so state can be carried by
+  tinting the icon instead of fading it.
 - **The layout must keep every required object id** even if hidden: `Window`,
   `Scroll`, `List`, `ElephantHint`, `Error`, `BoxWrapper`, `ContentContainer`,
   `Keybinds`, `GlobalKeybinds`, `ItemKeybinds`. The renderer errors without
@@ -191,3 +212,4 @@ rather than silently reverting the behaviour.
 | Quick note opens on a swap-file prompt | an old `nvim` was killed with the swap still live — delete the orphan under `~/.local/state/nvim/swap/`. Should not recur: the wrapper runs `nvim -n`. |
 | A scratchpad app is still eating RAM | by design — dismissing hides it. Quit the app itself, or log out. |
 | Entry does nothing | icon name typo'd (renders blank) or the command is not on `PATH` for the elephant service — use an absolute store path. |
+| Picker is empty — just the prompt box, no entries | the elephant daemon predates the menu. Check `journalctl --user -u elephant` for `providers p=menus:<name> results=0` and for which `menu loaded=` lines it printed at startup. `systemctl --user restart elephant` fixes the session; declaring the menu under `programs.elephant.provider.menus.toml` fixes it for good. |

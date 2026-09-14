@@ -149,6 +149,297 @@ let
     }
   '';
 
+  # A yes/no confirmation on top of the shared chrome. The stock layout is a
+  # 600x570 search board, which is absurd for two answers, so this theme
+  # brings its own geometry: the window hugs its content.
+  #
+  # Pair with --nohints and --nosearch on the caller. --nosearch is a safety
+  # property, not a cosmetic one: the entry is walker's only always-visible
+  # text slot, so it was carrying the question - but it also stays live and
+  # filtering. With a hidden caret, one stray keystroke narrowed the list to a
+  # single answer and Return then fired it, which for "l" is the logout. The
+  # answers are labelled; the question is not worth that.
+  confirmCss = ''
+    .box-wrapper {
+      padding: 14px;
+      border-radius: 16px;
+      /* Nearly opaque, unlike the launcher's 0.90. A launcher can afford to
+         show the desktop through it; a destructive confirmation cannot - at
+         0.90 a busy window behind the dialog reads straight through the
+         resting card and the question stops being legible. */
+      background: rgba(22, 22, 30, 0.97);
+    }
+
+    /* The answers are two cards side by side, icon over label. This
+       deliberately departs from the Super+S board, where only the selected
+       tile wears a card: with twelve tiles the question is "where do I
+       look", and eleven bare icons keep it calm. With two answers the
+       question is "which one is armed", and a second button with no resting
+       surface reads as missing rather than calm. */
+    .item-box.menus-logout {
+      margin: 5px;
+      padding: 16px 12px 14px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      transition:
+        background 140ms ease,
+        border-color 140ms ease;
+    }
+
+    child:hover .item-box.menus-logout {
+      background: rgba(122, 162, 247, 0.09);
+      border-color: rgba(122, 162, 247, 0.18);
+    }
+
+    child:selected .item-box.menus-logout {
+      background: @accent_bg_color;
+      border-color: @accent_line_color;
+    }
+
+    /* The icons are the -symbolic names, which GTK recolours to `color`, so
+       icon and label carry the armed state together: muted at rest, full
+       foreground when selected. Do NOT use the plain names here - Papirus
+       ships actions/system-log-out.svg only up to 24px, so at a card-sized
+       request GTK falls through to the 32px apps/ variant, which is a
+       full-colour green glyph: the success role, on the destructive answer. */
+    .menus-logout .item-image {
+      -gtk-icon-size: 30px;
+      /* the shared .item-image rule adds a right margin for list rows, which
+         would knock the icon off-centre in a card */
+      margin-right: 0;
+      margin-bottom: 10px;
+      color: @subtext_color;
+      transition: color 140ms ease;
+    }
+
+    .menus-logout .item-text {
+      color: @subtext_color;
+      transition: color 140ms ease;
+    }
+
+    child:hover .item-box.menus-logout .item-image,
+    child:selected .item-box.menus-logout .item-image,
+    child:hover .item-box.menus-logout .item-text,
+    child:selected .item-box.menus-logout .item-text {
+      color: @theme_fg_color;
+    }
+  '';
+
+  # Icon over label, both centred - the board's tile has no label at all, so
+  # this cannot reuse it. A confirmation has to stay readable: two unlabelled
+  # glyphs would make "which one was the destructive one" a guess.
+  confirmItem = ''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <interface>
+      <requires lib="gtk" version="4.0"></requires>
+      <object class="GtkBox" id="ItemBox">
+        <style>
+          <class name="item-box"></class>
+        </style>
+        <property name="orientation">vertical</property>
+        <property name="halign">fill</property>
+        <property name="valign">fill</property>
+        <child>
+          <object class="GtkImage" id="ItemImage">
+            <style>
+              <class name="item-image"></class>
+            </style>
+            <property name="icon-size">large</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="ItemText">
+            <style>
+              <class name="item-text"></class>
+            </style>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+          </object>
+        </child>
+      </object>
+    </interface>
+  '';
+
+  # walker's stock layout with the board geometry taken out: no height-request
+  # so the window is exactly as tall as the prompt plus its answers, and a
+  # width that fits a one-line question.
+  confirmLayout = ''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <interface>
+      <requires lib="gtk" version="4.0"></requires>
+      <object class="GtkWindow" id="Window">
+        <style>
+          <class name="window"></class>
+        </style>
+        <property name="resizable">true</property>
+        <property name="title">Walker</property>
+        <child>
+          <object class="GtkBox" id="BoxWrapper">
+            <style>
+              <class name="box-wrapper"></class>
+            </style>
+            <property name="overflow">hidden</property>
+            <property name="orientation">horizontal</property>
+            <property name="valign">center</property>
+            <property name="halign">center</property>
+            <property name="width-request">400</property>
+            <child>
+              <object class="GtkBox" id="Box">
+                <style>
+                  <class name="box"></class>
+                </style>
+                <property name="orientation">vertical</property>
+                <property name="hexpand-set">true</property>
+                <property name="hexpand">true</property>
+                <property name="spacing">6</property>
+                <child>
+                  <!-- Hidden at runtime by --nosearch, but it must still be
+                       here: walker fires the initial query from this entry's
+                       "changed" signal, so a layout without it shows an empty
+                       picker forever. -->
+                  <object class="GtkBox" id="SearchContainer">
+                    <style>
+                      <class name="search-container"></class>
+                    </style>
+                    <property name="overflow">hidden</property>
+                    <property name="orientation">horizontal</property>
+                    <property name="halign">fill</property>
+                    <property name="hexpand-set">true</property>
+                    <property name="hexpand">true</property>
+                    <child>
+                      <object class="GtkEntry" id="Input">
+                        <style>
+                          <class name="input"></class>
+                        </style>
+                        <property name="halign">fill</property>
+                        <property name="hexpand-set">true</property>
+                        <property name="hexpand">true</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox" id="ContentContainer">
+                    <style>
+                      <class name="content-container"></class>
+                    </style>
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">10</property>
+                    <child>
+                      <object class="GtkLabel" id="ElephantHint">
+                        <style>
+                          <class name="elephant-hint"></class>
+                        </style>
+                        <property name="label">Waiting for elephant...</property>
+                        <property name="hexpand">true</property>
+                        <property name="vexpand">true</property>
+                        <property name="visible">false</property>
+                        <property name="valign">0.5</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="Placeholder">
+                        <style>
+                          <class name="placeholder"></class>
+                        </style>
+                        <property name="label">No Results</property>
+                        <property name="hexpand">true</property>
+                        <property name="vexpand">true</property>
+                        <property name="valign">0.5</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkScrolledWindow" id="Scroll">
+                        <style>
+                          <class name="scroll"></class>
+                        </style>
+                        <property name="can_focus">false</property>
+                        <property name="overlay-scrolling">true</property>
+                        <property name="hexpand">true</property>
+                        <property name="vexpand">true</property>
+                        <!-- 400px window - 14px padding - 2px border either
+                             side, so the cards sit inside the frame evenly -->
+                        <property name="max-content-width">368</property>
+                        <property name="min-content-width">368</property>
+                        <property name="max-content-height">180</property>
+                        <property name="propagate-natural-height">true</property>
+                        <property name="propagate-natural-width">true</property>
+                        <property name="hscrollbar-policy">never</property>
+                        <property name="vscrollbar-policy">automatic</property>
+                        <child>
+                          <!-- two answers, two columns. This must agree with
+                               the `columns` entry in the walker config, which
+                               is applied at runtime and overrides it. -->
+                          <object class="GtkGridView" id="List">
+                            <style>
+                              <class name="list"></class>
+                            </style>
+                            <property name="max_columns">2</property>
+                            <property name="min_columns">2</property>
+                            <property name="can_focus">false</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="Preview">
+                        <style>
+                          <class name="preview"></class>
+                        </style>
+                        <property name="visible">false</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <!-- kept only because the renderer requires these ids; the
+                       hint bar itself is hidden by the nohints flag on the
+                       caller, since walker re-shows it on selection changes -->
+                  <object class="GtkBox" id="Keybinds">
+                    <style>
+                      <class name="keybinds"></class>
+                    </style>
+                    <property name="hexpand">true</property>
+                    <child>
+                      <object class="GtkBox" id="GlobalKeybinds">
+                        <style>
+                          <class name="global-keybinds"></class>
+                        </style>
+                        <property name="spacing">10</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="ItemKeybinds">
+                        <style>
+                          <class name="item-keybinds"></class>
+                        </style>
+                        <property name="hexpand">true</property>
+                        <property name="halign">end</property>
+                        <property name="spacing">10</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="Error">
+                    <style>
+                      <class name="error"></class>
+                    </style>
+                    <property name="xalign">0</property>
+                    <property name="visible">false</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </interface>
+  '';
+
   # The Super+S board on top of the shared chrome: 12 icon tiles, 4 x 3.
   # Bare icons on the window background - only the selected tile wears a card,
   # so the eye lands on it instead of on twelve competing panels. layout.xml
@@ -452,6 +743,8 @@ in
         # applied at runtime and overrides the GridView columns set in the XML,
         # so the two must agree or the window width stops matching the grid.
         "menus:scratchpads" = 4;
+        # the logout confirm: Cancel and Log out as two cards, not two rows
+        "menus:logout" = 2;
       };
 
       placeholders."default" = {
@@ -509,6 +802,16 @@ in
     themes = {
       # the search pickers: shared chrome, walker's stock layout
       dani-soft.style = baseCss;
+
+      # yes/no prompts (currently just the logout confirm): same chrome, own
+      # window geometry so a two-item question isn't a 600x570 board
+      dani-confirm = {
+        style = baseCss + confirmCss;
+        layouts = {
+          "layout" = confirmLayout;
+          "item_menus-logout_grid" = confirmItem;
+        };
+      };
 
       # the Super+S board: same chrome, plus its own window geometry
       dani-grid = {

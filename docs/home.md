@@ -327,11 +327,21 @@ The `walker` launcher + `elephant` provider backend. Providers: desktop apps,
 runner, calc, clipboard, windows, symbols, menus. Prefix routing (`;` provider
 list, `>` run, `=` calc, `:` clipboard, `.` symbols, `$` windows).
 
-**Two themes.** `dani-soft` is the search pickers' Tokyo Night GTK theme —
+**Three themes.** `dani-soft` is the search pickers' Tokyo Night GTK theme —
 **slate popup frame** (joined the neutral tier 2026-07-24; orange means "needs
 you", and a launcher doesn't). `dani-grid` is the `$mod+S` scratchpad board: a
 4×3 icon grid with its own `layout.xml`, because in walker the window geometry
-belongs to the theme, not to the stylesheet. Both are declared through
+belongs to the theme, not to the stylesheet. `dani-confirm` is the yes/no
+prompt used by the logout bind: two icon cards and nothing else, in a window
+that hugs its content — walker's stock layout is a fixed 600×570 search board,
+which a two-answer question has no business filling. Its card layout is its own
+(`item_menus-logout_grid.xml`) rather than the board's, since the board's tile
+has no label and an unlabelled glyph is a bad way to ask "are you sure". Two
+deliberate departures from the board: **both** cards carry a resting surface
+(with two answers the question is "which is armed", not "where do I look"), and
+the window sits at **0.97 alpha** instead of the launcher's 0.90, because at
+0.90 a busy window behind it read straight through the resting card. All three
+are declared through
 `programs.walker.themes` rather than raw `xdg.configFile`, so that editing one
 restarts the walker daemon on switch — walker scans themes only at startup, and
 an unknown `--theme` silently falls back to its built-in default.
