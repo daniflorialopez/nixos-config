@@ -8,12 +8,28 @@
 
   networking.networkmanager.enable = true;
 
-  # Use the systemd-boot EFI boot loader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  # 1s menu instead of the default 5: still catchable with a keypress
-  # for generation rollbacks, without the every-boot wait
-  boot.loader.timeout = 1;
+  boot = {
+    loader = {
+      systemd-boot = {
+        enable = true;
+
+        # Keep enough rollback generations for reliability,
+        # without completely filling the boot menu.
+        configurationLimit = 3;
+
+        # Large/readable UEFI text on the Legion display.
+        consoleMode = "0";
+
+        # Leave `editor` at its default (true) for now.
+        # This gives us another recovery mechanism if needed.
+      };
+
+      efi.canTouchEfiVariables = true;
+
+      # Enough time to comfortably choose NixOS or Windows.
+      timeout = 2;
+    };
+  };
 
   # Don't block graphical.target ~5s waiting for the network: nothing
   # at login time needs it, Wi-Fi connects on its own moments later
@@ -56,9 +72,6 @@
     automatic = true;
     dates = [ "weekly" ];
   };
-
-  # Limit how many boot entries are kept (doesn't free space by itself, but keeps boot menu tidy)
-  boot.loader.systemd-boot.configurationLimit = 10;
 
   system.stateVersion = "25.05"; # NEVER change
 }

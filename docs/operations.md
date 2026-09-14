@@ -136,7 +136,10 @@ nix store gc                     # raw GC
 nix store optimise               # dedup the store
 ```
 
-Boot entries are capped at 10 (`configurationLimit`).
+Boot entries are capped at 3 (`configurationLimit`). That bounds the *menu*, not
+the store — old generations still exist until `nh clean` removes them, so a
+rollback beyond the last three is still reachable with `nixos-rebuild
+--rollback` or by selecting the generation directly.
 
 ## Wallpaper, lock, logout, notifications (quick reference)
 

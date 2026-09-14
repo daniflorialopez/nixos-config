@@ -11,8 +11,11 @@ verify it. Hosts opt in by importing these — see the
 Timezone (`Europe/Madrid`), locale (`en_US.UTF-8`), NetworkManager, and the
 core Nix/boot settings every host shares.
 
-- **Bootloader:** systemd-boot, `timeout = 1` (1s menu — still catchable for
-  rollbacks, no every-boot wait), `configurationLimit = 10` boot entries.
+- **Bootloader:** systemd-boot, `timeout = 2` (long enough to pick NixOS or
+  Windows deliberately), `configurationLimit = 3` boot entries — enough to roll
+  back, without the menu filling up. `consoleMode = "0"` for large, readable
+  UEFI text on the Legion panel. `editor` is left at its default (`true`) on
+  purpose: it's another way back into a broken system.
 - `NetworkManager-wait-online` disabled — nothing at login needs the network,
   so don't block `graphical.target` ~5s waiting for Wi-Fi.
 - **zramSwap enabled** — compressed RAM-backed swap. Added after memory spikes
