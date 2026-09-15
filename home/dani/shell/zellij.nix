@@ -8,6 +8,24 @@
   programs.zellij = {
     enable = true;
     settings = {
+      # Exit on SIGTERM instead of zellij's default "detach".
+      #
+      # The client and the server both live in the compositor's cgroup, so at
+      # logout systemd SIGTERMs them, the server detaches on purpose, and
+      # wayland-wm@Hyprland.service waits out its full TimeoutStopSec=10
+      # before SIGKILLing it and failing with result 'timeout' — on every
+      # shutdown. That failed exit is also what convinced SDDM the session had
+      # crashed, back when logging out went through uwsm (see
+      # logout-to-greeter.service in modules/nixos/desktop/sddm.nix).
+      #
+      # This costs less than it sounds: the session did not survive a logout
+      # anyway, it was being SIGKILLed. What changes is closing a terminal
+      # window while still logged in — that now ends the session rather than
+      # leaving it detached. session_serialization is on by default, so the
+      # tabs, panes, cwds and commands are still written out and `zellij
+      # attach` can resurrect the layout; only live process state is lost.
+      on_force_close = "quit";
+
       # Custom granular theme (zellij >= 0.40 style spec) instead of the
       # built-in tokyo-night-dark: the old 10-slot spec let zellij pick
       # its own UI mapping — bright green tab pills and frames. Here every

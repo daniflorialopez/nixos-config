@@ -82,6 +82,18 @@ element mapped, rather than letting zellij pick). Design rule made concrete:
 dark surface → blue accent (active frame/tab), orange only as the attention
 pop (`frame_highlight`), green for success exit codes, red for errors.
 
+**`on_force_close = "quit"`, not zellij's default `detach`.** The client *and*
+the server run inside the compositor's cgroup, so at logout systemd SIGTERMs
+them, a detaching server ignores it, and `wayland-wm@Hyprland.service` burns
+its whole `TimeoutStopSec=10` before SIGKILLing it and failing — every single
+shutdown. The session was never surviving that anyway; what changes is that
+closing a terminal window now ends the session instead of leaving it detached.
+`session_serialization` is on by default, so tabs/panes/cwds/commands are still
+written out and `zellij attach` can resurrect the layout — only live process
+state is lost. **Takes effect for zellij sessions started after the switch**
+(the option is marked "requires restart"), so an already-running session still
+detaches once more.
+
 ### btop.nix — system monitor
 
 btop with a custom `tokyo-sunset.theme`, transparent background (inherits
