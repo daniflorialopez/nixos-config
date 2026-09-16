@@ -512,6 +512,136 @@ let
     </interface>
   '';
 
+  # --- The wallpaper picker (Super+Ctrl+W) --------------------------------
+  #
+  # A contact sheet, not a list: four 16:9 tiles to a row with the selected one
+  # lit and captioned, and the full-size image in the preview pane beside it.
+  # Entries come from the elephant Lua menu in wm/wallpaper.nix, which hands
+  # walker a thumbnail path per wallpaper.
+  wallCss = ''
+    /* The tile is the image. No card, no padding, no label underneath — the
+       margin here is the whole gutter, and it has to match the cell width the
+       GridView is given in layout.xml or the columns stop lining up. */
+    .item-box.menus-wallpapers {
+      margin: 8px;
+      padding: 0;
+      background: transparent;
+      border: none;
+    }
+
+    /* The rounded, clipped frame around the picture. overflow:hidden in the XML
+       is what actually crops the image to these corners; border-radius alone
+       would leave the texture's square edges poking out. */
+    .wall-tile {
+      border-radius: 14px;
+      border: 2px solid transparent;
+      background: rgba(255, 255, 255, 0.03);
+      /* Unselected tiles sit back so the armed one reads instantly across a
+         wall of twenty images — this is what carries the selection here, the
+         same trick the Super+S board plays with icon opacity.
+         filter, NOT opacity: the card is translucent, so dimming a tile with
+         opacity lets the desktop behind bleed through it and dark wallpapers
+         turn to mud. brightness() dims the tile while it stays opaque. */
+      filter: brightness(0.58) saturate(0.88);
+      transition:
+        filter 160ms ease,
+        border-color 160ms ease;
+    }
+
+    child:hover .wall-tile {
+      filter: brightness(0.85) saturate(0.95);
+      border-color: rgba(122, 162, 247, 0.30);
+    }
+
+    child:selected .wall-tile {
+      filter: brightness(1) saturate(1);
+      border-color: rgba(122, 162, 247, 0.85);
+      /* a tight ring plus a wide soft throw: the ring separates the tile from
+         whatever it is sitting on, the glow is what makes it read as lit */
+      box-shadow:
+        0 0 0 1px rgba(122, 162, 247, 0.28),
+        0 12px 34px rgba(122, 162, 247, 0.22);
+    }
+
+    /* Filename over the foot of the tile, on a scrim that fades out upwards so
+       it stays legible over a bright wallpaper without boxing it in. Hidden at
+       rest: twenty captions at once is noise, one is an answer. */
+    .wall-caption {
+      background: linear-gradient(
+        to top,
+        rgba(16, 16, 24, 0.94) 0%,
+        rgba(16, 16, 24, 0.62) 55%,
+        rgba(16, 16, 24, 0.00) 100%
+      );
+      color: @theme_fg_color;
+      font-size: 12px;
+      font-weight: 400;
+      padding: 16px 10px 8px 10px;
+      opacity: 0;
+      transition: opacity 160ms ease;
+    }
+
+    child:hover .wall-caption,
+    child:selected .wall-caption {
+      opacity: 1;
+    }
+  '';
+
+  # GtkPicture, not GtkImage: walker fills either from an absolute icon path,
+  # but only Picture scales a photo to the widget instead of to an icon size.
+  # content-fit=cover crops to the tile, so mixed aspect ratios stay a grid.
+  # The caption is an overlay child rather than a sibling so it sits *on* the
+  # image — a label underneath would put a text gutter between every row.
+  wallItem = ''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <interface>
+      <requires lib="gtk" version="4.0"></requires>
+      <object class="GtkBox" id="ItemBox">
+        <style>
+          <class name="item-box"></class>
+        </style>
+        <property name="orientation">vertical</property>
+        <property name="halign">fill</property>
+        <property name="valign">fill</property>
+        <child>
+          <object class="GtkOverlay" id="WallTile">
+            <style>
+              <class name="wall-tile"></class>
+            </style>
+            <property name="overflow">hidden</property>
+            <child>
+              <!-- These must equal the thumbnail's pixel size, which
+                   wm/wallpaper.nix generates at 288x162. A GtkPicture reports
+                   the texture's own width as its *natural* width, and a
+                   GridView sizes its cells to that, not to the width-request:
+                   hand it a 512px thumbnail and every cell silently inflates
+                   to 512 until the board is wider than the screen. -->
+              <object class="GtkPicture" id="ItemImage">
+                <property name="content-fit">cover</property>
+                <property name="width-request">288</property>
+                <property name="height-request">162</property>
+                <property name="can-shrink">true</property>
+              </object>
+            </child>
+            <child type="overlay">
+              <object class="GtkLabel" id="ItemText">
+                <style>
+                  <class name="wall-caption"></class>
+                </style>
+                <property name="halign">fill</property>
+                <property name="valign">end</property>
+                <property name="xalign">0</property>
+                <property name="lines">1</property>
+                <property name="ellipsize">3</property>
+                <property name="single-line-mode">true</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </interface>
+  '';
+
   gridLayout = ''
     <?xml version="1.0" encoding="UTF-8"?>
     <interface>
@@ -679,6 +809,189 @@ let
       </object>
     </interface>
   '';
+
+  # The contact sheet's own geometry. Five 304px cells (288px tile + 8px margin
+  # either side) = 1520px of grid, plus the wrapper's 16px padding on both
+  # sides = 1552. Four rows of 178px are shown at once, which is twenty
+  # wallpapers with no scrolling.
+  #
+  # There is deliberately no preview pane. walker only populates one on a
+  # selection *change*, so it came up empty on open — and an empty Preview box
+  # is transparent, so the desktop read straight through a 400px hole in the
+  # card. The tiles are large enough to choose from; entries in wallpaper.nix
+  # therefore set no Preview, which keeps walker from ever showing the box.
+  #
+  # max_columns/min_columns must agree with the `columns` entry in the walker
+  # config below, which overrides them at runtime.
+  wallLayout = ''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <interface>
+      <requires lib="gtk" version="4.0"></requires>
+      <object class="GtkWindow" id="Window">
+        <style>
+          <class name="window"></class>
+        </style>
+        <property name="resizable">true</property>
+        <property name="title">Walker</property>
+        <child>
+          <object class="GtkBox" id="BoxWrapper">
+            <style>
+              <class name="box-wrapper"></class>
+            </style>
+            <property name="overflow">hidden</property>
+            <property name="orientation">horizontal</property>
+            <property name="valign">center</property>
+            <property name="halign">center</property>
+            <property name="width-request">1552</property>
+            <child>
+              <object class="GtkBox" id="Box">
+                <style>
+                  <class name="box"></class>
+                </style>
+                <property name="orientation">vertical</property>
+                <property name="hexpand-set">true</property>
+                <property name="hexpand">true</property>
+                <property name="spacing">10</property>
+                <child>
+                  <!-- Hidden at runtime by --nosearch on the bind, but it must
+                       still be here: walker fires the initial query from this
+                       entry's "changed" signal, so a layout without it shows an
+                       empty picker forever. --nosearch hides this whole
+                       container rather than just the entry, so it costs no
+                       height and leaves no live filter to mistype into. -->
+                  <object class="GtkBox" id="SearchContainer">
+                    <style>
+                      <class name="search-container"></class>
+                    </style>
+                    <property name="overflow">hidden</property>
+                    <property name="orientation">horizontal</property>
+                    <property name="halign">fill</property>
+                    <property name="hexpand-set">true</property>
+                    <property name="hexpand">true</property>
+                    <child>
+                      <object class="GtkEntry" id="Input">
+                        <style>
+                          <class name="input"></class>
+                        </style>
+                        <property name="halign">fill</property>
+                        <property name="hexpand-set">true</property>
+                        <property name="hexpand">true</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox" id="ContentContainer">
+                    <style>
+                      <class name="content-container"></class>
+                    </style>
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">10</property>
+                    <child>
+                      <object class="GtkLabel" id="ElephantHint">
+                        <style>
+                          <class name="elephant-hint"></class>
+                        </style>
+                        <property name="label">Waiting for elephant...</property>
+                        <property name="hexpand">true</property>
+                        <property name="vexpand">true</property>
+                        <property name="visible">false</property>
+                        <property name="valign">0.5</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="Placeholder">
+                        <style>
+                          <class name="placeholder"></class>
+                        </style>
+                        <property name="label">No wallpapers</property>
+                        <property name="hexpand">true</property>
+                        <property name="vexpand">true</property>
+                        <property name="valign">0.5</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkScrolledWindow" id="Scroll">
+                        <style>
+                          <class name="scroll"></class>
+                        </style>
+                        <property name="can_focus">false</property>
+                        <property name="overlay-scrolling">true</property>
+                        <property name="hexpand">false</property>
+                        <property name="vexpand">true</property>
+                        <property name="max-content-width">1520</property>
+                        <property name="min-content-width">1520</property>
+                        <!-- four rows of 178px -->
+                        <property name="max-content-height">712</property>
+                        <property name="min-content-height">712</property>
+                        <property name="propagate-natural-height">true</property>
+                        <property name="propagate-natural-width">true</property>
+                        <property name="hscrollbar-policy">never</property>
+                        <property name="vscrollbar-policy">automatic</property>
+                        <child>
+                          <object class="GtkGridView" id="List">
+                            <style>
+                              <class name="list"></class>
+                            </style>
+                            <property name="max_columns">5</property>
+                            <property name="min_columns">5</property>
+                            <property name="can_focus">false</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <!-- kept only because the renderer expects the id; the
+                           entries carry no Preview, so it never becomes
+                           visible and never takes width -->
+                      <object class="GtkBox" id="Preview">
+                        <property name="visible">false</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox" id="Keybinds">
+                    <style>
+                      <class name="keybinds"></class>
+                    </style>
+                    <property name="hexpand">true</property>
+                    <child>
+                      <object class="GtkBox" id="GlobalKeybinds">
+                        <style>
+                          <class name="global-keybinds"></class>
+                        </style>
+                        <property name="spacing">10</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="ItemKeybinds">
+                        <style>
+                          <class name="item-keybinds"></class>
+                        </style>
+                        <property name="hexpand">true</property>
+                        <property name="halign">end</property>
+                        <property name="spacing">10</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="Error">
+                    <style>
+                      <class name="error"></class>
+                    </style>
+                    <property name="xalign">0</property>
+                    <property name="visible">false</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </interface>
+  '';
 in
 {
   imports = [
@@ -745,6 +1058,10 @@ in
         "menus:scratchpads" = 4;
         # the logout confirm: Cancel and Log out as two cards, not two rows
         "menus:logout" = 2;
+        # the wallpaper contact sheet. Must match max_columns/min_columns in
+        # dani-wall's layout.xml: this is applied at runtime and wins, so if the
+        # two disagree the window width stops matching the grid.
+        "menus:wallpapers" = 5;
       };
 
       placeholders."default" = {
@@ -819,6 +1136,16 @@ in
         layouts = {
           "layout" = gridLayout;
           "item_menus-scratchpads_grid" = gridItem;
+        };
+      };
+
+      # Super+Ctrl+W: the wallpaper contact sheet, entries from the elephant
+      # Lua menu in wm/wallpaper.nix
+      dani-wall = {
+        style = baseCss + wallCss;
+        layouts = {
+          "layout" = wallLayout;
+          "item_menus-wallpapers_grid" = wallItem;
         };
       };
     };

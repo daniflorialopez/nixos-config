@@ -605,9 +605,8 @@ in
       windowrulev2 = [
         # (Scratchpad geometry — float/size/centre — is owned by the
         # `scratchpad` helper, not windowrules: see the let block above.)
-        "float, class:^(org\\.Waytrogen\\.Waytrogen)$"
-        "center, class:^(org\\.Waytrogen\\.Waytrogen)$"
-        "size 1200 800, class:^(org\\.Waytrogen\\.Waytrogen)$"
+        # (The wallpaper picker needs no rule: it is a walker layer surface
+        # now, not a window — see dani-wall in wm/walker.nix.)
 
         # Portal file choosers — every GTK or Flatpak app dialog. They carry no
         # hint Hyprland reads as a dialog, so they tile into the layout and
