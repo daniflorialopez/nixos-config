@@ -608,6 +608,14 @@ in
         "float, class:^(org\\.Waytrogen\\.Waytrogen)$"
         "center, class:^(org\\.Waytrogen\\.Waytrogen)$"
         "size 1200 800, class:^(org\\.Waytrogen\\.Waytrogen)$"
+
+        # Portal file choosers — every GTK or Flatpak app dialog. They carry no
+        # hint Hyprland reads as a dialog, so they tile into the layout and
+        # arrive as a cramped 620px column.
+        "float, class:^(xdg-desktop-portal-gtk)$"
+        "center, class:^(xdg-desktop-portal-gtk)$"
+        "size 50% 65%, class:^(xdg-desktop-portal-gtk)$"
+
         "float, class:^(firefox)$, title:^(Save As|Guardar como).*$"
         "size 70% 75%, class:^(firefox)$, title:^(Save As|Guardar como).*$"
         "center 1, class:^(firefox)$, title:^(Save As|Guardar como).*$"
