@@ -7,10 +7,25 @@
     enable = true;
 
     settings = {
+      # Only keys hyprlock 0.9.2 actually registers. Verified against the running
+      # binary: `strings $(readlink -f (command -v hyprlock)) | grep '^general:'`
+      # yields exactly fail_timeout, fractional_scaling, hide_cursor,
+      # ignore_empty_input, immediate_render, screencopy_mode, text_trim.
+      #
+      # Two keys used to live here and were silently doing nothing, because
+      # hyprlock logs "Proceeding ignoring faulty entries" on an unknown key
+      # rather than failing:
+      #   - disable_loading_bar: gone from the config entirely.
+      #   - grace: became a CLI flag in v0.9.0 ("CLI grace parameter replaces
+      #     config option"). It is now passed as `hyprlock --grace 2` on the
+      #     $mod+Escape bind only — deliberately NOT on hypridle's lock_cmd,
+      #     since a grace period on the lock-before-suspend path would leave the
+      #     machine briefly unlockable-by-any-key after it wakes.
       general = {
-        disable_loading_bar = true;
         hide_cursor = true;
-        grace = 2; # seconds after lock during which any key unlocks
+        # Refuse an empty password instead of running it through PAM, so Enter
+        # on an empty field is a no-op rather than a counted failed attempt.
+        ignore_empty_input = true;
       };
 
       background = [

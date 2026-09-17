@@ -460,8 +460,11 @@ in
         # wl-kbptr
         "$mod SHIFT, M, wl-kbptr mouse actions, exec, wl-kbptr"
 
-        # Lock screen
-        "$mod, Escape, Lock screen, exec, hyprlock"
+        # Lock screen. --grace is a CLI flag since hyprlock 0.9.0; the old
+        # general.grace config key is unregistered and was silently ignored
+        # (see the comment in wm/hyprlock.nix). 2s of "any key unlocks" covers
+        # locking by reflex and immediately changing your mind.
+        "$mod, Escape, Lock screen, exec, hyprlock --grace 2"
         "$mod SHIFT, Escape, Log out (confirm), exec, walker -m menus:logout --theme dani-confirm --nohints --nosearch"
 
         # Notifications (code:48 = the ' key on the us layout, same physical key on es)
