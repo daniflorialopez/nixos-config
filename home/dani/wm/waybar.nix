@@ -337,6 +337,21 @@ in
     systemd.enable = true;
 
     settings.mainBar = {
+      # NOTE: `layer` here is DEAD. waybar's `mode` is a preset that sets
+      # layer/exclusive/passthrough/visible, and "dock" means layer=bottom - it
+      # overrides the line above it. Verified live with `hyprctl layers`: waybar
+      # sits at "Layer level 1 (bottom)" on both outputs, with levels 2 (top) and
+      # 3 (overlay) empty.
+      #
+      # Kept deliberately (decision 2026-09-17). A bottom-layer bar is drawn
+      # under windows, so `$mod+F` (fullscreen, 0) covers it completely and games
+      # and video stay genuinely edge-to-edge. The cost is real and is recorded
+      # where it matters: while anything is fullscreen the custom/mouseless kill
+      # switch is unclickable, which removes escape #1 from the Mouseless
+      # recovery story - see the header comment in wm/mouseless.nix.
+      #
+      # `layer` is left in place rather than deleted so that dropping `mode` is a
+      # one-line change if that trade is ever revisited.
       layer = "top";
       mode = "dock";
       exclusive = true;

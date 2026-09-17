@@ -122,7 +122,7 @@ These are not ricing; they are the reason ricing would half-apply if layered on 
 |---|---|---|---|
 | hyprlock dead config keys | high | TODO | `general.grace` + `general.disable_loading_bar` unregistered in 0.9.2; `--grace` is a CLI flag |
 | dconf owns the GTK font | high | TODO | Portal returns `font-name = "Ubuntu 10"`, a Cinnamon-era value no file in the repo sets |
-| waybar renders on the bottom layer | high | TODO | `mode = "dock"` overrides `layer = "top"`; true fullscreen hides the Mouseless kill switch |
+| waybar renders on the bottom layer | — | ACCEPTED | Decision 2026-09-17: keep it. `mode = "dock"` overrides `layer = "top"`; a bottom-layer bar keeps fullscreen games/video edge-to-edge. Cost documented in `wm/mouseless.nix` and `wm/waybar.nix`: escape #1 is unavailable while anything is fullscreen |
 | ~~mako has no `X-Restart-Triggers`~~ | — | REJECTED | Withdrawn: HM fires `makoctl reload` onChange (verified live). A restart trigger would be *worse* — it drops queued notifications |
 | mako unit hardcodes `pkgs.mako` | low | TODO | Should be `config.services.mako.package`; same store path today, so latent |
 | mako has two start paths | low | TODO | D-Bus activation resurrects it outside the cgroup — only bites when deliberately stopped |
@@ -135,7 +135,7 @@ These are not ricing; they are the reason ricing would half-apply if layered on 
 | dead `unstablePkgs` binding | low | TODO | `hyprland-services.nix:3`; props up a stale claim in `architecture.md` |
 | elephant menu rescan race | medium | TODO | `scratchpads.toml` + `logout.toml` still lack the `onChange` that `wallpapers.lua` has |
 | `hypr-dock-handler` `Restart=on-failure` | medium | TODO | A clean `socat` exit leaves it dead and silent |
-| boot menu offers 3 generations | medium | TODO | Runbook promises 10; this is one of only two recovery paths |
+| boot menu offers 3 generations | medium | DONE | Raised to 10, matching what `rescue-blackscreen.md` already promised. /boot has 940 MB free; a generation costs ~47 MB |
 | stale docs (waytrogen, theme count, Plymouth) | low | TODO | Listed in `01-current-state.md` |
 
 ## Profiles

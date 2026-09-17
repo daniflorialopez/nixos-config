@@ -18,7 +18,18 @@
 # hard you press them. Mouseless grabs keyboards only, never pointers, so the
 # mouse survives. That is the entire basis of the recovery story here:
 #
-#   - the bar button (custom/mouseless in waybar.nix) — mouse only, no typing
+#   - the bar button (custom/mouseless in waybar.nix) — mouse only, no typing.
+#     CAVEAT, measured 2026-09-17: waybar renders on the *bottom* layer, not the
+#     top. `mode = "dock"` in waybar.nix sets layer=bottom and silently overrides
+#     the `layer = "top"` next to it — confirmed with `hyprctl layers`, which puts
+#     waybar at level 1 with levels 2 and 3 empty. A bottom-layer surface is drawn
+#     under windows, so while any window is in `fullscreen, 0` (which is what
+#     $mod+F does) the bar is completely covered and this button is unclickable.
+#     Keeping that behaviour is a deliberate choice — it is what keeps games and
+#     video edge-to-edge clean — so in the fullscreen case escape #1 does not
+#     exist and you are on #2 or #3. Dismiss the fullscreen window first if the
+#     pointer still works ($mod+F toggles, but that is a keystroke and the grab
+#     eats it; use the mouse to focus another window's workspace instead).
 #   - `mouseless-panic` over SSH from the phone (Tailscale: legionix)
 #   - the power button, which logind still sees, for a clean shutdown
 let
