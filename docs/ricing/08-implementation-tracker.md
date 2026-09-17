@@ -1,0 +1,162 @@
+# Implementation Tracker
+
+Status values: `TODO`, `IN PROGRESS`, `BLOCKED`, `DONE`, `REJECTED`, `N/A`.
+
+Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bake-off
+(`06-decisions.md`).
+
+> **Read this first:** much of what the original template listed as work to do already existed in
+> this repo before the ricing project started. Rows marked `DONE (pre-existing)` are recorded so a
+> future agent does not rebuild them.
+
+## Foundation
+
+| Task | Status | Notes |
+|---|---|---|
+| inventory current repo | DONE | `01-current-state.md`, written from repo + live system |
+| document ownership conflicts | DONE | 58 verified findings; the ricing-relevant ones are in `01-current-state.md` |
+| identify Hyprland pin/source | DONE | nixpkgs 25.11 → **0.52.2**; hyprpaper is the only desktop package from unstable |
+| identify Home Manager boundaries | DONE | HM-as-NixOS-module, `useGlobalPkgs`; `hyprEnabled` gate keeps `wm/` off the VM |
+| preserve recovery terminal shortcut | DONE (pre-existing) | `$mod+Return`; Alacritty is installed at *system* level so it survives a failed HM activation |
+| establish the channel-bump plan | TODO | ADR-003 — the 25.11 pin is the binding constraint on this whole project |
+
+## Shell
+
+| Task | Status | Notes |
+|---|---|---|
+| evaluate Caelestia | DONE | Rejected — owns notifications with no opt-out; settings GUI fights HM on every login (#1426) |
+| evaluate DMS | DONE | Best Nix story of the three; blocked by 25.11 (no package, no module) + Lua-only compositor docs |
+| evaluate Noctalia | DONE | v5 dropped Qt entirely; blocked by 25.11 + `settings.toml` loads last and cannot be disabled |
+| consider custom Quickshell | DONE | Rejected — 3–6 months to parity; quickshell #723 (NVIDIA FD leak) and #1098 (dual-monitor reload SIGSEGV) |
+| choose one shell | DONE | **ADR-004** — keep waybar + walker/elephant + mako + swayosd |
+| re-evaluate after 26.05 | TODO | Gate: ADR-003 |
+
+## Theme / palette
+
+| Task | Status | Notes |
+|---|---|---|
+| define design tokens | TODO | **Next up.** `home/dani/theme/palette.nix` + contrast/hue assertions (ADR-005) |
+| evaluate Matugen | DONE | Rejected as authority — Nix module is build-time + IFD, drops hooks, `exit 0` on read-only |
+| evaluate Stylix | DONE | Rejected — `release-25.11` frozen since 2026-04-29; no `mkDefault`; silent CSS concat on waybar |
+| choose theme authority | DONE | **ADR-005** — Tier 1 Nix tokens (frozen), Tier 2 ambient optional/later |
+| migrate ~200 literals onto tokens | TODO | 15 files, 4 syntaxes; fish's 21 bare unquoted hexes are the trap |
+| generate `waybar/palette.css` from tokens | TODO | Today it *is* the definition; it should become output |
+| optional Tier-2 ambient via matugen | TODO | Only after Tier 1 lands; capped at 3–4 meaning-free roles |
+
+## Wallpaper
+
+| Task | Status | Notes |
+|---|---|---|
+| inventory current wallpaper stack | DONE | hyprpaper 0.8.4 (unstable) + walker contact-sheet picker |
+| evaluate swww | DONE | Renamed **awww**; measured 2.6 MiB RSS vs hyprpaper's 123 MiB on this machine |
+| choose backend | DONE | **ADR-006** — migrate to awww, hand-written unit |
+| migrate `wall-set` to `awww img -t fade` | TODO | Replaces config-write + service-restart; keeps the state file |
+| re-apply on HDMI-A-1 re-dock | TODO | One line in `hypr-dock-handler` |
+| store-backed fallback wallpaper | TODO | Today `default.png` lives in mutable `~/Pictures/Wallpapers`; nothing validates the path resolves |
+| decouple the SDDM background | TODO | Greeter pins a build-time path; picking any other wallpaper desyncs it permanently |
+
+## Hyprland visuals
+
+| Task | Status | Notes |
+|---|---|---|
+| centralize gaps/radii/borders | TODO | Folds into the token layer |
+| asymmetric animations | TODO | ADR-010 — open eased/slow, close fast/linear, per upstream's own default |
+| `rounding_power` squircles | TODO | ADR-010 — free, 2.0–10.0 on 0.52.2 |
+| `vibrancy_darkness` + blur tuning | TODO | ADR-010 — raise `size` before `passes`; damage expands by `size × 2^passes` |
+| layer blur / `xray` on shell layers | TODO | So the launcher frosts the wallpaper, not the terminal |
+| `misc:vrr = 2` | TODO | Fullscreen-only is correct for laptop + external |
+| app-specific rules | DONE (pre-existing) | Media viewers at full opacity; portal choosers floated |
+| special workspaces | DONE (pre-existing) | 12-tile scratchpad board on `$mod+S` |
+| gaming rules | TODO | `programs.gamemode.settings` is `{}` — no hook point exists yet |
+| optional advanced effects | REJECTED (for now) | ADR-010 — motion blur is 0.56, glow is 0.56, wobble is 0.57 |
+| Hyprland plugins | REJECTED | ADR-010 — official repo gutted 2026-05-12; hyprexpo/hyprtrails/hyprwinwrap gone |
+| **Lua config migration** | BLOCKED | ADR-009 — gated on 26.05. 11 `windowrulev2` + 9 `layerrule` lines break on bump |
+
+## Services / apps
+
+| Task | Status | Notes |
+|---|---|---|
+| hyprlock | DONE (pre-existing) | **But:** `grace` + `disable_loading_bar` are dead keys — see Defects |
+| hypridle | DONE (pre-existing) | No idle auto-lock by choice; staged listeners are an available upgrade |
+| hyprsunset | DONE (pre-existing) | Measured 203 ms CPU in 4.6 h — the 0.3.3 busy-loop does not reproduce here |
+| hyprpolkitagent | REJECTED (for now) | ADR-013 — nixpkgs pinned at Qt/QML 0.1.3; upstream rewrote to hyprtoolkit in 0.2.0 |
+| hyprshutdown | BLOCKED | ADR-013 — absent from 25.11; v0.1.1 migrated dispatchers to Hyprland 0.55+ Lua |
+| Hyprcursor | REJECTED | ADR-013 — inert at scale 1.0; nixpkgs bibata is `-p x11` only; upstream quiet since 2025-07-31 |
+| Ghostty | REJECTED | ADR-012 — PR #14052 puts NVIDIA on a CPU copy path; revisit after 1.4.0 |
+| Yazi | DONE (pre-existing) | Consider unstable (25.11 freezes it at 25.5.31) + `withGraphics` for real image previews |
+| Firefox | TODO | Two builds in the closure; the *system default* is the policy-free one |
+| Neovim | TODO | Same bug: yazi and file managers launch the unwrapped build |
+| GTK/Qt | TODO | **dconf owns the font** — see Defects |
+
+## Interaction
+
+| Task | Status | Notes |
+|---|---|---|
+| launcher/command palette | DONE (pre-existing) | walker + elephant, 4 themes, 2 local patches — **ADR-007** keep |
+| pin walker/elephant by rev | TODO | Currently unpinned moving branches; `nix flake update` can move them arbitrarily |
+| re-verify `pwcopy` after any walker bump | TODO | walker #738 is open with no maintainer reply; same code-path family |
+| notifications | DONE (pre-existing) | mako — but the unit has no restart trigger and two start paths |
+| OSD | DONE (pre-existing) | swayosd, styled to match the bar |
+| control center | TODO | The one surface a narrow Quickshell instance could justify, post-26.05 |
+| clipboard history | DONE (pre-existing) | elephant provider, 12 h TTL, plaintext `.gob` |
+| media surface | DONE (pre-existing) | waybar `mpris` |
+| system HUD | TODO | |
+| screenshots | DONE (pre-existing) | grim+slurp+satty — missing freeze, window and output subjects |
+| recording | TODO | ADR-012 — `gpu-screen-recorder` for the instant-replay wishlist item |
+
+## Login / boot
+
+| Task | Status | Notes |
+|---|---|---|
+| inventory greeter | DONE | SDDM + sddm-astronaut, **X11 greeter deliberately** |
+| choose/style greeter | DONE | **ADR-008** — keep SDDM |
+| align Plymouth | TODO | Where the low-risk boot-visual polish actually is |
+| visual transition audit | TODO | Plymouth → greeter handoff; `plymouth quit --retain-splash` |
+| bootloader experiment | BLOCKED | ADR-001 — only after desktop completion |
+
+## Defects found during inventory (prerequisites)
+
+These are not ricing; they are the reason ricing would half-apply if layered on top.
+
+| Task | Severity | Status | Notes |
+|---|---|---|---|
+| hyprlock dead config keys | high | TODO | `general.grace` + `general.disable_loading_bar` unregistered in 0.9.2; `--grace` is a CLI flag |
+| dconf owns the GTK font | high | TODO | Portal returns `font-name = "Ubuntu 10"`, a Cinnamon-era value no file in the repo sets |
+| waybar renders on the bottom layer | high | TODO | `mode = "dock"` overrides `layer = "top"`; true fullscreen hides the Mouseless kill switch |
+| ~~mako has no `X-Restart-Triggers`~~ | — | REJECTED | Withdrawn: HM fires `makoctl reload` onChange (verified live). A restart trigger would be *worse* — it drops queued notifications |
+| mako unit hardcodes `pkgs.mako` | low | TODO | Should be `config.services.mako.package`; same store path today, so latent |
+| mako has two start paths | low | TODO | D-Bus activation resurrects it outside the cgroup — only bites when deliberately stopped |
+| Firefox: unwrapped build is the default handler | high | TODO | Links from other apps open without the forced extensions |
+| waybar `custom/kblayout` 1 s poll | medium | TODO | ADR-011 — ~90 % of waybar's CPU is forked scripts |
+| HM portal set shadows the system set | high | TODO | System `extraPortals` is mostly dead weight |
+| `AQ_DRM_DEVICES` hardcoded to `card1` | high | TODO | Written on danix-hp too; index is enumeration luck even here |
+| `flatpak-remotes.service` permanently failed | high | TODO | `systemctl --failed` is never empty, so real failures have no signal |
+| `wall-apply` dead code | low | TODO | Second, divergent wallpaper setter that never persists |
+| dead `unstablePkgs` binding | low | TODO | `hyprland-services.nix:3`; props up a stale claim in `architecture.md` |
+| elephant menu rescan race | medium | TODO | `scratchpads.toml` + `logout.toml` still lack the `onChange` that `wallpapers.lua` has |
+| `hypr-dock-handler` `Restart=on-failure` | medium | TODO | A clean `socat` exit leaves it dead and silent |
+| boot menu offers 3 generations | medium | TODO | Runbook promises 10; this is one of only two recovery paths |
+| stale docs (waytrogen, theme count, Plymouth) | low | TODO | Listed in `01-current-state.md` |
+
+## Profiles
+
+| Profile | Status | Notes |
+|---|---|---|
+| daily | BLOCKED | ADR-009 — profile machinery deferred to post-Lua |
+| cinematic | BLOCKED | " |
+| showcase | BLOCKED | " — `borderangle loop` and mpvpaper belong here and nowhere else |
+| gaming | BLOCKED | " — needs a `programs.gamemode.settings` hook, which does not exist yet |
+| battery | BLOCKED | " |
+| reduced-motion | BLOCKED | " |
+
+## Final audit
+
+| Task | Status | Notes |
+|---|---|---|
+| resource benchmark | DONE (baseline) | 93.9 % idle CPU, 3.9 GiB RAM, 26 % GPU / 837 MiB VRAM, ~463 MB shell RSS |
+| shell-crash recovery | DONE (verified) | All nine user units are independently restartable; no `BindsTo` |
+| suspend/resume | TODO | |
+| monitor hotplug | TODO | `hypr-dock-handler` exists; the `sleep 1` race is untested |
+| gaming validation | TODO | |
+| rollback validation | TODO | |
+| acceptance checklist | TODO | `09-acceptance-checklist.md` |

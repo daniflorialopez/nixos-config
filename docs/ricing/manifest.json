@@ -1,0 +1,37 @@
+{
+  "project": "NixOS ricing documentation",
+  "format_version": 2,
+  "install_root": "repository root",
+  "minimum_ai_context": [
+    "AGENTS.md",
+    "RICE_PLAN.md",
+    "docs/ricing/00-ai-context.md",
+    "docs/ricing/01-current-state.md",
+    "docs/ricing/04-roadmap.md",
+    "docs/ricing/05-nix-architecture.md",
+    "docs/ricing/07-testing-and-rollback.md"
+  ],
+  "files": [
+    "AGENTS.md",
+    "RICE_PLAN.md",
+    "docs/ricing/00-ai-context.md",
+    "docs/ricing/01-current-state.md",
+    "docs/ricing/02-visual-system.md",
+    "docs/ricing/03-component-catalog.md",
+    "docs/ricing/04-roadmap.md",
+    "docs/ricing/05-nix-architecture.md",
+    "docs/ricing/06-decisions.md",
+    "docs/ricing/07-testing-and-rollback.md",
+    "docs/ricing/08-implementation-tracker.md",
+    "docs/ricing/09-acceptance-checklist.md",
+    "docs/ricing/10-ideas-backlog.md",
+    "docs/ricing/11-upstream-reference-map.md",
+    "docs/ricing/12-ai-task-template.md",
+    "docs/ricing/README.md",
+    "docs/ricing/manifest.json"
+  ],
+  "special_handling": {
+    "AGENTS.md": "If one already exists, merge rather than overwrite.",
+    "docs/ricing/01-current-state.md": "Populate by inspecting the real repository before major implementation."
+  }
+}
