@@ -13,9 +13,25 @@
       systemd-boot = {
         enable = true;
 
-        # Keep enough rollback generations for reliability,
-        # without completely filling the boot menu.
-        configurationLimit = 3;
+        # Ten, not three, and the number is load-bearing rather than cosmetic.
+        #
+        # On legionix, booting a previous generation is not *a* recovery path, it
+        # is one of only two that exist: there is no usable text console here
+        # (/sys/class/vtconsole holds only a dummy device - the panel hangs off
+        # the NVIDIA GPU and only lights under a real graphical modeset), and
+        # there is deliberately no safe-graphics specialisation. The other path
+        # is SSH over Tailscale. See docs/rescue-blackscreen.md.
+        #
+        # At three entries, a regression noticed a few switches later - which is
+        # exactly how a bad kernel/driver pairing presents - is already
+        # unrollable from the firmware menu. docs/rescue-blackscreen.md also told
+        # you to expect ten, so this makes the doc true.
+        #
+        # It fits: /boot is 1022M with 940M free, and a generation costs ~47M
+        # (12M kernel + 35M initrd). Ten distinct kernels would be ~470M, and in
+        # practice generations sharing a kernel share the files - 24 generations
+        # on disk currently occupy 83M of ESP between them.
+        configurationLimit = 10;
 
         # Large/readable UEFI text on the Legion display.
         consoleMode = "0";
