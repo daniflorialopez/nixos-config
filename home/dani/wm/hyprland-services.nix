@@ -1,6 +1,5 @@
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, ... }:
 let
-  unstablePkgs = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   target = config.wayland.systemd.target; # defaults to "graphical-session.target"
 
   # Dock/undock workspace repair. Undocking is fine on its own — Hyprland
@@ -40,31 +39,6 @@ let
             ;;
         esac
       done
-    '';
-  };
-  wallApply = pkgs.writeShellApplication {
-    name = "wall-apply";
-    runtimeInputs = [ pkgs.hyprland ];
-    text = ''
-      set -eu
-
-      mon="''${1:-}"
-      img="''${2:-}"
-
-      if [ -z "$img" ]; then
-        echo "missing wallpaper path" >&2
-        exit 1
-      fi
-
-      case "$mon" in
-        ""|"All"|"all")
-          hyprctl hyprpaper wallpaper "HDMI-A-1,$img,cover"
-          hyprctl hyprpaper wallpaper "eDP-1,$img,cover"
-          ;;
-        *)
-          hyprctl hyprpaper wallpaper "$mon,$img,cover"
-          ;;
-      esac
     '';
   };
 in
