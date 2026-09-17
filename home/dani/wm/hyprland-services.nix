@@ -85,6 +85,19 @@ in
       "mode=dnd".invisible = true;
     };
   };
+  # The HM mako module deliberately ships no unit of its own in 25.11 (it only
+  # does home.packages, dbus.packages and the config file), so this one is
+  # required. Two notes worth keeping:
+  #
+  # - No X-Restart-Triggers on purpose. The module already attaches
+  #   `onChange = makoctl reload` to mako/config, so settings edits do land
+  #   without a restart — and a restart would be actively worse here, because
+  #   default-timeout = 0 means undismissed notifications are still on screen
+  #   and a restart drops them. Reload keeps them.
+  # - ExecStart follows services.mako.package rather than pkgs.mako, so
+  #   overriding the package can't leave one mako binary running against
+  #   another one's generated config. They resolve to the same store path
+  #   today; this is about not making that an invariant.
   systemd.user.services.mako = {
     Unit = {
       Description = "Mako notifications";
@@ -93,7 +106,7 @@ in
       ConditionEnvironment = "WAYLAND_DISPLAY";
     };
     Service = {
-      ExecStart = "${pkgs.mako}/bin/mako";
+      ExecStart = "${config.services.mako.package}/bin/mako";
       Restart = "on-failure";
     };
     Install.WantedBy = [ target ];
