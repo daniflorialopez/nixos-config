@@ -12,11 +12,61 @@ let
       flake="''${1:-$HOME/nixos-config}"
       echo "==> nix flake check $flake"
       nix flake check "$flake"
+
+      # Verify the generated Hyprland config with the Hyprland binary from the
+      # very same closure.
+      #
+      # Why this is worth the extra step: Hyprland does NOT fail on a bad config.
+      # It records each bad line, drops that rule, queues a red error overlay,
+      # and starts anyway. So a config mistake does not fail the build and does
+      # not fail the switch - you discover it as a desktop with no window rules
+      # and no layer blur, after you have already rebooted into it. On a machine
+      # with no usable text console that is a bad place to find out.
+      #
+      # `--verify-config` parses and exits without starting a compositor. It
+      # exists on 0.52.2 (verified) and on 0.55.4, so this keeps working across
+      # the channel bump - which is precisely when it earns its keep, since the
+      # windowrule/layerrule grammar changed in 0.53.
+      verify_hypr() {
+        local host="$1"
+        local conf hypr out
+        # danixos-vm has no Hyprland at all, so this attribute does not exist;
+        # that is a clean skip, not a failure.
+        conf="$(nix eval --raw \
+          "$flake#nixosConfigurations.$host.config.home-manager.users.dani.xdg.configFile.\"hypr/hyprland.conf\".source" \
+          2>/dev/null)" || return 0
+        [ -n "$conf" ] || return 0
+        hypr="$(nix eval --raw "$flake#nixosConfigurations.$host.config.programs.hyprland.package" 2>/dev/null)" || return 0
+
+        # Both have to be realised, not merely evaluated: `nix eval --raw` yields
+        # a store path that may not exist on disk yet. The toplevel build above
+        # normally pulls both in, but building them explicitly means this
+        # function is correct on its own rather than by side effect - and a
+        # missing config file would otherwise make Hyprland fall back to its
+        # built-in defaults and cheerfully report "config ok".
+        nix build --no-link "$flake#nixosConfigurations.$host.config.programs.hyprland.package" || return 1
+        nix build --no-link \
+          "$flake#nixosConfigurations.$host.config.home-manager.users.dani.xdg.configFile.\"hypr/hyprland.conf\".source" || return 1
+        [ -e "$conf" ] || { echo "==> FAIL: $host Hyprland config was not realised" >&2; return 1; }
+
+        echo "==> verifying Hyprland config for $host"
+        # --verify-config exits 0 even when it reports errors, so the exit code
+        # is useless and the result has to be matched on its text.
+        out="$("$hypr/bin/Hyprland" --verify-config -c "$conf" 2>&1)" || true
+        if printf '%s\n' "$out" | grep -qx "config ok"; then
+          return 0
+        fi
+        printf '%s\n' "$out" >&2
+        echo "==> FAIL: $host has Hyprland config errors (see above)" >&2
+        return 1
+      }
+
       for host in legionix danix-hp danixos-vm; do
         echo "==> building $host"
         nix build "$flake#nixosConfigurations.$host.config.system.build.toplevel" --no-link
+        verify_hypr "$host"
       done
-      echo "==> OK: all hosts build and flake check passed"
+      echo "==> OK: all hosts build, Hyprland configs parse, and flake check passed"
     '';
   };
 in
