@@ -1,10 +1,19 @@
-{ 
-  config, 
-  pkgs, 
-  ... 
+{
+  config,
+  pkgs,
+  lib,
+  osConfig ? null,
+  ...
 }:
 
 let
+  # This whole wm/ tree is shared with danix-hp, which runs Hyprland on
+  # `modesetting` + `fbdev` rather than the proprietary NVIDIA driver. Anything
+  # that only makes sense under NVIDIA has to be gated, or it lands there too.
+  isNvidia =
+    osConfig != null
+    && builtins.elem "nvidia" (osConfig.services.xserver.videoDrivers or [ ]);
+
   screenshotSatty = pkgs.writeShellApplication {
     name = "screenshot-satty";
     runtimeInputs = with pkgs; [
@@ -300,10 +309,32 @@ in
     ./mouseless.nix
   ];
 
-  home.file.".config/uwsm/env-hyprland".text = ''
-    export AQ_DRM_DEVICES="/dev/dri/card1"
-    export AQ_FORCE_LINEAR_BLIT=0
-  '';
+  # Both of these are Aquamarine's NVIDIA multi-GPU workarounds, straight off
+  # the Hyprland NVIDIA wiki page. They were being written unconditionally,
+  # which is wrong twice over:
+  #
+  #   1. danix-hp loads this same file and runs `modesetting`, where pinning
+  #      Aquamarine to a hardcoded DRM node is at best pointless and at worst
+  #      points it at a node that is not its GPU. Now gated on the host actually
+  #      using the proprietary driver.
+  #   2. The card INDEX is not a stable name. It happens to be right here -
+  #      `ls /dev/dri` shows only card1 + renderD128, both at pci-0000:01:00.0 -
+  #      but that is enumeration luck rather than a guarantee.
+  #
+  # OPEN QUESTION, deliberately not resolved blind: legionix is discrete-only
+  # (BIOS has no iGPU; /sys/class/drm holds exactly one card, bound to nvidia),
+  # and the wiki presents both of these as *multi-GPU* workarounds. So they may
+  # be doing nothing here at all. Removing them is a compositor-device-selection
+  # change on a machine with no text console, so it wants a deliberate test with
+  # a known-good generation one menu pick away - not a drive-by deletion.
+  # /dev/dri/by-path/pci-0000:01:00.0-card is the stable spelling to try at the
+  # same time; it is untested against Aquamarine's device matching.
+  home.file.".config/uwsm/env-hyprland" = lib.mkIf isNvidia {
+    text = ''
+      export AQ_DRM_DEVICES="/dev/dri/card1"
+      export AQ_FORCE_LINEAR_BLIT=0
+    '';
+  };
 
   wayland.windowManager.hyprland = {
     enable = true;
