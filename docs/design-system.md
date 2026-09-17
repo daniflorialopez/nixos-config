@@ -71,12 +71,34 @@ Several values are lightened from Tokyo Night canon so text is legible:
 `#f88298`, greens `#b9f27c`, blue `#7ea5f7`. Same hues, raised lightness.
 `#737aa2` is the contrast **floor** for hint/placeholder text.
 
-### 5. One font: CaskaydiaMono Nerd Font
+### 5. Two type tiers: CaskaydiaMono for chrome, Inter for application UI
 
-Terminal, waybar, mako, zathura, imv, SDDM, hyprlock, walker, lazygit all name
-it (`modules/nixos/fonts.nix` installs it). Note in-repo: Caskaydia's capitals
-have flat-cut apexes by design — they can look "cropped" at list sizes, which
-is why walker uses regular (not semibold) weight for list items.
+**Chrome/shell tier — CaskaydiaMono Nerd Font.** Terminal, waybar, mako,
+zathura, imv, SDDM, hyprlock, walker, lazygit all name it. This is what gives
+the desktop its voice, and it does not change. Note in-repo: Caskaydia's
+capitals have flat-cut apexes by design — they can look "cropped" at list
+sizes, which is why walker uses regular (not semibold) weight for list items.
+
+**Application-UI tier — Inter.** Menus, dialogs, portal file choosers and
+browser chrome are dense proportional text; a monospace there costs real
+readability for no stylistic gain. Added 2026-09-17, replacing an *accidental*
+default: before then every unstyled GTK surface rendered in `Ubuntu 10`, a
+dconf key left behind by the Cinnamon era that no file in this repo set.
+
+Two traps, both live:
+
+- nixpkgs' `inter` publishes the family name **`Inter Variable`**, not `Inter`.
+  Asking for `Inter` falls through to DejaVu Sans silently. Check with
+  `fc-match "Inter Variable"`.
+- The generic `monospace` alias is now pinned to CaskaydiaMono in
+  `fonts.fontconfig.defaultFonts`. Without that, anything requesting plain
+  `monospace` got DejaVu Sans Mono and rendered every Nerd Font glyph as tofu.
+
+**Ownership:** `modules/nixos/fonts.nix` installs both families and sets the
+fontconfig generic aliases. `home/dani/wm/theme.nix` is the authority for which
+font GTK actually uses — via `dconf`, because the xdg-desktop-portal Settings
+interface reads dconf and *beats* `gtk-3.0/settings.ini` for every libadwaita
+app and every portal dialog.
 
 ## Where each surface gets its color
 

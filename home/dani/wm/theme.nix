@@ -1,4 +1,17 @@
 { pkgs, ... }:
+let
+  # Two type tiers, deliberately. The shell/chrome tier (waybar, mako, walker,
+  # hyprlock, SDDM, the terminal) stays 100% CaskaydiaMono — that is the
+  # design-system rule and it is what gives the desktop its voice. Application
+  # UI is a different tier: menus, dialogs and portal file choosers are dense
+  # proportional text, and a monospace there costs real readability for no
+  # stylistic gain.
+  #
+  # "Inter Variable" is the family name nixpkgs' inter-4.1 actually publishes.
+  # It is NOT "Inter" — see the note in modules/nixos/fonts.nix.
+  uiFont = "Inter Variable 10";
+  monoFamily = "CaskaydiaMono Nerd Font Mono";
+in
 {
   # Dark theming for GTK apps (pcmanfm, pavucontrol, blueman, ...)
   gtk = {
@@ -11,9 +24,13 @@
       name = "Papirus-Dark";
       package = pkgs.papirus-icon-theme;
     };
-    gtk3.extraConfig.gtk-application-prefer-dark-theme = 1;
+    gtk3.extraConfig = {
+      gtk-application-prefer-dark-theme = 1;
+      gtk-font-name = uiFont;
+    };
     gtk4.extraConfig = {
       gtk-application-prefer-dark-theme = 1;
+      gtk-font-name = uiFont;
       # adw-gtk3 ships no GTK4 CSS, so plain-GTK4 apps (e.g. pavucontrol)
       # would fall back to built-in light; name the built-in theme so its
       # dark variant resolves. libadwaita apps ignore this and use dconf.
@@ -21,8 +38,39 @@
     };
   };
 
-  # libadwaita apps ignore gtk-theme and follow this preference instead
-  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+  # This block is the *authority* for GTK appearance, not a restatement of
+  # settings.ini — and the distinction is load-bearing.
+  #
+  # settings.ini is only read by apps that read settings.ini. Everything going
+  # through the xdg-desktop-portal Settings interface — every libadwaita app,
+  # every portal dialog — reads dconf, and dconf wins there. Proof, before this
+  # change:
+  #
+  #   busctl --user call org.freedesktop.portal.Desktop \
+  #     /org/freedesktop/portal/desktop org.freedesktop.portal.Settings \
+  #     Read ss org.gnome.desktop.interface font-name
+  #   -> "Ubuntu 10"
+  #
+  # No file in this repo set that. It was residue from the Cinnamon era, and it
+  # was the real font of every unstyled GTK surface on the machine. Because the
+  # repo declared only color-scheme, the remaining keys agreed with settings.ini
+  # purely by coincidence — so changing gtk.theme here would have half-applied,
+  # with portal-reading apps keeping the old value.
+  #
+  # Declaring them makes Home Manager the owner of the keys that actually decide.
+  dconf.settings."org/gnome/desktop/interface" = {
+    # libadwaita apps ignore gtk-theme and follow this preference instead
+    color-scheme = "prefer-dark";
+    font-name = uiFont;
+    document-font-name = "Inter Variable 11";
+    monospace-font-name = "${monoFamily} 11";
+    # Kept in step with home.pointerCursor (wm/cursor.nix) on purpose: a stale
+    # dconf cursor-theme is followed by anything reading through the portal, so
+    # leaving it undeclared means the cursor can silently diverge from the one
+    # the rest of the session uses.
+    cursor-theme = "Bibata-Modern-Ice";
+    cursor-size = 32;
+  };
 
   # Qt apps follow suit
   qt = {
