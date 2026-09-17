@@ -58,6 +58,9 @@ does from the code alone.
 | [docs/upstream/](docs/upstream/README.md)  | Bugs found in third-party software, written up ready to file, with the patches we carry locally. |
 | [docs/operations.md](docs/operations.md)  | Day-to-day: rebuilding, backups, secrets, disk health, garbage collection, testing a change. |
 | [docs/luks-runbook.md](docs/luks-runbook.md) | **Copy-paste LUKS runbook** — remote unlock, the three recovery drills, and the legionix migration-day sequence. The source of truth when reinstalling with encryption. |
+| [docs/rescue-blackscreen.md](docs/rescue-blackscreen.md) | **The display is dead — start here.** Three recovery paths for legionix and why there is deliberately no safe-graphics entry. Also on the box as the `rescue` command. |
+| [docs/2605-bump-runbook.md](docs/2605-bump-runbook.md) | **Channel bump 25.11 → 26.05** — what changes (kernel, NVIDIA driver, initrd implementation), the verified non-risks, the Hyprland rule-grammar migration, and the execution order. |
+| [docs/ricing/](docs/ricing/README.md)     | The desktop-rice project: current-state inventory, architectural decision log, implementation tracker, and recovery policy. |
 | [docs/roadmap.md](docs/roadmap.md)        | Staged work (LUKS status, impermanence), known issues, and install post-mortems.   |
 
 ## Quick start

@@ -18,7 +18,9 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | identify Hyprland pin/source | DONE | nixpkgs 25.11 → **0.52.2**; hyprpaper is the only desktop package from unstable |
 | identify Home Manager boundaries | DONE | HM-as-NixOS-module, `useGlobalPkgs`; `hyprEnabled` gate keeps `wm/` off the VM |
 | preserve recovery terminal shortcut | DONE (pre-existing) | `$mod+Return`; Alacritty is installed at *system* level so it survives a failed HM activation |
-| establish the channel-bump plan | TODO | ADR-003 — the 25.11 pin is the binding constraint on this whole project |
+| establish the channel-bump plan | DONE | Scoped and written up as `docs/2605-bump-runbook.md`. 26.05 ships Hyprland 0.55.4, kernel 6.18.52, NVIDIA 595.71.05 |
+| execute the 26.05 bump | TODO | **Next up.** Step 0 first: `configurationLimit = 10` is committed but not yet on the ESP |
+| adopt systemd stage 1 | TODO | Pinned `false` during the bump so it is one variable, not two. Deprecated; removal scheduled for 26.11 |
 
 ## Shell
 
@@ -70,7 +72,8 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | gaming rules | TODO | `programs.gamemode.settings` is `{}` — no hook point exists yet |
 | optional advanced effects | REJECTED (for now) | ADR-010 — motion blur is 0.56, glow is 0.56, wobble is 0.57 |
 | Hyprland plugins | REJECTED | ADR-010 — official repo gutted 2026-05-12; hyprexpo/hyprtrails/hyprwinwrap gone |
-| **Lua config migration** | BLOCKED | ADR-009 — gated on 26.05. 11 `windowrulev2` + 9 `layerrule` lines break on bump |
+| Hyprland rule-grammar migration | TODO | Part of the bump commit. Verified with `--verify-config` on a real 0.55.4 build: 20 errors today, `config ok` after. Table in the runbook |
+| **Lua config migration** | BLOCKED | Not forced — hyprlang still parses on 0.55.4, and `configType` stays `hyprlang` while `home.stateVersion = "25.05"`. Note `hyprctl keyword` is hyprlang-only, so the effect-profile design is coupled to staying |
 
 ## Services / apps
 
