@@ -17,6 +17,14 @@ in
   programs.firefox = {
     enable = true;
 
+    # Pinned because 26.05 made this stateVersion-gated: it was internal, and
+    # its default moves from ~/.mozilla/firefox to $XDG_CONFIG_HOME/mozilla/
+    # firefox at stateVersion 26.05. home.stateVersion is 25.05, so this is
+    # already the effective value — stating it silences the warning and, more
+    # importantly, means a future stateVersion bump cannot silently relocate all
+    # three profiles and start Firefox from scratch.
+    configPath = ".mozilla/firefox";
+
     policies = {
       Extensions = {
         Install = [

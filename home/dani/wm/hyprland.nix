@@ -341,6 +341,20 @@ in
 
     systemd.enable = false; # because my system uses `programs.hyprland.withUWSM = true`
 
+    # Pinned, and worth understanding before changing.
+    #
+    # 26.05 added configType, stateVersion-gated: "hyprlang" below 26.05,
+    # "lua" at or above it. home.stateVersion is 25.05, so hyprlang is already
+    # what we get — but leaving it implicit means a future stateVersion bump
+    # would silently re-render this entire `settings` block as hl.*() calls into
+    # hyprland.lua instead of hyprland.conf.
+    #
+    # Staying on hyprlang is a real decision, not inertia: `hyprctl keyword` is
+    # hyprlang-only from 0.55 (dispatchKeyword returns "keyword can't work with
+    # non-legacy parsers. Use eval." under the Lua parser), and that is the
+    # mechanism a future effect-profile system would be built on.
+    configType = "hyprlang";
+
     settings = {
       monitor = [ 
         "HDMI-A-1, 2560x1440@75, 0x0, 1"
@@ -577,21 +591,30 @@ in
       # Glass for the chrome too: blur behind waybar, walker and mako
       # (ignorezero keeps fully-transparent regions, e.g. rounded
       # corners, from being blurred into grey halos)
+      # Grammar note (Hyprland 0.53+, so: since the 26.05 bump). Layer rules are
+      # now `<effect> <value>, match:namespace <regex>`:
+      #   - every effect needs an explicit value, so bare `blur` is
+      #     "invalid field blur: missing a value"
+      #   - the namespace needs a literal `match:namespace ` prefix
+      #   - effect names are snake_case (`noanim` -> `no_anim`)
+      #   - `ignorezero` was removed outright. `ignore_alpha 0` is its exact
+      #     equivalent, not an approximation: the surface shader discards on
+      #     `alpha <= value`, and 0 is what ignorezero meant.
       layerrule = [
-        "blur, waybar"
-        "ignorezero, waybar"
-        "blur, walker"
-        "ignorealpha 0.4, walker"
-        "blur, notifications"
-        "ignorezero, notifications"
-        "blur, swayosd"
-        "ignorezero, swayosd"
+        "blur true, match:namespace waybar"
+        "ignore_alpha 0, match:namespace waybar"
+        "blur true, match:namespace walker"
+        "ignore_alpha 0.4, match:namespace walker"
+        "blur true, match:namespace notifications"
+        "ignore_alpha 0, match:namespace notifications"
+        "blur true, match:namespace swayosd"
+        "ignore_alpha 0, match:namespace swayosd"
 
         # Mouseless puts its hint overlay on wlr-layer-shell, so the `layers`
         # animation below would pop it in over ~250ms — long enough that the
         # labels land after you have started typing them. It wants to be
         # instant, not pretty.
-        "noanim, mouseless-overlay"
+        "no_anim true, match:namespace mouseless-overlay"
       ];
 
       animations = {
@@ -618,7 +641,10 @@ in
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
 
-        vfr = true;
+        # `vfr` used to live here. It moved to `debug:vfr` in 0.55 and
+        # `misc:vfr` is now a hard error ("config option <misc:vfr> does not
+        # exist."). Deliberately NOT re-added as `debug.vfr = true` — that is
+        # already the default, so the line would be pure noise. VFR is still on.
       };
 
       workspace = [
@@ -636,7 +662,18 @@ in
         "10, monitor:HDMI-A-1"
       ];
 
-      windowrulev2 = [
+      # `windowrulev2` is gone as of 0.53 — it survives only as a registered
+      # handler that returns "windowrulev2 is deprecated", i.e. a hard parse
+      # error. The grammar was reworked too:
+      #   - matchers take a literal `match:<prop> <value>` form, space-separated
+      #   - every effect needs an explicit value (`float` -> `float true`)
+      #   - effect names are snake_case (`bordersize` -> `border_size`)
+      #   - `fullscreenstate` split into two int props, and `*` is no longer a
+      #     wildcard (the int matcher is std::stoi) — "any" is expressed by
+      #     omitting the prop
+      # Regex matching is unchanged, so the patterns port as-is, Nix `\\.`
+      # escaping included.
+      windowrule = [
         # (Scratchpad geometry — float/size/centre — is owned by the
         # `scratchpad` helper, not windowrules: see the let block above.)
         # (The wallpaper picker needs no rule: it is a walker layer surface
@@ -645,21 +682,27 @@ in
         # Portal file choosers — every GTK or Flatpak app dialog. They carry no
         # hint Hyprland reads as a dialog, so they tile into the layout and
         # arrive as a cramped 620px column.
-        "float, class:^(xdg-desktop-portal-gtk)$"
-        "center, class:^(xdg-desktop-portal-gtk)$"
-        "size 50% 65%, class:^(xdg-desktop-portal-gtk)$"
+        "float true, match:class ^(xdg-desktop-portal-gtk)$"
+        "center true, match:class ^(xdg-desktop-portal-gtk)$"
+        "size 50% 65%, match:class ^(xdg-desktop-portal-gtk)$"
 
-        "float, class:^(firefox)$, title:^(Save As|Guardar como).*$"
-        "size 70% 75%, class:^(firefox)$, title:^(Save As|Guardar como).*$"
-        "center 1, class:^(firefox)$, title:^(Save As|Guardar como).*$"
-        "bordersize 0, fullscreenstate:1 *"
-        "rounding 0, fullscreenstate:1 *"
+        "float true, match:class ^(firefox)$, match:title ^(Save As|Guardar como).*$"
+        "size 70% 75%, match:class ^(firefox)$, match:title ^(Save As|Guardar como).*$"
+        # Was `center 1`, where the 1 meant "ignore the reserved area" and put
+        # the dialog in the middle of the whole monitor rather than below
+        # waybar's strip. That variant no longer exists — `center` is a plain
+        # bool now and always centres in the work area, so this dialog lands a
+        # little lower than it used to. Accepted knowingly; the only way back
+        # would be an explicit `move` rule.
+        "center true, match:class ^(firefox)$, match:title ^(Save As|Guardar como).*$"
+        "border_size 0, match:fullscreen_state_internal 1"
+        "rounding 0, match:fullscreen_state_internal 1"
 
         # Media stays true-color: the glass treatment (0.94/0.88 + blur)
         # washes out video, photos and PDFs when windowed/unfocused, so
         # viewers and the screenshot editor render at full opacity
-        "opacity 1.0 override 1.0 override, class:^(mpv|imv|org\\.pwmt\\.zathura|com\\.gabm\\.satty|com\\.obsproject\\.Studio)$"
-        "opacity 1.0 override 1.0 override, title:^(Picture-in-Picture)$"
+        "opacity 1.0 override 1.0 override, match:class ^(mpv|imv|org\\.pwmt\\.zathura|com\\.gabm\\.satty|com\\.obsproject\\.Studio)$"
+        "opacity 1.0 override 1.0 override, match:title ^(Picture-in-Picture)$"
       ];
     };
   };

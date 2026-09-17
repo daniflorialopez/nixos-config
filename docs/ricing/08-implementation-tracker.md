@@ -19,7 +19,7 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | identify Home Manager boundaries | DONE | HM-as-NixOS-module, `useGlobalPkgs`; `hyprEnabled` gate keeps `wm/` off the VM |
 | preserve recovery terminal shortcut | DONE (pre-existing) | `$mod+Return`; Alacritty is installed at *system* level so it survives a failed HM activation |
 | establish the channel-bump plan | DONE | Scoped and written up as `docs/2605-bump-runbook.md`. 26.05 ships Hyprland 0.55.4, kernel 6.18.52, NVIDIA 595.71.05 |
-| execute the 26.05 bump | TODO | **Next up.** Step 0 first: `configurationLimit = 10` is committed but not yet on the ESP |
+| execute the 26.05 bump | DONE | Step 0 confirmed by the user (10 entries seen in the firmware menu), then bumped. Hyprland 0.55.4, kernel 6.18.52, NVIDIA 595.71.05 |
 | adopt systemd stage 1 | TODO | Pinned `false` during the bump so it is one variable, not two. Deprecated; removal scheduled for 26.11 |
 
 ## Shell
@@ -31,14 +31,14 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | evaluate Noctalia | DONE | v5 dropped Qt entirely; blocked by 25.11 + `settings.toml` loads last and cannot be disabled |
 | consider custom Quickshell | DONE | Rejected — 3–6 months to parity; quickshell #723 (NVIDIA FD leak) and #1098 (dual-monitor reload SIGSEGV) |
 | choose one shell | DONE | **ADR-004** — keep waybar + walker/elephant + mako + swayosd |
-| re-evaluate after 26.05 | TODO | Gate: ADR-003 |
+| re-evaluate after 26.05 | TODO | **Now unblocked.** But note 26.05 has quickshell **0.3.0** and the shells want ≥0.3.1, and `caelestia-shell` is still unstable-only |
 
 ## Theme / palette
 
 | Task | Status | Notes |
 |---|---|---|
 | define design tokens | TODO | **Next up.** `home/dani/theme/palette.nix` + contrast/hue assertions (ADR-005) |
-| evaluate Matugen | DONE | Rejected as authority — Nix module is build-time + IFD, drops hooks, `exit 0` on read-only |
+| evaluate Matugen | DONE | Rejected as authority — Nix module is build-time + IFD, drops hooks, `exit 0` on read-only. 26.05 now ships **4.0.0**, so the Tier-2 option in ADR-005 is available if wanted |
 | evaluate Stylix | DONE | Rejected — `release-25.11` frozen since 2026-04-29; no `mkDefault`; silent CSS concat on waybar |
 | choose theme authority | DONE | **ADR-005** — Tier 1 Nix tokens (frozen), Tier 2 ambient optional/later |
 | migrate ~200 literals onto tokens | TODO | 15 files, 4 syntaxes; fish's 21 bare unquoted hexes are the trap |
@@ -72,7 +72,7 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | gaming rules | TODO | `programs.gamemode.settings` is `{}` — no hook point exists yet |
 | optional advanced effects | REJECTED (for now) | ADR-010 — motion blur is 0.56, glow is 0.56, wobble is 0.57 |
 | Hyprland plugins | REJECTED | ADR-010 — official repo gutted 2026-05-12; hyprexpo/hyprtrails/hyprwinwrap gone |
-| Hyprland rule-grammar migration | TODO | Part of the bump commit. Verified with `--verify-config` on a real 0.55.4 build: 20 errors today, `config ok` after. Table in the runbook |
+| Hyprland rule-grammar migration | DONE | Landed with the bump; gated by `check-all`'s `--verify-config` pass |
 | **Lua config migration** | BLOCKED | Not forced — hyprlang still parses on 0.55.4, and `configType` stays `hyprlang` while `home.stateVersion = "25.05"`. Note `hyprctl keyword` is hyprlang-only, so the effect-profile design is coupled to staying |
 
 ## Services / apps

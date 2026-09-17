@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
   # Two type tiers, deliberately. The shell/chrome tier (waybar, mako, walker,
   # hyprlock, SDDM, the terminal) stays 100% CaskaydiaMono — that is the
@@ -28,6 +28,13 @@ in
       gtk-application-prefer-dark-theme = 1;
       gtk-font-name = uiFont;
     };
+    # stateVersion-gated in 26.05: gtk4.theme used to follow gtk.theme
+    # unconditionally, and its new default is null. Pinned to the old behaviour,
+    # which is what is in effect at stateVersion 25.05 — adopting null would
+    # drop adw-gtk3's GTK4 CSS import and visibly change pavucontrol and the
+    # portal dialogs.
+    gtk4.theme = config.gtk.theme;
+
     gtk4.extraConfig = {
       gtk-application-prefer-dark-theme = 1;
       gtk-font-name = uiFont;

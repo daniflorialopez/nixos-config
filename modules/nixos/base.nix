@@ -62,6 +62,31 @@
       theme = "bgrt";
     };
 
+    # Pinned FALSE deliberately, for the 26.05 bump.
+    #
+    # 26.05 flips this default: `mkEnableOption` (false) on 25.11 becomes
+    # `default = true` (nixos/modules/system/boot/systemd/initrd.nix), and this
+    # repo never set it — so the channel bump would silently swap the entire
+    # initrd implementation on the same switch that moves the kernel six series
+    # (6.12.93 -> 6.18.52) and the NVIDIA driver a full generation
+    # (580.142 -> 595.71.05).
+    #
+    # Of those three, the initrd is the only one that can fail BEFORE any
+    # graphical modeset, and legionix has no usable text console
+    # (/sys/class/vtconsole is a dummy device), so a stage-1 failure here is
+    # indistinguishable from a dead machine. Everything downstream of it — the
+    # driver, EGL, SDDM, Hyprland — at least leaves sshd and Tailscale reachable.
+    #
+    # Pinning it makes the bump three variables instead of four, for the price
+    # of one later reboot. Nothing suggests this host would actually struggle
+    # with systemd stage 1 — plain btrfs by partlabel via disko, explicit
+    # fsTypes, x-initrd.mount on the three neededForBoot mounts, no LUKS, no
+    # initrd-ssh, no custom preLVM/postMount hooks — which is exactly why it
+    # should be adopted on its own, as a revertable commit, where a failure is
+    # unambiguous. Deprecated upstream with removal scheduled for 26.11, so this
+    # is a deferral of months, not a permanent opt-out.
+    initrd.systemd.enable = false;
+
     # Suppress routine kernel chatter, but retain errors.
     consoleLogLevel = 3;
 

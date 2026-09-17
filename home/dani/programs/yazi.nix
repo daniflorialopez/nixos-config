@@ -11,6 +11,11 @@ in
   programs.yazi = {
     enable = true;
 
+    # stateVersion-gated in 26.05 ("yy" legacy, "y" current). Pinned to the
+    # value already in effect. Cosmetic — nothing in this repo calls the
+    # wrapper; yazi is invoked by name from the scratchpad and from cli.nix.
+    shellWrapperName = "yy";
+
     # Tokyo Night accents (see home/dani/wm/theme.nix for the palette)
     theme = {
       mgr = {

@@ -66,8 +66,26 @@ not against channel heads.
 
 ### ADR-003 — The nixpkgs 25.11 pin is the binding constraint on this project
 
-**Status:** accepted
+**Status:** accepted → **RESOLVED 2026-09-17** by the bump to `nixos-26.05`
 **Date:** 2026-09-17
+
+> **Resolution.** The bump was executed the same day. See `docs/2605-bump-runbook.md`
+> for the full scope and risk register. What it delivered against the table below:
+> Hyprland 0.52.2 → **0.55.4**, Qt 6.10.2 → **6.11.1**, quickshell 0.2.1 → **0.3.0**,
+> matugen 3.0.0 → **4.0.0**, vicinae 0.16.11 → **0.23.2**, hyprshutdown and `wayle` now
+> present, hypridle/hyprsunset unchanged. Kernel 6.12.93 → 6.18.52 and NVIDIA 580.142 →
+> 595.71.05 came with it.
+>
+> Two of the deferrals below are now **unblocked and should be re-evaluated**: the
+> Quickshell shells (ADR-004) and Matugen-as-Tier-2 (ADR-005). Two are **not**:
+> `caelestia-shell` is still absent from 26.05 (it is unstable-only), and quickshell is
+> 0.3.0 where the shells want ≥0.3.1.
+>
+> One deferral changed shape rather than lifting: ADR-009 deferred the effect-profile
+> system to "after the Lua migration". That migration is **not forced** — hyprlang still
+> parses on 0.55.4, and `configType` is pinned to `hyprlang` explicitly. Note that
+> `hyprctl keyword` is hyprlang-only from 0.55, so the profile mechanism is now coupled
+> to *staying* on hyprlang rather than to leaving it.
 
 #### Context
 

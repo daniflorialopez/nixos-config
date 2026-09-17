@@ -1032,7 +1032,7 @@ in
     # restyled, because the GTK CSS provider is global to the display. Without
     # this, Super+S over Super+Space (or the reverse) leaves a stray window
     # wearing the other picker's stylesheet until you press a bind twice.
-    package = inputs.walker.packages.${pkgs.stdenv.system}.default.overrideAttrs (old: {
+    package = inputs.walker.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
       patches = (old.patches or [ ]) ++ [
         ./walker-grid-key.patch
         ./walker-window-per-theme.patch

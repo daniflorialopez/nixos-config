@@ -64,6 +64,36 @@ in
     viAlias = true;
     vimAlias = true;
 
+    # THIS LINE IS LOAD-BEARING. Do not remove it without reading this.
+    #
+    # ~/.config/nvim is NOT owned by Nix — it is seeded once from the
+    # lazyvim-starter input by home.activation.lazyvimStarter below, and
+    # ~/.config/nvim/init.lua is a real file containing `require("config.lazy")`.
+    #
+    # From Home Manager 26.05, programs.neovim writes xdg.configFile
+    # "nvim/init.lua" whenever its auto-populated `initLua` is non-empty — and
+    # it is ALWAYS non-empty now, because the provider lines
+    # (loaded_node_provider / loaded_perl_provider / ruby_host_prog /
+    # python3_host_prog) are seeded into it unconditionally. With
+    # home-manager.backupFileExtension = "hm-backup", the first switch would
+    # rename the LazyVim init.lua to init.lua.hm-backup and symlink a four-line
+    # provider stub in its place. lazy.nvim would never bootstrap and nvim would
+    # come up bare — with no error, no assertion and no failed activation.
+    #
+    # sideloadInitLua moves those provider lines into a wrapper flag
+    # (--cmd 'lua dofile(...)') instead of a config file, which leaves
+    # xdg.configFile."nvim/init.lua".enable = false and the seeded tree intact.
+    # Verified by evaluation, not assumed.
+    sideloadInitLua = true;
+
+    # Pinned explicitly because 26.05 made both stateVersion-gated (legacy true,
+    # current false). home.stateVersion is 25.05, so the values below are what
+    # was already in effect — stating them keeps behaviour identical and stops
+    # an eval warning on every rebuild. Flip to false if the nvim closure
+    # matters more than the providers; nothing in this LazyVim setup uses them.
+    withPython3 = true;
+    withRuby = true;
+
     # Tools LazyVim commonly uses (search, file picking, etc.)
     extraPackages = with pkgs; [
       git
