@@ -66,6 +66,13 @@ reboot
 Then, at the Lenovo logo, tap `Space` and **count the entries**. Do not proceed until you
 have seen roughly ten. This menu is what every boot-time risk below falls back to.
 
+You have to check it at the firmware menu, with your eyes. `/boot` is mounted `umask=0077`,
+so `ls /boot/loader/entries` is root-only and nothing in this repo can count them for you.
+All three independent reviews of this plan converged on the same verdict: **this step is a
+hard gate, and the bump is a NO-GO until it is done.** As of writing, the system profile has
+not been rebuilt since `configurationLimit = 10` was committed, so the ESP still carries the
+limit-3 set. An unverified rollback net is not a net.
+
 Also, before you need them:
 
 ```
@@ -153,6 +160,13 @@ red overlay. So the failure mode is a visibly broken desktop, not a brick — bu
 `debug:vfr`, which already defaults true). Do not substitute `debug.vfr = true`; that is
 a no-op that only adds noise.
 
+**Match these rows on their verbatim text, not on line numbers.** The scoping pass quoted
+line numbers that were already ~31 lines stale, and Home Manager 26.05 additionally rewrote
+`toHyprconf`: lists moved from the "fields" pass to the "sections" pass, so `bindd`, `bindm`,
+`layerrule`, `windowrule`, `monitor` and `workspace` all move position in the generated
+`hyprland.conf`. The rules still apply identically — but any tooling that assumes ordering in
+that file will be wrong after the bump.
+
 **`windowrulev2` → `windowrule`**, and the grammar changed shape: every effect needs an
 explicit value, and matchers need a literal `match:` prefix.
 
@@ -204,13 +218,28 @@ reload.
 ## Step 2 — verify before installing
 
 ```
+ls ~/.config/hypr/*.lua        # must print nothing — see the trap below
 check-all
 ```
 
-This now does `nix flake check`, builds all three hosts, **and** runs
+`check-all` does `nix flake check`, builds all three hosts, **and** runs
 `Hyprland --verify-config` per host against the generated config. Expect a long run: the
 closed NVIDIA module is unfree, so Hydra does not publish it and
 `nvidia-kernel-modules-595.71.05-6.18.52` compiles locally.
+
+**The `--verify-config` preflight is mandatory, not polish.** Home Manager's 26.05 Hyprland
+module does **no** build-time validation of the config it generates — verified, there is no
+`--verify-config`, no `checkPhase`, nothing, on either branch. So without this preflight the
+twenty rule errors reach a running session and nothing upstream of that catches them.
+
+> **Trap: a stray `hyprland.lua` silently outranks the whole config.**
+> On 0.55.4 `getMainConfigPath()` probes `~/.config/hypr/hyprland.lua` **before**
+> `hyprland.conf` and returns the Lua one if it exists. Worse, if *neither* exists it returns
+> the Lua path and generates a default Lua config. So a leftover experiment — or a first start
+> where the HM symlink is missing — silently replaces everything in `home/dani/wm/hyprland.nix`
+> with stock Hyprland: different keybinds, no monitor rules, wrong modes on a 75/165 Hz dual
+> setup. It looks exactly like "the bump broke the compositor". There is no error and no warning.
+> Checked today: `~/.config/hypr` holds only HM symlinks and no `.lua` file.
 
 ```
 nvd diff /run/current-system <the legionix toplevel>
@@ -242,12 +271,25 @@ lsmod | grep -E '^nvidia'
 cat /sys/module/nvidia_drm/parameters/modeset      # <-- must be Y
 ls /dev/dri/                                       # <-- card1 absent = module never bound
 dmesg | grep -iE 'nvrm|nvidia|gsp|firmware'
-cat /sys/module/nvidia/parameters/NVreg_EnableGpuFirmware
+nvidia-smi -q | grep 'GSP Firmware Version'        # N/A = EnableGpuFirmware=0 was honoured
 systemctl --failed
 systemctl status display-manager.service
 journalctl -b --user -u 'wayland-wm@*' -e
 hyprctl monitors
 ```
+
+> **Do NOT use `cat /sys/module/nvidia/parameters/NVreg_EnableGpuFirmware`.** That path does not
+> exist on this machine *even when everything is working* — verified on the live, healthy 580.142
+> system: `/sys/module/nvidia/` contains only `coresize drivers holders initsize initstate notes
+> refcnt sections srcversion taint uevent version`, with no `parameters/` directory at all, because
+> the proprietary `nvidia.ko` registers its `NVreg_*` parameters with `perm=0`. Run blind over SSH,
+> it returns "No such file or directory" and reads as proof that the 595 driver rejected the option
+> — which is exactly the catastrophe the check was meant to detect, and would send you reverting the
+> wrong thing. `nvidia-smi -q | grep 'GSP Firmware Version'` is the working probe: it reads `N/A`
+> today, which is positive evidence the parameter is in effect.
+>
+> The sibling check *is* valid — `/sys/module/nvidia_drm/parameters/` does exist and holds `modeset`
+> and `fbdev`.
 
 `modeset = N` means the modprobe.d migration is the culprit, not the driver (26.05 moves
 the nvidia modeset params off the kernel cmdline into `/etc/modprobe.d/nixos.conf`).
@@ -273,10 +315,17 @@ hardware.nvidia.branch = "legacy_580";   # 580.173.02, LTSB supported to Aug 202
 |---|---|---|
 | **Suspend/resume on the legacy path.** `open = false` keeps this host on `NVreg_PreserveVideoMemoryAllocations`; 595's successor (`NVreg_UseKernelSuspendNotifiers`) is gated on the open modules and nixpkgs asserts it. There is a reported 595.71.05 suspend regression. | suspend aborts, or resume returns black | close the lid deliberately, before you rely on it |
 | **Pageflip timeout under Wayland at 595.71.05** — reported total freeze, power-cycle only, no upstream fix. Reported on kwin, not Hyprland. | random hard freeze minutes-to-hours in; `"Pageflip timed out!"` in the journal | use it for a day before trusting it |
-| **GA104 non-GSP init path at 595.** The param is accepted (verified); whether the path still works on Ampere in the 595 closed RM is **UNVERIFIED**. | `/dev/nvidia*` absent, RM init failure in dmesg | if hit: delete the `boot.extraModprobeConfig` line — one line, independently revertable. Do **not** also set `gsp.enable = false`; the firmware needs to stay in the store for the fallback |
+| **GA104 non-GSP init path at 595.** Weaker than first assessed: NVIDIA's own README chapter 44 for *exactly* 595.71.05 documents `NVreg_EnableGpuFirmware=0` as a supported switch, and that page is byte-identical to the 580.142 one. So this is not a documented regression, just an unexercised path. | `/dev/nvidia*` absent, RM init failure in dmesg | if hit: delete the `boot.extraModprobeConfig` line — one line, independently revertable. Do **not** also set `gsp.enable = false`; the firmware must stay in the store for the fallback. And do **not** pre-emptively "clean up" the NVreg line as part of the bump — that silently re-enables GSP on a GPU that has run with it off for months, i.e. a second changed variable on the one switch that must change as few as possible |
 | **Mixed 75 Hz + 165 Hz on 595.** Weak evidence only (a 2024 report on drivers 551–565, GPU unstated). | one head dark after modeset | if hit, try 165 → 120 temporarily |
-| **SDDM PAM stacks were rewritten** into structured rules with `useDefaultRules = false`. Not build-detectable. | greeter renders, correct password rejected | fix over SSH or roll back |
 | **`sddm-astronaut` theme keys** may have drifted over ~16 months upstream. | wrong colours at the greeter | cosmetic; fix at leisure |
+
+**Two risks were raised and then refuted — recorded so they are not re-raised.** The SDDM PAM
+stack rewrite and the hyprlock PAM stack were both checked by diffing the *generated* PAM files
+between channels rather than the module sources: `security.pam.services.login.text` and
+`…hyprlock.text` are identical module-for-module, control-for-control, argument-for-argument,
+differing only in store hashes. The 26.05 `sddm` service is still a four-line passthrough to
+`login`. So "greeter renders, correct password rejected" cannot arise from this change, and
+there is no need to disable the lock screen before bumping.
 
 ## Deliberately *not* in this commit
 

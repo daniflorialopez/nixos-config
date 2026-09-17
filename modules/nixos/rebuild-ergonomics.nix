@@ -61,6 +61,19 @@ let
         return 1
       }
 
+      # Hyprland >=0.55 resolves its config by probing hyprland.lua BEFORE
+      # hyprland.conf, so a stray Lua file silently outranks everything Home
+      # Manager generates - no error, no warning, just stock Hyprland with
+      # different keybinds and no monitor rules. Worse, if NEITHER exists it
+      # generates a default Lua config. This warns rather than fails, because it
+      # is user state rather than anything the flake controls.
+      if compgen -G "$HOME/.config/hypr/*.lua" > /dev/null; then
+        echo "==> WARNING: $HOME/.config/hypr contains a .lua file:" >&2
+        compgen -G "$HOME/.config/hypr/*.lua" >&2
+        echo "    Hyprland >=0.55 prefers hyprland.lua over the home-manager-generated" >&2
+        echo "    hyprland.conf, so this would silently replace your entire config." >&2
+      fi
+
       for host in legionix danix-hp danixos-vm; do
         echo "==> building $host"
         nix build "$flake#nixosConfigurations.$host.config.system.build.toplevel" --no-link
