@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
   zathuraPkg = pkgs.zathura.override {
@@ -41,7 +41,7 @@ in
       opener = {
         edit = [
           {
-            run = "${pkgs.neovim}/bin/nvim \"$@\"";
+            run = "${config.programs.neovim.finalPackage}/bin/nvim \"$@\"";
             block = true;
             desc = "Neovim";
             for = "linux";

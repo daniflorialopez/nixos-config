@@ -1,6 +1,23 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
+  # The WRAPPED builds, not pkgs.firefox / pkgs.neovim.
+  #
+  # programs.firefox and programs.neovim each build a wrapper and expose it as
+  # finalPackage; that wrapper is what lands on PATH. Interpolating the bare
+  # pkgs.* attribute instead gets a second, plain build of the same version with
+  # a different store path — and since these .desktop shims are the default
+  # handlers, that second build is what every link and every text file opened
+  # from another application actually launched.
+  #
+  # Concretely, before this: firefox-handler.desktop pointed at a Firefox whose
+  # policies.json was `{"policies":{}}`, so uBlock Origin, Vimium-FF and Auto Tab
+  # Discard were not force-installed in it — while the Firefox you start from a
+  # keybind had them. And nvim-terminal.desktop pointed at a Neovim without
+  # programs.neovim.extraPackages on PATH, so LSP/treesitter/telescope failed
+  # there but worked from the terminal, which reads as intermittent breakage.
+  firefoxPkg = config.programs.firefox.finalPackage;
+  neovimPkg = config.programs.neovim.finalPackage;
   zathuraPkg = pkgs.zathura.override {
     plugins = with pkgs.zathuraPkgs; [
       zathura_pdf_mupdf
@@ -26,7 +43,7 @@ in
     nvim-terminal = {
       name = "Neovim (Terminal)";
       comment = "Open text-like files in Neovim inside Alacritty";
-      exec = "${pkgs.alacritty}/bin/alacritty -e ${pkgs.neovim}/bin/nvim %F";
+      exec = "${pkgs.alacritty}/bin/alacritty -e ${neovimPkg}/bin/nvim %F";
       terminal = false;
       type = "Application";
       categories = [ "Utility" "TextEditor" ];
@@ -55,7 +72,7 @@ in
 
     firefox-handler = {
       name = "Firefox Handler";
-      exec = "${pkgs.firefox}/bin/firefox %U";
+      exec = "${firefoxPkg}/bin/firefox %U";
       terminal = false;
       type = "Application";
       categories = [ "Network" "WebBrowser" ];
