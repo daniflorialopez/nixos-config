@@ -121,7 +121,17 @@ in
     };
     Service = {
       ExecStart = "${dockHandler}/bin/hypr-dock-handler";
-      Restart = "on-failure";
+      # `always`, not `on-failure`. The script's last command is
+      #   socat -U - UNIX-CONNECT:$sock | while read -r line; do ... done
+      # so if socat ever exits cleanly - Hyprland restarting, the socket going
+      # away - the pipeline exits 0, the script exits 0, and under on-failure
+      # systemd leaves the unit `inactive (dead)` with no restart and nothing in
+      # the journal. From then on a re-dock silently leaves every workspace piled
+      # on the laptop panel and produces duplicate waybar surfaces, with no clue
+      # as to why. A watcher loop that has stopped watching is a failure whatever
+      # its exit code says.
+      Restart = "always";
+      RestartSec = 2;
     };
     Install.WantedBy = [ target ];
   };

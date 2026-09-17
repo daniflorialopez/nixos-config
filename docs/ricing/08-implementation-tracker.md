@@ -120,21 +120,21 @@ These are not ricing; they are the reason ricing would half-apply if layered on 
 
 | Task | Severity | Status | Notes |
 |---|---|---|---|
-| hyprlock dead config keys | high | TODO | `general.grace` + `general.disable_loading_bar` unregistered in 0.9.2; `--grace` is a CLI flag |
-| dconf owns the GTK font | high | TODO | Portal returns `font-name = "Ubuntu 10"`, a Cinnamon-era value no file in the repo sets |
+| hyprlock dead config keys | high | DONE | Removed; `--grace 2` moved to the bind, not to hypridle's suspend path |
+| dconf owns the GTK font | high | DONE | Inter installed, `defaultFonts` pinned, dconf keys declared |
 | waybar renders on the bottom layer | — | ACCEPTED | Decision 2026-09-17: keep it. `mode = "dock"` overrides `layer = "top"`; a bottom-layer bar keeps fullscreen games/video edge-to-edge. Cost documented in `wm/mouseless.nix` and `wm/waybar.nix`: escape #1 is unavailable while anything is fullscreen |
 | ~~mako has no `X-Restart-Triggers`~~ | — | REJECTED | Withdrawn: HM fires `makoctl reload` onChange (verified live). A restart trigger would be *worse* — it drops queued notifications |
 | mako unit hardcodes `pkgs.mako` | low | TODO | Should be `config.services.mako.package`; same store path today, so latent |
 | mako has two start paths | low | TODO | D-Bus activation resurrects it outside the cgroup — only bites when deliberately stopped |
-| Firefox: unwrapped build is the default handler | high | TODO | Links from other apps open without the forced extensions |
+| Firefox: unwrapped build is the default handler | high | DONE | Both handlers now use `finalPackage` |
 | waybar `custom/kblayout` 1 s poll | medium | TODO | ADR-011 — ~90 % of waybar's CPU is forked scripts |
 | HM portal set shadows the system set | high | TODO | System `extraPortals` is mostly dead weight |
-| `AQ_DRM_DEVICES` hardcoded to `card1` | high | TODO | Written on danix-hp too; index is enumeration luck even here |
-| `flatpak-remotes.service` permanently failed | high | TODO | `systemctl --failed` is never empty, so real failures have no signal |
-| `wall-apply` dead code | low | TODO | Second, divergent wallpaper setter that never persists |
-| dead `unstablePkgs` binding | low | TODO | `hyprland-services.nix:3`; props up a stale claim in `architecture.md` |
-| elephant menu rescan race | medium | TODO | `scratchpads.toml` + `logout.toml` still lack the `onChange` that `wallpapers.lua` has |
-| `hypr-dock-handler` `Restart=on-failure` | medium | TODO | A clean `socat` exit leaves it dead and silent |
+| `AQ_DRM_DEVICES` hardcoded to `card1` | high | DONE | Gated on `videoDrivers` containing nvidia; verified absent on danix-hp. Open: it may be a pure multi-GPU workaround and this box is single-GPU — needs a deliberate test |
+| `flatpak-remotes.service` permanently failed | high | DONE | Orders after `nss-lookup.target`, retries 5×, exits 0 on the soft path |
+| `wall-apply` dead code | low | DONE | Deleted |
+| dead `unstablePkgs` binding | low | DONE | Deleted |
+| elephant menu rescan race | medium | DEFERRED | Correct fix depends on HM activation ordering internals that the 26.05 bump changes. Revisit on HM 26.05 rather than fixing against a module about to move |
+| `hypr-dock-handler` `Restart=on-failure` | medium | DONE | Now `always` + `RestartSec=2` |
 | boot menu offers 3 generations | medium | DONE | Raised to 10, matching what `rescue-blackscreen.md` already promised. /boot has 940 MB free; a generation costs ~47 MB |
 | stale docs (waytrogen, theme count, Plymouth) | low | TODO | Listed in `01-current-state.md` |
 
