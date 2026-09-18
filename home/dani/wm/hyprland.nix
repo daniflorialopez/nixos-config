@@ -2,13 +2,13 @@
   config,
   pkgs,
   lib,
+  theme,
   osConfig ? null,
   ...
 }:
 
 let
   # One palette source: home/dani/theme/palette.nix.
-  theme = import ../theme/palette.nix { inherit lib; };
 
   # This whole wm/ tree is shared with danix-hp, which runs Hyprland on
   # `modesetting` + `fbdev` rather than the proprietary NVIDIA driver. Anything

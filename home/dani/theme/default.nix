@@ -32,10 +32,9 @@
 #
 # No IFD: nothing reads this derivation's output at eval time.
 
-{ pkgs, lib, ... }:
+{ pkgs, theme, ... }:
 
 let
-  theme = import ./palette.nix { inherit lib; };
 
   checker = pkgs.writeText "palette-check.py" ''
     import json, sys, colorsys

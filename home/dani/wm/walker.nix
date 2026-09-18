@@ -1,10 +1,9 @@
-{ inputs, lib, pkgs, ... }:
+{ inputs, pkgs, theme, ... }:
 
 let
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
   # shadows, hover tints), not palette colours, and would not change with it.
-  theme = import ../theme/palette.nix { inherit lib; };
 
   # Palette and shared chrome for both walker themes. walker gives every
   # theme its own CSS file and they do not inherit from one another, so the

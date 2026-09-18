@@ -1,8 +1,7 @@
-{ lib, ... }:
+{ theme, ... }:
 
 let
   # One palette source: home/dani/theme/palette.nix.
-  theme = import ../theme/palette.nix { inherit lib; };
 in
 {
   # Lock screen: Tokyo Night over a blurred screenshot (matches whatever

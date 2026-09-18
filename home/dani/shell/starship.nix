@@ -1,10 +1,9 @@
-{ lib, ... }:
+{ theme, ... }:
 
 let
   # One palette source: home/dani/theme/palette.nix. The build-time gate in
   # home/dani/theme/default.nix is what guarantees these clear AAA and that
   # nothing in here drifts into the cyan band.
-  theme = import ../theme/palette.nix { inherit lib; };
 in
 
 {

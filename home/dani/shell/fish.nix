@@ -1,7 +1,6 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, theme, ... }:
 
 let
-  theme = import ../theme/palette.nix { inherit lib; };
   inherit (theme) hex noHash;
 in
 

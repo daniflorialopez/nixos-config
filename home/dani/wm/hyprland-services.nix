@@ -1,7 +1,6 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, theme, ... }:
 let
   # One palette source: home/dani/theme/palette.nix.
-  theme = import ../theme/palette.nix { inherit lib; };
 
   target = config.wayland.systemd.target; # defaults to "graphical-session.target"
 

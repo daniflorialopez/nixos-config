@@ -54,6 +54,14 @@
     let
       system = "x86_64-linux";
 
+      # The design-token palette, built once and handed to BOTH module systems.
+      # Passing it as a module argument rather than letting each file
+      # `import ../../theme/palette.nix` keeps relative paths out of eleven
+      # modules and, more importantly, makes it reachable from modules/nixos —
+      # the SDDM greeter needs the same colours as the desktop, and before this
+      # it would have had to reach up three directories into home/.
+      theme = import ./theme/palette.nix { inherit (nixpkgs) lib; };
+
       # Every host is wired identically: hosts/<name> plus the shared
       # agenix + Home Manager plumbing. Keeping this in one place means
       # the VM really does mirror the real machines (the LUKS rehearsal
@@ -64,7 +72,7 @@
           inherit system;
 
           # Extra args you want modules to see (if needed later)
-          specialArgs = { inherit inputs; };
+          specialArgs = { inherit inputs theme; };
 
           modules = [
             # Host config (imports hardware + modules/nixos/*.nix)
@@ -88,7 +96,7 @@
               home-manager.backupFileExtension = "hm-backup";
 
               # You can pass extra args to home modules if you want
-              home-manager.extraSpecialArgs = { inherit inputs; };
+              home-manager.extraSpecialArgs = { inherit inputs theme; };
 
               # Your home config entry point
               home-manager.users.dani = import ./home/dani;

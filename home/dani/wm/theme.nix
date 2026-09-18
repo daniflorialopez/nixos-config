@@ -1,8 +1,7 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, theme, ... }:
 let
   # The single palette source. See home/dani/theme/palette.nix; the build-time
   # contrast/hue gate lives next to it in home/dani/theme/default.nix.
-  theme = import ../theme/palette.nix { inherit lib; };
 
   # Two type tiers, deliberately. The shell/chrome tier (waybar, mako, walker,
   # hyprlock, SDDM, the terminal) stays 100% CaskaydiaMono — that is the

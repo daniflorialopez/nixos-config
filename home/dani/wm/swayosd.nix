@@ -11,12 +11,11 @@
 # Styled to the design system: a glass Tokyo Night pill matching the
 # waybar islands (same bg/border/radius; the blur + ignorezero layerrule
 # pair lives in hyprland.nix next to waybar's).
-{ lib, pkgs, ... }:
+{ pkgs, theme, ... }:
 let
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
   # shadows, hover tints), not palette colours, and would not change with it.
-  theme = import ../theme/palette.nix { inherit lib; };
   style = pkgs.writeText "swayosd-style.css" ''
     window#osd {
       background: ${theme.cssRgba "bg" "0.85"};

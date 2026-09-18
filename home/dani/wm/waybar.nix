@@ -24,12 +24,11 @@
 #   - hyprland/window:  muted title next to the workspaces for context.
 #   - tray:             invisible while empty.
 
-{ config, lib, pkgs, ... }:
+{ config, pkgs, theme, ... }:
 let
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
   # shadows, hover tints), not palette colours, and would not change with it.
-  theme = import ../theme/palette.nix { inherit lib; };
   # nm-applet and blueman-applet autostart via uwsm's XDG-autostart
   # target and park duplicate wired/bluetooth icons in the tray; the
   # bar's own network/bluetooth modules already cover both (styled, with
