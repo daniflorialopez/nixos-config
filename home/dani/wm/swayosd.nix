@@ -11,7 +11,7 @@
 # Styled to the design system: a glass Tokyo Night pill matching the
 # waybar islands (same bg/border/radius; the blur + ignorezero layerrule
 # pair lives in hyprland.nix next to waybar's).
-{ pkgs, theme, ... }:
+{ pkgs, theme, metrics, ... }:
 let
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
@@ -20,7 +20,7 @@ let
     window#osd {
       background: ${theme.cssRgba "bg" "0.85"};
       border: 1px solid ${theme.cssRgba "fg" "0.10"};
-      border-radius: 12px;
+      border-radius: ${metrics.px metrics.islandRadius};
       padding: 12px 20px;
     }
 

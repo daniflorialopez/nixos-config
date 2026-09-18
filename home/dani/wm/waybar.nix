@@ -27,8 +27,26 @@
 #   - hyprland/window:  muted title next to the workspaces for context.
 #   - tray:             invisible while empty.
 
-{ config, pkgs, theme, metrics, ... }:
+{ config, lib, pkgs, theme, metrics, ... }:
 let
+  # The only checkable geometry invariant in this repo, asserted here rather than
+  # dragging the bar height into theme/metrics.nix.
+  #
+  # It is a dimensional bound, not a taste check: at radius 16 a 34px island has
+  # 34 - 32 = 2px of straight vertical edge left and reads as a lozenge rather
+  # than a panel. The 8px floor is chosen, not measured — it encodes "somebody
+  # considered this and rejected 16", which is precisely the decision that got
+  # lost last time and left a false comment behind for months.
+  #
+  # Bound to barHeight on the line above so the two cannot drift apart, and
+  # placed in the value path the `style` string forces, so it cannot be silently
+  # skipped by Nix's laziness.
+  barHeight = 34;
+  islandRadius =
+    assert lib.assertMsg (2 * metrics.islandRadius <= barHeight - 8)
+      "waybar: islandRadius ${toString metrics.islandRadius} leaves only ${toString (barHeight - 2 * metrics.islandRadius)}px of straight edge in a ${toString barHeight}px island; the floor is 8px";
+    metrics.islandRadius;
+
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
   # shadows, hover tints), not palette colours, and would not change with it.
@@ -521,7 +539,7 @@ in
       .modules-right {
         background: @bg_alpha;
         border: 1px solid @border;
-        border-radius: 12px;
+        border-radius: ${metrics.px islandRadius};
         padding: 0 8px;
         /* no box-shadow: GTK draws it as a square halo that ignores the
            border-radius, reading as a rectangle around the pill */
@@ -531,6 +549,9 @@ in
         background: @bg;
         color: @fg;
         border: 1px solid @border;
+        /* An opaque popup, not a glass island: @bg rather than @bg_alpha. Equal
+           to the island radius today by coincidence, so it is NOT read from
+           metrics.islandRadius — the two can diverge. */
         border-radius: 12px;
       }
 
@@ -539,6 +560,12 @@ in
         color: @muted;
         padding: 0 9px;
         margin: 4px 2px;
+        /* Not derived from the island. The pill is inset from the island's outer
+           edge by 5px vertically (1 border + 0 padding + 4 margin) but 11px
+           horizontally (1 + 8 + 2), so its corners sit nowhere near the island's
+           and there is no single inset term to subtract. Its own bound is the
+           24px pill height (34 bar - 2x1 border - 2x4 margin): above 12 this
+           becomes a stadium. */
         border-radius: 8px;
         /* ease the pill in/out instead of snapping (matches the
            easeOutQuint feel of the window animations) */
