@@ -121,17 +121,33 @@ directory owns `layout.xml` — the window geometry — and not just `style.css`
 The shared layout is a fixed 600×570 box, which leaves a 12-icon grid swimming
 in dead space. `dani-grid` ships its own layout sized to the board.
 
-The numbers are interlocking, so change them together
-(`gridCss` and `gridLayout` in `wm/walker.nix`):
+The numbers used to be interlocking literals you had to change together. They are
+now **derived** from a `let` block at the top of `wm/walker.nix` — edit the inputs
+and every consumer follows, including the runtime `columns` entry that used to be
+a hand-maintained duplicate of the XML's `max_columns`:
 
-| Where | Value | Why |
-| ----- | ----- | --- |
-| `columns."menus:scratchpads"` | 4 | applied at runtime; **overrides** the GridView columns in the XML, so the two must agree |
-| `Scroll` min/max-content-width | 448 | 4 cells × 112 px |
-| `BoxWrapper` width-request | 480 | 448 + the 16 px wrapper padding either side |
-| tile margin / padding | 6 / 18 | 112 − 12 margin = 100 px tile; 18 × 2 + 64 icon = 100 |
-| `-gtk-icon-size` | 64 px | |
-| `Scroll` max-content-height | 400 | 3 rows × 112 = 336, so no scrollbar |
+| Binding | Value | How |
+| ------- | ----- | --- |
+| `boardIcon` | 64 | input — `-gtk-icon-size` |
+| `boardTilePad` | 18 | input — tile padding |
+| `boardTileBorder` | 1 | input — `1px solid transparent`, and it **takes space** |
+| `boardGutter` | 6 | input — tile margin |
+| `boardCols` | 4 | input — feeds the XML `max_columns` **and** `columns."menus:scratchpads"`, so they cannot disagree |
+| `boardTile` | 102 | 64 + 2×18 + 2×1 |
+| `boardCell` | 114 | 102 + 2×6 |
+| `boardGrid` | 456 | 4 × 114 |
+| `boardWidth` | 492 | 456 + 2×16 wrapper padding + 2×2 wrapper border |
+
+`Scroll max-content-height` is still the one bare literal at 400: three rows of
+the real 114 px cell is 342, so there is 58 px of slack and a 13th scratchpad
+would need 456 and clip. It is not derived because the entry count lives in
+`elephant/menus/scratchpads.toml`, which `walker.nix` cannot see.
+
+Note the border terms. An earlier version of this table said "112 − 12 margin =
+100 px tile", which was wrong by 2 px in both axes: the tile's
+`border: 1px solid transparent` is there to reserve layout so a colour-only
+selection cannot shift anything, and a transparent border still occupies its
+pixel. The same omission in the contact sheet was clipping its bottom row.
 
 There is deliberately **no `height-request`** — the window is exactly as tall
 as the board.

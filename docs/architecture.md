@@ -55,7 +55,7 @@ Every host is built by one helper so they stay symmetric:
 ```nix
 mkHost = name: nixpkgs.lib.nixosSystem {
   inherit system;                       # x86_64-linux
-  specialArgs = { inherit inputs; };    # modules can read `inputs`
+  specialArgs = { inherit inputs theme scene metrics; };   # + the shared design state
   modules = [
     ./hosts/${name}                     # the host's own config
     inputs.agenix.nixosModules.default  # secrets
@@ -75,7 +75,7 @@ Keeping the wiring in one place is deliberate: it means the VM really does
 mirror the real machines, which is what makes the LUKS rehearsal in
 `danixos-vm` trustworthy (see [roadmap.md](roadmap.md)).
 
-`specialArgs = { inherit inputs; }` is why system modules can write
+`specialArgs = { inherit inputs theme scene metrics; }` is why system modules can write
 `{ inputs, ... }:` and reach flake inputs directly (e.g. `disko.nix` importing
 `inputs.disko.nixosModules.disko`, `restic.nix` using the agenix package).
 
@@ -88,7 +88,7 @@ home-manager.useGlobalPkgs = true;       # HM uses the system's nixpkgs
 home-manager.useUserPackages = true;     # user pkgs into /etc profiles
 home-manager.sharedModules = [ nix-index-database.homeModules.default ];
 home-manager.backupFileExtension = "hm-backup";  # conflicting files → *.hm-backup
-home-manager.extraSpecialArgs = { inherit inputs; };  # home modules see `inputs` too
+home-manager.extraSpecialArgs = { inherit inputs theme scene metrics; };  # home modules too
 home-manager.users.dani = import ./home/dani;
 ```
 
