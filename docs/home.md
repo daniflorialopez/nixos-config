@@ -246,7 +246,9 @@ Config highlights:
   (`$mod SHIFT+Tab` stays a raw reverse-cycle for fast two-window flicks),
   `$mod+.` emoji & symbols (mirrors walker's `.` prefix), `$mod+D` colour
   picker, `$mod+S` the scratchpad board, `$mod+N` do-not-disturb toggle.
-- **Look:** slate borders (active `#565f89`, inactive near-invisible) —
+- **Look:** slate borders — active is a two-stop *value* ramp inside one hue,
+  `hint` #737aa2 → `gutter` #3b4261 at 45deg (2026-09-18, confirmed after living
+  with it); inactive near-invisible —
   **the sunset gradient was removed from borders** in a 2026-07-22 A/B; focus
   is signaled by value not hue. Glass everywhere (opacity 0.94/0.88 + light
   blur), rounding 16 at rounding_power 4 (a squircle, not a circular arc),
