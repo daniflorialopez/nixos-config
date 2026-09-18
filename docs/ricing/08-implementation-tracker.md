@@ -63,15 +63,18 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | Task | Status | Notes |
 |---|---|---|
 | centralize gaps/radii/borders | TODO | Folds into the token layer |
-| asymmetric animations | TODO | ADR-010 — open eased/slow, close fast/linear, per upstream's own default |
-| `rounding_power` squircles | TODO | ADR-010 — free, 2.0–10.0 on 0.52.2 |
-| `vibrancy_darkness` + blur tuning | TODO | ADR-010 — raise `size` before `passes`; damage expands by `size × 2^passes` |
-| layer blur / `xray` on shell layers | TODO | So the launcher frosts the wallpaper, not the terminal |
+| border value ramp (A/B) | IN PROGRESS | `rgba(737aa2ff) rgba(3b4261ff) 45deg` — one hue, two values. The 2026-07-22 revert killed a *hue* gradient; this is the opposite. Live toggle in the scratchpad, awaiting a verdict |
+| Alacritty opacity double-dip | DONE | `fba9c22`. 0.96 × Hyprland 0.94/0.88 put the terminal at 0.902/0.845 while every other window was 0.94/0.88 — a value-signal drift |
+| lock-screen escape hatch | DONE | `003117e`. Zero locked binds existed, so a crashed hyprlock was a hard power cycle. `allow_session_lock_restore` + a `bindld` |
+| asymmetric animations | DONE | `846cbe6`. Root cause was the *curve*, not the duration: easeOutQuint is an arrival curve, and on an exit it spent ~137 ms creeping the last 3%. windowsOut/layersOut → `linear`, fadeSwitch split off `fade`. Cheaper too — all three are AVARDAMAGE_ENTIRE |
+| `rounding_power` squircles | DONE | `fc14b5d`. Shipped as `rounding = 16` + `rounding_power = 4.0` — one change, not two. r16/p4 clips ~18.7 px² per corner vs r12/p2's 30.9 px², so a softer corner that eats *fewer* app pixels |
+| `vibrancy_darkness` + blur tuning | REJECTED | All three judges rejected touching blur. size 3 / passes 1 is already correct and documented; every proposed change (passes 2, brightness 0.93, vibrancy 0.10) moves away from "the wallpaper stays recognisable", which is the point of the glass |
+| layer blur / `xray` on shell layers | BLOCKED | Reliability judge: waybar's is a **verified no-op** that still forces a full-monitor pre-blur; walker's prerequisite is unverified. Do not add until `hyprctl layers` has been checked with each surface actually open |
 | `misc:vrr = 2` | TODO | Fullscreen-only is correct for laptop + external |
 | app-specific rules | DONE (pre-existing) | Media viewers at full opacity; portal choosers floated |
 | special workspaces | DONE (pre-existing) | 12-tile scratchpad board on `$mod+S` |
 | gaming rules | TODO | `programs.gamemode.settings` is `{}` — no hook point exists yet |
-| optional advanced effects | PARTIALLY UNBLOCKED | **`decoration:glow` is present on 0.55.4** — the earlier survey placed it at 0.56 and was wrong. `motion_blur`, `wobble`, `blur:variant` confirmed absent (0.56/0.57) |
+| glow | REJECTED (unanimous) | Available on 0.55.4, and all three judges — including the one briefed to push for boldness — rejected it. Renders at `DECORATION_LAYER_OVER` i.e. **on top of app pixels**; there is **no `glow`/`no_glow` window rule** so nothing can be exempted; active-only colour re-introduces "hue = focus", which the 2026-07-22 A/B rejected; defaults are cyan `#33ccff` |
 | Hyprland plugins | REJECTED | ADR-010 — official repo gutted 2026-05-12; hyprexpo/hyprtrails/hyprwinwrap gone |
 | Hyprland rule-grammar migration | DONE | Landed with the bump; gated by `check-all`'s `--verify-config` pass |
 | **Lua config migration** | BLOCKED | Not forced — hyprlang still parses on 0.55.4, and `configType` stays `hyprlang` while `home.stateVersion = "25.05"`. Note `hyprctl keyword` is hyprlang-only, so the effect-profile design is coupled to staying |
