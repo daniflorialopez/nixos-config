@@ -17,6 +17,10 @@ let
     osConfig != null
     && builtins.elem "nvidia" (osConfig.services.xserver.videoDrivers or [ ]);
 
+  # The slurp selection rectangle wears the `attention` role: a screenshot crop
+  # is a "look here" interaction, which is exactly what orange is reserved for.
+  # (Comment lives here rather than in the script body — writeShellApplication
+  # emits the body verbatim, so a # comment inside it lands in the built script.)
   screenshotSatty = pkgs.writeShellApplication {
     name = "screenshot-satty";
     runtimeInputs = with pkgs; [
@@ -32,7 +36,7 @@ let
       outdir="$HOME/Pictures/Screenshots"
       mkdir -p "$outdir"
 
-      region="$(slurp -c '#ff9e64ff')" || exit 0
+      region="$(slurp -c '#${theme.noHash.attention}ff')" || exit 0
       outfile="$outdir/satty-$(date +%Y%m%d-%H%M%S).png"
 
       export GSK_RENDERER=ngl
