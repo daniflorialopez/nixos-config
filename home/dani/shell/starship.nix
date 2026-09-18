@@ -1,4 +1,11 @@
-{ ... }:
+{ lib, ... }:
+
+let
+  # One palette source: home/dani/theme/palette.nix. The build-time gate in
+  # home/dani/theme/default.nix is what guarantees these clear AAA and that
+  # nothing in here drifts into the cyan band.
+  theme = import ../theme/palette.nix { inherit lib; };
+in
 
 {
   programs.starship = {
@@ -17,14 +24,24 @@
       # fast — its roles went to the sunset orange (max hue distance
       # from blue, matches the desktop accent).
       palette = "tokyo_night";
+      #
+      # This block is the cheapest possible migration onto the palette, because
+      # every segment below already refers to these by NAME ("bold blue",
+      # "italic blue", "bold orange") rather than by hex. Rebinding the seven
+      # names here retints the entire prompt.
+      #
+      # Note which roles they map to: `blue` is accentText and `red` is
+      # criticalText — the AAA-lightened variants — because everything starship
+      # draws is text. The fill variants (accent/critical) would be a contrast
+      # regression here.
       palettes.tokyo_night = {
-        cyan = "#4fd6be"; # teal, for any straggler "cyan" style
-        blue = "#7ea5f7";
-        green = "#9ece6a";
-        yellow = "#e0af68";
-        red = "#f88298";
-        purple = "#bb9af7";
-        orange = "#ff9e64";
+        cyan = theme.hex.teal; # teal, for any straggler "cyan" style
+        blue = theme.hex.accentText;
+        green = theme.hex.success;
+        yellow = theme.hex.warning;
+        red = theme.hex.criticalText;
+        purple = theme.hex.purple;
+        orange = theme.hex.attention;
       };
 
       directory = {
