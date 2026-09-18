@@ -20,7 +20,21 @@
       };
 
       window = {
-        opacity = 0.96;
+        # 1.0, NOT 0.96 — Hyprland owns window opacity, and this was quietly
+        # fighting it.
+        #
+        # The two multiply. At 0.96 here against Hyprland's 0.94/0.88, the
+        # terminal actually rendered at 0.902 focused / 0.845 unfocused, while
+        # every other window on the desktop sat at 0.94/0.88. The design system
+        # says focus is signalled by VALUE (docs/design-system.md, and the
+        # 2026-07-22 border decision) — and a value signal cannot drift per
+        # application, or the cue stops meaning one thing.
+        #
+        # Setting 1.0 hands the whole opacity budget to the compositor, so the
+        # terminal now steps by exactly the same amount as everything else.
+        # Blur is unaffected: decoration:blur:ignore_opacity is true, so the
+        # glass behind the terminal does not depend on this value.
+        opacity = 1.0;
         padding = {
           x = 8;
           y = 8;
