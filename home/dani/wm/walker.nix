@@ -1,22 +1,27 @@
-{ inputs, pkgs, ... }:
+{ inputs, lib, pkgs, ... }:
 
 let
+  # One palette source: home/dani/theme/palette.nix. Pure white/black washes
+  # below stay literal on purpose — they are material effects (hairlines,
+  # shadows, hover tints), not palette colours, and would not change with it.
+  theme = import ../theme/palette.nix { inherit lib; };
+
   # Palette and shared chrome for both walker themes. walker gives every
   # theme its own CSS file and they do not inherit from one another, so the
   # common part lives here to stop dani-soft and dani-grid drifting apart.
   baseCss = ''
     /* Tokyo Night (see waybar/palette.css) */
-    @define-color window_bg_color rgba(22, 22, 30, 0.90);
-    @define-color panel_bg_color rgba(36, 40, 59, 0.85);
-    @define-color accent_bg_color rgba(122, 162, 247, 0.14);
-    @define-color accent_line_color rgba(122, 162, 247, 0.24);
-    @define-color theme_fg_color #c0caf5;
-    @define-color subtext_color rgba(169, 177, 214, 0.65);
+    @define-color window_bg_color ${theme.cssRgba "bgDeep" "0.90"};
+    @define-color panel_bg_color ${theme.cssRgba "surface" "0.85"};
+    @define-color accent_bg_color ${theme.cssRgba "accent" "0.14"};
+    @define-color accent_line_color ${theme.cssRgba "accent" "0.24"};
+    @define-color theme_fg_color ${theme.hex.fg};
+    @define-color subtext_color ${theme.cssRgba "subtle" "0.65"};
     @define-color border_color rgba(255, 255, 255, 0.07);
     /* Popup frame left the sunset attention tier (2026-07-24): walker is
        user-invoked chrome, not an alert, so it wears the same neutral
        slate as the active window border — orange only means "needs you" */
-    @define-color walker_outer_border rgba(86, 95, 137, 1.0);
+    @define-color walker_outer_border ${theme.cssRgba "slate" "1.0"};
 
     * {
       all: unset;
@@ -167,7 +172,7 @@ let
          show the desktop through it; a destructive confirmation cannot - at
          0.90 a busy window behind the dialog reads straight through the
          resting card and the question stops being legible. */
-      background: rgba(22, 22, 30, 0.97);
+      background: ${theme.cssRgba "bgDeep" "0.97"};
     }
 
     /* The answers are two cards side by side, icon over label. This
@@ -188,8 +193,8 @@ let
     }
 
     child:hover .item-box.menus-logout {
-      background: rgba(122, 162, 247, 0.09);
-      border-color: rgba(122, 162, 247, 0.18);
+      background: ${theme.cssRgba "accent" "0.09"};
+      border-color: ${theme.cssRgba "accent" "0.18"};
     }
 
     child:selected .item-box.menus-logout {
@@ -461,8 +466,8 @@ let
     }
 
     child:hover .item-box.menus-scratchpads {
-      background: rgba(122, 162, 247, 0.07);
-      border-color: rgba(122, 162, 247, 0.12);
+      background: ${theme.cssRgba "accent" "0.07"};
+      border-color: ${theme.cssRgba "accent" "0.12"};
     }
 
     child:selected .item-box.menus-scratchpads {
@@ -550,17 +555,17 @@ let
 
     child:hover .wall-tile {
       filter: brightness(0.85) saturate(0.95);
-      border-color: rgba(122, 162, 247, 0.30);
+      border-color: ${theme.cssRgba "accent" "0.30"};
     }
 
     child:selected .wall-tile {
       filter: brightness(1) saturate(1);
-      border-color: rgba(122, 162, 247, 0.85);
+      border-color: ${theme.cssRgba "accent" "0.85"};
       /* a tight ring plus a wide soft throw: the ring separates the tile from
          whatever it is sitting on, the glow is what makes it read as lit */
       box-shadow:
-        0 0 0 1px rgba(122, 162, 247, 0.28),
-        0 12px 34px rgba(122, 162, 247, 0.22);
+        0 0 0 1px ${theme.cssRgba "accent" "0.28"},
+        0 12px 34px ${theme.cssRgba "accent" "0.22"};
     }
 
     /* Filename over the foot of the tile, on a scrim that fades out upwards so
@@ -569,9 +574,9 @@ let
     .wall-caption {
       background: linear-gradient(
         to top,
-        rgba(16, 16, 24, 0.94) 0%,
-        rgba(16, 16, 24, 0.62) 55%,
-        rgba(16, 16, 24, 0.00) 100%
+        ${theme.cssRgba "scrim" "0.94"} 0%,
+        ${theme.cssRgba "scrim" "0.62"} 55%,
+        ${theme.cssRgba "scrim" "0.00"} 100%
       );
       color: @theme_fg_color;
       font-size: 12px;

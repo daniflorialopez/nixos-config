@@ -1,5 +1,8 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 let
+  # One palette source: home/dani/theme/palette.nix.
+  theme = import ../theme/palette.nix { inherit lib; };
+
   target = config.wayland.systemd.target; # defaults to "graphical-session.target"
 
   # Dock/undock workspace repair. Undocking is fine on its own — Hyprland
@@ -63,9 +66,9 @@ in
       # app icons resolve from the same theme GTK uses (theme.nix)
       icon-path = "${pkgs.papirus-icon-theme}/share/icons/Papirus-Dark";
       max-icon-size = 40;
-      background-color = "#1a1b26e0";
-      text-color = "#c0caf5";
-      border-color = "#7aa2f7";
+      background-color = (theme.hexA "bg" "e0");
+      text-color = theme.hex.fg;
+      border-color = theme.hex.accent;
       border-size = 2;
       border-radius = 12;
       padding = "12,16";
@@ -73,10 +76,10 @@ in
       width = 380;
       max-visible = 5;
       default-timeout = 0;         # persist until dismissed (Super+')
-      progress-color = "over #24283b";
+      progress-color = "over ${theme.hex.surface}";
 
-      "urgency=low".border-color = "#565f89";
-      "urgency=critical".border-color = "#f7768e";
+      "urgency=low".border-color = theme.hex.slate;
+      "urgency=critical".border-color = theme.hex.critical;
 
       # Do-not-disturb: notifications arriving in this mode are hidden but
       # never expire (default-timeout=0), so they all appear when the mode

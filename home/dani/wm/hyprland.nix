@@ -7,6 +7,9 @@
 }:
 
 let
+  # One palette source: home/dani/theme/palette.nix.
+  theme = import ../theme/palette.nix { inherit lib; };
+
   # This whole wm/ tree is shared with danix-hp, which runs Hyprland on
   # `modesetting` + `fbdev` rather than the proprietary NVIDIA driver. Anything
   # that only makes sense under NVIDIA has to be gated, or it lands there too.
@@ -592,8 +595,8 @@ in
         # Never pair this with `animation = borderangle, ..., loop`: that pins
         # both panels at full refresh permanently, on battery, whether or not a
         # gradient border is even on screen. Showcase profile only, if ever.
-        "col.active_border" = "rgba(737aa2ff) rgba(3b4261ff) 45deg";
-        "col.inactive_border" = "rgba(3b426188)";
+        "col.active_border" = "${theme.hyprRgba "hint" "ff"} ${theme.hyprRgba "gutter" "ff"} 45deg";
+        "col.inactive_border" = (theme.hyprRgba "gutter" "88");
       };
 
       decoration = {

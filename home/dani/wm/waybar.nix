@@ -24,8 +24,12 @@
 #   - hyprland/window:  muted title next to the workspaces for context.
 #   - tray:             invisible while empty.
 
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
+  # One palette source: home/dani/theme/palette.nix. Pure white/black washes
+  # below stay literal on purpose — they are material effects (hairlines,
+  # shadows, hover tints), not palette colours, and would not change with it.
+  theme = import ../theme/palette.nix { inherit lib; };
   # nm-applet and blueman-applet autostart via uwsm's XDG-autostart
   # target and park duplicate wired/bluetooth icons in the tray; the
   # bar's own network/bluetooth modules already cover both (styled, with
@@ -426,9 +430,9 @@ in
         calendar = {
           mode = "month";
           format = {
-            today = "<span color='#7aa2f7'><b>{}</b></span>";
-            weekdays = "<span color='#565f89'>{}</span>";
-            months = "<span color='#c0caf5'><b>{}</b></span>";
+            today = "<span color='${theme.hex.accent}'><b>{}</b></span>";
+            weekdays = "<span color='${theme.hex.slate}'>{}</span>";
+            months = "<span color='${theme.hex.fg}'><b>{}</b></span>";
           };
         };
       };

@@ -11,18 +11,22 @@
 # Styled to the design system: a glass Tokyo Night pill matching the
 # waybar islands (same bg/border/radius; the blur + ignorezero layerrule
 # pair lives in hyprland.nix next to waybar's).
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 let
+  # One palette source: home/dani/theme/palette.nix. Pure white/black washes
+  # below stay literal on purpose — they are material effects (hairlines,
+  # shadows, hover tints), not palette colours, and would not change with it.
+  theme = import ../theme/palette.nix { inherit lib; };
   style = pkgs.writeText "swayosd-style.css" ''
     window#osd {
-      background: rgba(26, 27, 38, 0.85);
-      border: 1px solid rgba(192, 202, 245, 0.10);
+      background: ${theme.cssRgba "bg" "0.85"};
+      border: 1px solid ${theme.cssRgba "fg" "0.10"};
       border-radius: 12px;
       padding: 12px 20px;
     }
 
     image, label {
-      color: #c0caf5;
+      color: ${theme.hex.fg};
       font-family: "CaskaydiaMono Nerd Font";
     }
 
@@ -37,14 +41,14 @@ let
       min-height: inherit;
       border-radius: inherit;
       border: none;
-      background: rgba(86, 95, 137, 0.35);
+      background: ${theme.cssRgba "slate" "0.35"};
     }
 
     progress {
       min-height: inherit;
       border-radius: inherit;
       border: none;
-      background: #7aa2f7;
+      background: ${theme.hex.accent};
     }
   '';
 in

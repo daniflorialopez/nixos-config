@@ -1,4 +1,9 @@
-{ ... }:
+{ lib, ... }:
+
+let
+  # One palette source: home/dani/theme/palette.nix.
+  theme = import ../theme/palette.nix { inherit lib; };
+in
 {
   # Lock screen: Tokyo Night over a blurred screenshot (matches whatever
   # wallpaper is active), sunset gradient ring on the password field.
@@ -49,14 +54,14 @@
           dots_size = 0.28;
           dots_spacing = 0.2;
           dots_center = true;
-          outer_color = "rgba(122, 162, 247, 1.0) rgba(255, 158, 100, 1.0) 45deg";
-          inner_color = "rgba(26, 27, 38, 0.85)";
-          font_color = "rgb(192, 202, 245)";
+          outer_color = "${theme.cssRgba "accent" "1.0"} ${theme.cssRgba "attention" "1.0"} 45deg";
+          inner_color = (theme.cssRgba "bg" "0.85");
+          font_color = (theme.cssRgb "fg");
           fade_on_empty = false;
           # #737aa2 is the contrast floor for hint text (see terminal calibration)
-          placeholder_text = "<span foreground='##737aa2'>Password…</span>";
-          check_color = "rgba(224, 175, 104, 1.0)";
-          fail_color = "rgba(247, 118, 142, 1.0)";
+          placeholder_text = "<span foreground='##${theme.noHash.hint}'>Password…</span>";
+          check_color = (theme.cssRgba "warning" "1.0");
+          fail_color = (theme.cssRgba "critical" "1.0");
           fail_text = "$FAIL <b>($ATTEMPTS)</b>";
           position = "0, -80";
           halign = "center";
@@ -70,7 +75,7 @@
           text = "$TIME";
           font_size = 90;
           font_family = "CaskaydiaMono Nerd Font";
-          color = "rgb(192, 202, 245)";
+          color = (theme.cssRgb "fg");
           position = "0, 160";
           halign = "center";
           valign = "center";
@@ -81,7 +86,7 @@
           text = ''cmd[update:60000] date +"%A %-d %B"'';
           font_size = 20;
           font_family = "CaskaydiaMono Nerd Font";
-          color = "rgba(169, 177, 214, 1.0)";
+          color = (theme.cssRgba "subtle" "1.0");
           position = "0, 60";
           halign = "center";
           valign = "center";
