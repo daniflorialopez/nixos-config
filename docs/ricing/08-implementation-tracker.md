@@ -67,7 +67,7 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | Task | Status | Notes |
 |---|---|---|
 | centralize gaps/radii/borders | TODO | Folds into the token layer |
-| border value ramp (A/B) | IN PROGRESS | `rgba(737aa2ff) rgba(3b4261ff) 45deg` — one hue, two values. The 2026-07-22 revert killed a *hue* gradient; this is the opposite. Live toggle in the scratchpad, awaiting a verdict |
+| border value ramp (A/B) | DONE | **B kept**, confirmed by Dani 2026-09-18 after living with it. `rgba(737aa2ff) rgba(3b4261ff) 45deg` — one hue, two values, verified live as `ff737aa2 ff3b4261 45deg`. The 2026-07-22 revert killed a *hue* gradient; this is the opposite and both stops are already palette roles (`hint` and `gutter`) |
 | Alacritty opacity double-dip | DONE | `fba9c22`. 0.96 × Hyprland 0.94/0.88 put the terminal at 0.902/0.845 while every other window was 0.94/0.88 — a value-signal drift |
 | lock-screen escape hatch | DONE | `003117e`. Zero locked binds existed, so a crashed hyprlock was a hard power cycle. `allow_session_lock_restore` + a `bindld` |
 | asymmetric animations | DONE | `846cbe6`. Root cause was the *curve*, not the duration: easeOutQuint is an arrival curve, and on an exit it spent ~137 ms creeping the last 3%. windowsOut/layersOut → `linear`, fadeSwitch split off `fade`. Cheaper too — all three are AVARDAMAGE_ENTIRE |
