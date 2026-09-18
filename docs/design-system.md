@@ -144,10 +144,16 @@ app and every portal dialog.
 
 ## Where each surface gets its color
 
+Every surface below now *derives* from the palette — there are no hand-written
+colour literals left outside it. Consumers receive it as the `theme` module
+argument (plumbed through `specialArgs`/`extraSpecialArgs` in `flake.nix`), which
+is also how the system layer reaches it: the SDDM greeter and the Hyprland
+desktop read the same roles.
+
 | Surface                     | File                              |
 | --------------------------- | --------------------------------- |
-| **The palette itself**      | **`theme/palette.nix`** — single source; `theme/default.nix` gates it |
-| Named-role palette (GTK)    | `wm/theme.nix` → `waybar/palette.css` (generated from the above) |
+| **The palette itself**      | **`theme/palette.nix`** — single source; `home/dani/theme/default.nix` gates it |
+| Named-role palette (GTK)    | `wm/theme.nix` → `waybar/palette.css` (generated) |
 | Terminal 16-color (source)  | `shell/alacritty.nix`             |
 | Shell prompt                | `shell/starship.nix`              |
 | Shell syntax + fzf          | `shell/fish.nix`                  |

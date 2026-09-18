@@ -43,7 +43,8 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | evaluate Matugen | DONE | Rejected as authority — Nix module is build-time + IFD, drops hooks, `exit 0` on read-only. 26.05 now ships **4.0.0**, so the Tier-2 option in ADR-005 is available if wanted |
 | evaluate Stylix | DONE | Rejected — `release-25.11` frozen since 2026-04-29; no `mkDefault`; silent CSS concat on waybar |
 | choose theme authority | DONE | **ADR-005** — Tier 1 Nix tokens (frozen), Tier 2 ambient optional/later |
-| migrate ~200 literals onto tokens | IN PROGRESS | Done: `palette.css`, starship (7), fish (36), **alacritty (21, the whole 16-colour contract)**, **hyprland/hyprlock/mako/walker/waybar/swayosd (43 rgba-family literals)**. Remaining: zellij (94), btop (42, ordered gradient triples), tmux (17 numbered slots), SDDM themeConfig (system-side — needs the palette importable from `modules/`), yazi/zathura/imv/lazygit. Every migration proven byte-identical |
+| palette reachable from both layers | DONE | `theme/palette.nix` at the repo root, passed via `specialArgs` + `extraSpecialArgs`. Needed for SDDM: the system layer must not relative-import out of `home/dani/` |
+| migrate ~200 literals onto tokens | DONE | **All of them.** ~250 literals across 20 files and six syntaxes. Every `#hex` left in the repo is now in `theme/palette.nix`; the only other survivors are walker's pure white/black alpha washes, left literal on purpose as material effects. Every consumer proven byte-identical |
 | generate `waybar/palette.css` from tokens | DONE | Verified byte-identical to the installed file — pure refactor |
 | optional Tier-2 ambient via matugen | TODO | Only after Tier 1 lands; capped at 3–4 meaning-free roles |
 
