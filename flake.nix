@@ -65,6 +65,11 @@
       # The other half of the shared design state. Same reasoning as `theme`:
       # the SDDM module and the Home Manager wallpaper module both need this
       # value and neither may import the other's tree.
+      # Geometry's much smaller sibling: the four measurements more than one
+      # file must agree on. Not a design scale — that file's header argues at
+      # length why a full one would be ceremony with no check behind it.
+      metrics = import ./theme/metrics.nix { inherit (nixpkgs) lib; };
+
       scene = import ./theme/scene.nix;
 
       # Every host is wired identically: hosts/<name> plus the shared
@@ -77,7 +82,7 @@
           inherit system;
 
           # Extra args you want modules to see (if needed later)
-          specialArgs = { inherit inputs theme scene; };
+          specialArgs = { inherit inputs theme scene metrics; };
 
           modules = [
             # Host config (imports hardware + modules/nixos/*.nix)
@@ -101,7 +106,7 @@
               home-manager.backupFileExtension = "hm-backup";
 
               # You can pass extra args to home modules if you want
-              home-manager.extraSpecialArgs = { inherit inputs theme scene; };
+              home-manager.extraSpecialArgs = { inherit inputs theme scene metrics; };
 
               # Your home config entry point
               home-manager.users.dani = import ./home/dani;
