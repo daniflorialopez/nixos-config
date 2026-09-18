@@ -5,8 +5,10 @@
   ...
 }:
 let
-  # The same mountain-sunset wallpaper hyprpaper uses, so login, lock
-  # and desktop are one continuous scene
+  # The same mountain-sunset wallpaper the desktop uses, so login, lock
+  # and desktop are one continuous scene. Pinned here at build time rather
+  # than following ~/.local/state/wallpaper/current — the greeter runs as
+  # sddm, before any user session exists, so it cannot read that file.
   wallpaper = ../../../home/dani/assets/wallpapers/wallhaven-jevzkp.jpg;
 
   # sddm-astronaut recolored to Tokyo Night: frosted center column over

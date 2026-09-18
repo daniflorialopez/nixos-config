@@ -1,6 +1,11 @@
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, ... }:
 let
-  unstablePkgs = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+  # Owns the state file, the store-backed fallback, and the single script that
+  # reconciles one with the screen. hyprland-services.nix imports the same file
+  # so the dock handler repaints through exactly this path.
+  wallpaper = import ./wall-apply.nix { inherit pkgs config; };
+
+  inherit (wallpaper) stateFile wallApply;
 
   # The wallpaper library is a real, writable directory — deliberately not a
   # `home.file` symlink into the store. As a store link it was read-only, and
@@ -14,10 +19,6 @@ let
 
   thumbDir = "${config.home.homeDirectory}/.cache/wallpaper-thumbs";
 
-  defaultWallpaper = "${wallpaperDir}/default.png";
-
-  selectedConf = "${config.home.homeDirectory}/.local/state/hypr/hyprpaper-selected.conf";
-  stateFile = "${config.home.homeDirectory}/.local/state/wallpaper/current";
   logFile = "${config.home.homeDirectory}/.local/state/wallpaper/debug.log";
 
   # 16:9, and exactly the on-screen tile size — these must match the
@@ -92,9 +93,20 @@ let
     '';
   };
 
+  # Records the choice, then hands over to wall-apply. The split matters: this
+  # is the only thing that decides *what* the wallpaper is, and wall-apply is
+  # the only thing that decides *how* it reaches the screen.
+  #
+  # Under hyprpaper this script ended in `systemctl --user restart
+  # hyprpaper.service`, because hyprpaper 0.8.4 ships no client and its IPC
+  # speaks hyprwire while hyprctl still speaks the text protocol (`core protocol
+  # error: malformed message recvd`, verified live). Tearing the daemon down was
+  # the only way to make it read a new path, and it cost a black flash across
+  # both outputs on every single wallpaper change. awww is a client/daemon pair,
+  # so changing wallpaper no longer touches the service at all.
   wallSet = pkgs.writeShellApplication {
     name = "wall-set";
-    runtimeInputs = [ pkgs.coreutils pkgs.systemd ];
+    runtimeInputs = [ pkgs.coreutils wallApply ];
     text = ''
       set -eu
 
@@ -105,7 +117,10 @@ let
         exit 1
       fi
 
-      mkdir -p "$(dirname "${selectedConf}")"
+      # Absolute, because the path is written to state and later read back by a
+      # systemd unit whose working directory is not this one.
+      img=$(realpath -- "$img")
+
       mkdir -p "$(dirname "${stateFile}")"
 
       {
@@ -113,25 +128,11 @@ let
         echo "img=$img"
       } >> "${logFile}"
 
+      # State first, screen second. If wall-apply fails (no daemon, no session)
+      # the choice is still recorded, and the next daemon start picks it up.
       printf '%s\n' "$img" > "${stateFile}"
 
-      # Both outputs get the same image: this config has never set them
-      # independently, and hyprpaper needs each monitor named explicitly.
-      cat > "${selectedConf}" <<EOF
-wallpaper {
-  monitor = HDMI-A-1
-  path = $img
-  fit_mode = cover
-}
-
-wallpaper {
-  monitor = eDP-1
-  path = $img
-  fit_mode = cover
-}
-EOF
-
-      systemctl --user restart hyprpaper.service >> "${logFile}" 2>&1
+      wall-apply >> "${logFile}" 2>&1
     '';
   };
 
@@ -251,54 +252,49 @@ in
     file://${wallpaperDir} Wallpapers
   '';
 
-  xdg.configFile."hypr/hyprpaper.conf".text = ''
-    source = ${selectedConf}
-
-    ipc = true
-    splash = false
-  '';
-
-  systemd.user.services.hyprpaper = {
+  # No config file, which is why the hyprpaper.conf / selected.conf pair and
+  # their X-Restart-Triggers are gone: awww is configured entirely by the
+  # arguments wall-apply passes it. There is nothing left for two systems to
+  # fight over writing.
+  systemd.user.services.awww = {
     Unit = {
-      Description = "hyprpaper";
+      Description = "awww wallpaper daemon";
       ConditionEnvironment = "WAYLAND_DISPLAY";
       After = [ config.wayland.systemd.target ];
       PartOf = [ config.wayland.systemd.target ];
-      X-Restart-Triggers = [
-        "${config.xdg.configFile."hypr/hyprpaper.conf".source}"
-      ];
     };
 
     Install.WantedBy = [ config.wayland.systemd.target ];
 
     Service = {
-      ExecStartPre = pkgs.writeShellScript "hyprpaper-init-selected" ''
-    set -eu
-    mkdir -p "$(dirname "${selectedConf}")"
-    if [ ! -f "${selectedConf}" ]; then
-      cat > "${selectedConf}" <<EOF
-wallpaper {
-  monitor = HDMI-A-1
-  path = ${defaultWallpaper}
-  fit_mode = cover
-}
+      # No --format: left at the default argb. bgr is a 3-channel format and
+      # measured 0.2 MiB lighter, which is not worth depending on every host's
+      # compositor advertising it — this flake also builds a non-NVIDIA laptop
+      # and a VM, and argb is the one awww calls most widely supported.
+      ExecStart = lib.getExe' wallpaper.package "awww-daemon";
 
-wallpaper {
-  monitor = eDP-1
-  path = ${defaultWallpaper}
-  fit_mode = cover
-}
-EOF
-    fi
-  '';
-      ExecStart = "${lib.getExe unstablePkgs.hyprpaper}";
+      # The daemon comes up showing solid black and stays there. Its --no-cache
+      # flag documents the opposite ("don't search the cache for the last
+      # wallpaper for each output"), but a daemon started with the cache fully
+      # populated still reported `currently displaying: color: 000000` on both
+      # outputs three seconds in — so the restore is this line, not a default.
+      # See wall-apply.nix for why it reads the state file rather than calling
+      # `awww restore`.
+      ExecStartPost = lib.getExe wallApply;
+
       Restart = "always";
-      RestartSec = "10";
+
+      # Was 10s under hyprpaper. A dead wallpaper daemon is now a black desktop
+      # rather than a stale-but-correct image, because awww owns the layer
+      # surface it paints into and takes it down with it, so ten seconds of
+      # black is the wrong trade.
+      RestartSec = "2";
     };
   };
 
   home.packages = [
-    unstablePkgs.hyprpaper
+    wallpaper.package
+    wallApply
     wallSet
     wallThumbs
   ];
