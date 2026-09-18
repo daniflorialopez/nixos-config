@@ -38,13 +38,22 @@ let
   # considered this and rejected 16", which is precisely the decision that got
   # lost last time and left a false comment behind for months.
   #
-  # Bound to barHeight on the line above so the two cannot drift apart, and
-  # placed in the value path the `style` string forces, so it cannot be silently
-  # skipped by Nix's laziness.
+  # `barHeight` is the bar's ACTUAL configured height — settings.mainBar.height
+  # reads this binding, so the assert cannot end up checking a number the bar does
+  # not have. It previously duplicated the literal 270 lines away, which meant the
+  # invariant could be made to check a fiction in either direction.
+  #
+  # Placed in the value path the `style` string forces, so it cannot be silently
+  # skipped by Nix's laziness — the failure mode that made an earlier, much larger
+  # proposal's entire enforcement mechanism dead code.
   barHeight = 34;
   islandRadius =
     assert lib.assertMsg (2 * metrics.islandRadius <= barHeight - 8)
-      "waybar: islandRadius ${toString metrics.islandRadius} leaves only ${toString (barHeight - 2 * metrics.islandRadius)}px of straight edge in a ${toString barHeight}px island; the floor is 8px";
+      ( "waybar: islandRadius ${toString metrics.islandRadius} leaves "
+        + (if 2 * metrics.islandRadius >= barHeight
+           then "no straight edge at all in a ${toString barHeight}px island; GTK clamps the radius at ${toString (barHeight / 2)} and it renders as a stadium"
+           else "only ${toString (barHeight - 2 * metrics.islandRadius)}px of straight edge in a ${toString barHeight}px island")
+        + "; the floor is 8px" );
     metrics.islandRadius;
 
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
@@ -315,7 +324,7 @@ in
       mode = "dock";
       exclusive = true;
       position = "top";
-      height = 34;
+      height = barHeight;   # the assert in the let block reads this
       spacing = 0;
       # Islands sit in the same outer margin a window would (theme/metrics.nix).
       # The top is deliberately tighter and is NOT that value.
