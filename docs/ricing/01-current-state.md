@@ -45,7 +45,7 @@
 > | cgroup (steady) | 97.6 MiB | ~57–70 MiB — awww's wl_shm buffers are charged here, not to RSS |
 > | changing wallpaper | restart the daemon, black flash on both outputs | `awww img`, 1 s crossfade |
 > | config files | 2 (one generated, one mutable) | **0** |
-> | fallback | `~/Pictures/Wallpapers/default.png`, mutable | store path, rolls back with the generation |
+> | fallback | `~/Pictures/Wallpapers/default.png`, mutable, and a different picture from the greeter's | the greeter's own anchor, as a store path, via `theme/scene.nix` |
 >
 > The reasoning, including two undocumented awww behaviours the probe turned up,
 > is in ADR-006's implementation notes.
@@ -336,7 +336,7 @@ This section is load-bearing. Verified live.
 | SSH | **Primary out-of-band rescue.** sshd + tailscaled both active, `legionix.tail4bc4b5.ts.net` / 100.104.81.99, pubkey-only. |
 | Shell restart | `systemctl --user restart waybar` / `walker` / `mako` — each independent. |
 | Exit Hyprland without the shell | `hyprctl dispatch exit` (hyprctl is on the system profile). The *bound* logout goes through walker+elephant. |
-| Static fallback wallpaper | **WEAK.** `default.png` lives in the mutable `~/Pictures/Wallpapers`, not the store; nothing validates that the selected path still resolves. |
+| Static fallback wallpaper | **CLOSED** (`d35d88c`, `197f02d`, `815db77`). A read-only store path, reached on failure to *apply* rather than only on a missing file, and now the same image the greeter shows. |
 | Generation rollback | systemd-boot menu, **3 entries** (24 generations exist on disk). Tap `Space` after the Lenovo logo. |
 | Safe-graphics fallback | **Deliberately absent.** Tried 2026-07-29 (`327fa80`), reverted hours later (`2f20532`) — nouveau-on-Ampere froze the panel every way it was tested. Do not re-propose. |
 | On-box runbook | `rescue` on PATH, pages `docs/rescue-blackscreen.md` from the store. |

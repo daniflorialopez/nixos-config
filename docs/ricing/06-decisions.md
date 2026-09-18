@@ -480,6 +480,107 @@ suspend/resume has not been exercised.
 
 ---
 
+### ADR-014 — The greeter keeps a build-time background; it does not follow the picker
+
+**Status:** accepted
+**Date:** 2026-09-18
+
+#### Context
+
+hyprlock uses `path = screenshot`, so the lock screen follows the live desktop for free. awww
+follows `~/.local/state/wallpaper/current`. The greeter did neither — it pinned a build-time store
+path — so the tracker carried a row to "decouple the SDDM background".
+
+Worth stating plainly: **that row was written by the assistant during the Phase 1 inventory, not
+requested by the user.** The argument that a stale login image is a defect was inferred from the
+row itself, which is a weak foundation for permanent machinery.
+
+Investigation also turned up a worse, unnamed defect in the same area: the greeter pinned
+`wallhaven-jevzkp.jpg` while `wall-apply`'s fallback pinned `default.png` — a bright cyan-blue
+NixOS-logo image (#1C8ED9 measured, 1920×1200 against two 2560×1440 panels). So the *failure* path
+— fresh install, first login, deleted or corrupt state file, undecodable selection — broke the
+scene far worse than the stale greeter ever did.
+
+#### Why the greeter cannot simply read the user's choice
+
+SDDM drops the greeter to uid 175 (`sddm`, primary group `sddm`, no supplementary groups; hardcoded
+in `src/daemon/Greeter.cpp` and enforced by `pam_succeed_if user = sddm`) before any user session
+exists. `/home/dani` is `0700`, so that uid has no **search** permission and cannot reach
+`~/.local/state/wallpaper/current` or the image it names, whatever the bits below are — and every
+directory below it already *is* `0755`. A symlink does not help: it resolves with the reader's
+credentials and hits the same wall one hop later. Only bytes can cross, and only to somewhere
+outside `$HOME`.
+
+#### Decision
+
+1. **Unify the anchor** (`815db77`). `theme/scene.nix` holds one image, built in `flake.nix` and
+   handed to both module systems via `specialArgs`/`extraSpecialArgs` — the mechanism
+   `theme/palette.nix` already established. Both the greeter's `Background` and `wall-apply`'s
+   fallback now resolve to the *same store object*. The greeter's derivation came out
+   bit-identical, so this carried no greeter risk.
+2. **Do not make the greeter follow the picker.** Rejected on cost, not on feasibility.
+
+#### Why rejected rather than built
+
+A session-pushed handoff was designed in full and verified: `wall-set` re-encodes the selection to
+`/var/lib/wallpaper/greeter.jpg` (re-encoding is required, not tidiness — the greeter's Qt ships
+only gif/ico/jpeg plus PNG, and three wallpapers in the library are `.webp`), a tmpfiles `C` line
+seeds it, and no privileged code runs. It works. It was still declined:
+
+- It is permanent machinery — a script, a user unit, tmpfiles rules, a third `specialArg`, and a
+  copy of a user image outside `$HOME` — for a surface visible a few seconds a day.
+- The greeter is one of exactly **two** recovery paths on this machine (`Ctrl+Alt+F<n>` yields a
+  blank VT; the other path is SSH over Tailscale). A judge scoring purely on "how many ways can
+  this stop a graphical login" ranked the handoff near the bottom and the pinned design at the top.
+- It would stop the greeter's image being a function of the system generation: booting generation
+  N−5 would show whatever was last picked, not what N−5 shipped.
+- The visible defect that actually bit is fixed by decision 1.
+
+The privacy argument, for the record, is *weaker* than it first appears and was not decisive:
+hyprlock already shows a blurred view of the actual desktop on every lock, which exposes strictly
+more than a wallpaper at login would.
+
+#### Variants rejected permanently, with evidence
+
+- **Root-side copier** (systemd path unit, polkit action, or `sddm.setupScript`). A confused
+  deputy: the state file is a user-writable file containing an arbitrary path, so
+  `echo /run/agenix/restic-password > ~/.local/state/wallpaper/current` would have root copy a
+  decrypted secret off root-only ramfs (`/run/agenix.d`, mode 751) onto persistent btrfs — and the
+  greeter *renders* the bytes, making the display itself a read channel. `setupScript`
+  additionally runs root code synchronously in the greeter start path
+  (`XorgDisplayServer.cpp`, `waitForFinished(30000)`) on every boot and every logout.
+- **Relaxing `/home/dani` to 0711.** One bit exposes the whole tree; every directory below is
+  already 0755.
+- **A symlink from `/var/lib` into `$HOME`.** Resolved with the reader's credentials.
+- **Adding `qtimageformats` to `sddm.extraPackages`.** Enlarges what parses user-supplied files
+  pre-auth as uid 175, to solve something a session-side re-encode solves for free.
+
+#### Hazards recorded for whoever reopens this
+
+- A **FIFO** at the greeter's `Background` path blocks `sddm-greeter-qt6` in `open()`. It ignores
+  SIGTERM and `Restart=always` never fires, because a hang is not an exit. This is the one way a
+  mutable background can actually deny login, and any future design must guard against
+  non-regular files at that path.
+- A **truncated JPEG does not fail to load** — it renders as half an image. Any publisher must
+  write to a temp file and `rename(2)`.
+- `-resize '2560x1440^'` is a trap: it turns a 1000×8000 panorama into 2560×20480. The area form
+  `-resize '3686400@>'` only ever shrinks.
+- `display-manager.service` carries `X-RestartIfChanged=false`, so **no** change to this module is
+  validated by a `nixos-rebuild switch`. A broken greeter config stays invisible until the next
+  logout or reboot — precisely when there is no session left to repair it from.
+- Failure is otherwise cosmetic by construction: `Main.qml` loads the background into an
+  `AnimatedImage` with `asynchronous: true` over a Pane whose `palette.window` is
+  `BackgroundColor`, so a missing or undecodable file gives a flat `#1a1b26` login screen with a
+  working password field. Verified against the real binary.
+
+#### Rollback
+
+Changing the login image is one line in `theme/scene.nix` plus a rebuild. Reopen this ADR if the
+stale greeter ever actually becomes annoying in daily use — the handoff design above is worked out
+and verified, not speculative.
+
+---
+
 ### ADR-007 — Keep walker + elephant; pin the input by revision
 
 **Status:** accepted

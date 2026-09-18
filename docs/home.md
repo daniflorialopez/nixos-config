@@ -288,7 +288,8 @@ split the job cleanly:
 - `wall-set <image>` — records the choice in `~/.local/state/wallpaper/current`,
   then applies it. The only thing that decides *what* the wallpaper is.
 - `wall-apply` — reads that state file and puts it on screen with a 1 s
-  crossfade, falling back to a read-only store copy of `default.png` if the
+  crossfade, falling back to a read-only store copy of the anchor image
+  (`theme/scene.nix`, the same one the greeter shows) if the
   selection is missing or will not decode. The only thing that decides *how* it
   reaches the screen. Defined in `wm/wall-apply.nix` and imported by both
   `wallpaper.nix` and `hyprland-services.nix`, so the login path, the picker and
