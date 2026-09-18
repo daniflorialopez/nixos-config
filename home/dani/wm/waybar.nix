@@ -2,8 +2,11 @@
 #
 # Form change: full-width dock -> three floating glass islands
 # (left / center / right). Everything else follows the existing design
-# system: Tokyo Night via palette.css, radius 12 (= window rounding),
-# side margins 12 (= gaps_out), blue accent (the sunset gradient stays
+# system: Tokyo Night via palette.css, island radius 12 — which is NOT the
+# window rounding, however much the two numbers used to be claimed equal; GTK
+# draws a circular arc and Hyprland a superellipse at exponent 4, so the same
+# number is a different corner (see theme/metrics.nix) — side margins 12
+# (= gaps_out), blue accent (the sunset gradient stays
 # on window borders), orange #ff9e64 as the attention tier. The
 # `blur, waybar` + `ignorezero, waybar` layerrules already in
 # hyprland.nix do the rest: the islands get glass, the space between
@@ -517,7 +520,7 @@ in
       .modules-right {
         background: @bg_alpha;
         border: 1px solid @border;
-        border-radius: 12px;   /* = decoration.rounding */
+        border-radius: 12px;
         padding: 0 8px;
         /* no box-shadow: GTK draws it as a square halo that ignores the
            border-radius, reading as a rectangle around the pill */

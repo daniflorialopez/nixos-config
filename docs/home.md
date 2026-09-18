@@ -249,7 +249,8 @@ Config highlights:
 - **Look:** slate borders (active `#565f89`, inactive near-invisible) —
   **the sunset gradient was removed from borders** in a 2026-07-22 A/B; focus
   is signaled by value not hue. Glass everywhere (opacity 0.94/0.88 + light
-  blur), rounding 12, shadows. Media windows (mpv/imv/zathura/satty/OBS/PiP)
+  blur), rounding 16 at rounding_power 4 (a squircle, not a circular arc),
+  shadows. Media windows (mpv/imv/zathura/satty/OBS/PiP)
   forced to full opacity so video/PDFs stay true-color.
 - `layerrule` blurs the chrome (waybar/walker/mako). UWSM env
   (`~/.config/uwsm/env-hyprland`) pins the DRM device.
