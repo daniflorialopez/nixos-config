@@ -67,9 +67,19 @@ let
       # different keybinds and no monitor rules. Worse, if NEITHER exists it
       # generates a default Lua config. This warns rather than fails, because it
       # is user state rather than anything the flake controls.
-      if compgen -G "$HOME/.config/hypr/*.lua" > /dev/null; then
+      #
+      # A nullglob array rather than `compgen -G`: writeShellApplication's bash
+      # is built without programmable completion, so compgen is not a builtin
+      # there and the check died with "compgen: command not found" on stderr
+      # while check-all still reported OK. An interactive `bash -c 'compgen'`
+      # does work, which is what made it look fine.
+      shopt -s nullglob
+      stray_lua=("$HOME"/.config/hypr/*.lua)
+      shopt -u nullglob
+
+      if [ ''${#stray_lua[@]} -gt 0 ]; then
         echo "==> WARNING: $HOME/.config/hypr contains a .lua file:" >&2
-        compgen -G "$HOME/.config/hypr/*.lua" >&2
+        printf '      %s\n' "''${stray_lua[@]}" >&2
         echo "    Hyprland >=0.55 prefers hyprland.lua over the home-manager-generated" >&2
         echo "    hyprland.conf, so this would silently replace your entire config." >&2
       fi
