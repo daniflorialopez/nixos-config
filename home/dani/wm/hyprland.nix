@@ -577,7 +577,26 @@ in
           vibrancy = 0.15;
         };
 
-        rounding = 12;
+        # 16 and power 4 are ONE change, not two, and the pairing is the point.
+        #
+        # rounding_power is the exponent of the superellipse the corner is cut
+        # from: 2.0 is a circular arc (the default), ~4 is the squircle — the
+        # curvature runs continuously into the straight edge instead of meeting
+        # it at a discontinuity, which is what makes the 2px border stop looking
+        # kinked at the corners.
+        #
+        # Raising the exponent alone would make corners visibly *tighter*, so
+        # the radius goes up to compensate. The happy result is that r16/p4
+        # clips LESS of the application's own content than r12/p2 did:
+        # ~18.7 px² per corner against ~30.9 px², i.e. a larger, softer corner
+        # that destroys ~40% fewer app pixels.
+        #
+        # Free: same fragment shader, one different uniform. No extra pass, no
+        # change to blur damage expansion. Shadow and the blur clip follow
+        # automatically because all three read the same exponent.
+        rounding = 16;
+        rounding_power = 4.0;
+
         shadow = {
           enabled = true;
           range = 14;
