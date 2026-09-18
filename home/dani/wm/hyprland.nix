@@ -525,6 +525,27 @@ in
         "$mod, mouse:273, resizewindow"
       ];
 
+      # The only bind on this machine that works while the session is locked.
+      #
+      # Hyprland's KeybindManager skips every non-locked bind while a session
+      # lock is active, and before this there were zero locked binds here —
+      # verified with `hyprctl binds -j | jq '[.[]|select(.locked)]|length'`,
+      # which returned 0. So if hyprlock died while locked, nothing on the
+      # keyboard did anything, and with no text console that is a hard power
+      # cycle. Paired with misc.allow_session_lock_restore above, this relaunches
+      # a lock client that can attach to the orphaned lock.
+      #
+      # `bindld` is locked + described: it fires while locked AND still appears
+      # in the $mod+/ keybinds palette, so it is discoverable before it is
+      # needed instead of being folklore. (Both spellings were checked against
+      # the 0.55.4 binary with --verify-config.)
+      #
+      # The chord is deliberately awkward. It must never be hit by accident, and
+      # it is only ever useful in one situation.
+      bindld = [
+        "$mod CTRL ALT, L, Relaunch lock screen (works while locked), exec, hyprlock"
+      ];
+
       input = {
         kb_layout = "us,es";
         # kb_options = "grp:ctrls_toggle,caps:super";
@@ -685,6 +706,22 @@ in
       misc = {
         disable_hyprland_logo = true;
         disable_splash_rendering = true;
+
+        # Lets a NEW session-lock client attach to an existing lock.
+        #
+        # A recovery option, not a cosmetic one. ext-session-lock-v1 requires
+        # the compositor to keep the session locked if the lock client dies —
+        # deliberately, so that a crashing locker can never expose the desktop.
+        # The consequence is that a hyprlock crash leaves a blank, locked screen
+        # with no client and no way back in. On legionix that is fatal: there is
+        # no usable text console (/sys/class/vtconsole holds only a dummy
+        # device), so "switch to a TTY" does not exist here and the only remedy
+        # is a hard power cycle.
+        #
+        # With this on, a fresh hyprlock can take over the orphaned lock. It is
+        # useless on its own though — see bindld below, because while a session
+        # is locked Hyprland skips every bind not marked locked.
+        allow_session_lock_restore = true;
 
         # `vfr` used to live here. It moved to `debug:vfr` in 0.55 and
         # `misc:vfr` is now a hard error ("config option <misc:vfr> does not
