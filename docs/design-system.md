@@ -6,9 +6,13 @@ same way — and you'll know how to add a new app without it clashing.
 
 ## The palette
 
-Tokyo Night (moon family). The canonical named-role definition lives in
-`home/dani/wm/theme.nix` as `waybar/palette.css`; the terminal 16-color source
-of truth is `home/dani/shell/alacritty.nix`. Everything else mirrors these.
+Tokyo Night (moon family). The canonical definition is
+**`home/dani/theme/palette.nix`** — one attrset of named roles, each tiered, with
+views for every syntax the repo needs (`#rrggbb`, `0xrrggbb`, bare `rrggbb` for
+fish, and the two different `rgba()` spellings Hyprland and GTK use).
+`waybar/palette.css` is generated from it. Migration of the remaining consumers
+is tracked in `docs/ricing/08-implementation-tracker.md`; until each one lands,
+its literals are still hand-written.
 
 | Hex        | Name / role        | Used for                                             |
 | ---------- | ------------------ | ---------------------------------------------------- |
@@ -77,13 +81,37 @@ and fish use **no cyan** — its roles went to sunset orange (maximum hue
 distance from blue). Where "cyan" survives (alacritty, btop cached memory) it's
 rendered as **teal** `#4fd6be`, distinct enough to read.
 
-### 4. Contrast is calibrated to WCAG AAA (≥7:1 on `#1a1b26`)
+### 4. Contrast is calibrated, and now enforced at build time
 
-Several values are lightened from Tokyo Night canon so text is legible:
-`muted` `#a0a5c0` (canon `#787c99` was ~4.2:1), fish/alacritty `bright black`
-`#737aa2` (canon `#444b6a` was nearly invisible at ~2.5:1), the AAA reds
-`#f88298`, greens `#b9f27c`, blue `#7ea5f7`. Same hues, raised lightness.
-`#737aa2` is the contrast **floor** for hint/placeholder text.
+Body text clears **WCAG AAA (≥7:1 on `#1a1b26`)**. Several values are lightened
+from Tokyo Night canon to get there: `muted` `#a0a5c0` (canon `#787c99` was
+4.18:1), the AAA red `#f88298`, green `#b9f27c`, blue `#7ea5f7`. Same hues,
+raised lightness.
+
+**Correction, 2026-09-18.** This rule used to claim `#737aa2` was among the
+AAA-calibrated values *and* "the contrast floor for hint/placeholder text". The
+build-time gate measured it at **4.10:1** — below AAA, and below AA for normal
+text. Both claims could not be true. What is true: it was raised from canon
+`#444b6a` (2.5:1, effectively invisible) to 4.10:1, and it is the floor **below
+which nothing may go**. It is the `dim` tier — placeholders and terminal bright
+black, text that is meant to recede — not an AAA value. The colour was fine; the
+documentation was wrong.
+
+This is no longer prose. `home/dani/theme/palette.nix` tiers every role and
+`home/dani/theme/default.nix` fails the build if one is out of bounds:
+
+| tier | floor | what it is |
+|---|---|---|
+| `text` | 7:1 (AAA) | anything read as body text |
+| `dim` | 3:1 | deliberately de-emphasised: placeholders, terminal bright black |
+| `accent` | warn under 4.5:1 | signal colours and terminal slots — fills, not body text |
+| `ui` | none | borders, washes, raised surfaces |
+
+Verified by deliberately breaking it: restoring canon `#787c99` for `muted`
+fails with *"only 4.18:1 … WCAG AAA needs 7.0:1"*. Rule 3 is enforced the same
+way — a role landing in the cyan band without an explicit `cyanOk` fails, so a
+future "just use cyan here" is caught at rebuild rather than by a user who
+cannot reliably distinguish it from blue.
 
 ### 5. Two type tiers: CaskaydiaMono for chrome, Inter for application UI
 
@@ -118,7 +146,8 @@ app and every portal dialog.
 
 | Surface                     | File                              |
 | --------------------------- | --------------------------------- |
-| Named-role palette (GTK)    | `wm/theme.nix` → `waybar/palette.css` |
+| **The palette itself**      | **`theme/palette.nix`** — single source; `theme/default.nix` gates it |
+| Named-role palette (GTK)    | `wm/theme.nix` → `waybar/palette.css` (generated from the above) |
 | Terminal 16-color (source)  | `shell/alacritty.nix`             |
 | Shell prompt                | `shell/starship.nix`              |
 | Shell syntax + fzf          | `shell/fish.nix`                  |

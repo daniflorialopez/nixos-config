@@ -1,5 +1,9 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 let
+  # The single palette source. See home/dani/theme/palette.nix; the build-time
+  # contrast/hue gate lives next to it in home/dani/theme/default.nix.
+  theme = import ../theme/palette.nix { inherit lib; };
+
   # Two type tiers, deliberately. The shell/chrome tier (waybar, mako, walker,
   # hyprlock, SDDM, the terminal) stays 100% CaskaydiaMono — that is the
   # design-system rule and it is what gives the desktop its voice. Application
@@ -89,19 +93,28 @@ in
     };
   };
 
-  # Shared palette (GTK CSS variables) for Waybar — Tokyo Night, matching
-  # the Alacritty colorscheme so the desktop chrome and terminal agree.
+  # Shared palette (GTK CSS variables) for Waybar.
+  #
+  # GENERATED from home/dani/theme/palette.nix — this file is now an output, not
+  # a definition. It used to be the closest thing the repo had to a canonical
+  # palette (docs/design-system.md said so) while having exactly one consumer and
+  # being re-typed by hand everywhere else.
+  #
+  # The CSS variable names are kept verbatim because waybar/style.css references
+  # them, but two of them were misleading and now point at the correctly-named
+  # role: `@muted` is the `slate` role (#565f89), not the `muted` role (#a0a5c0),
+  # and `@border` is a 10% wash of `fg`.
   xdg.configFile."waybar/palette.css".text = ''
-    @define-color bg #1a1b26;
-    @define-color bg_alpha rgba(26, 27, 38, 0.85);
-    @define-color surface rgba(36, 40, 59, 0.70);
-    @define-color fg #c0caf5;
-    @define-color subtle #a9b1d6;
-    @define-color muted #565f89;
-    @define-color accent #7aa2f7;
-    @define-color warning #e0af68;
-    @define-color critical #f7768e;
-    @define-color attention #ff9e64;
-    @define-color border rgba(192, 202, 245, 0.10);
+    @define-color bg ${theme.hex.bg};
+    @define-color bg_alpha ${theme.cssRgba "bg" "0.85"};
+    @define-color surface ${theme.cssRgba "surface" "0.70"};
+    @define-color fg ${theme.hex.fg};
+    @define-color subtle ${theme.hex.subtle};
+    @define-color muted ${theme.hex.slate};
+    @define-color accent ${theme.hex.accent};
+    @define-color warning ${theme.hex.warning};
+    @define-color critical ${theme.hex.critical};
+    @define-color attention ${theme.hex.attention};
+    @define-color border ${theme.cssRgba "fg" "0.10"};
   '';
 }

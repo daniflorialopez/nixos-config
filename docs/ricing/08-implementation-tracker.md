@@ -38,12 +38,12 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 
 | Task | Status | Notes |
 |---|---|---|
-| define design tokens | TODO | **Next up.** `home/dani/theme/palette.nix` + contrast/hue assertions (ADR-005) |
+| define design tokens | DONE | `home/dani/theme/palette.nix` — 26 tiered roles + views for all four syntaxes. `theme/default.nix` is a build-time gate: WCAG AAA for `text`, 3:1 for `dim`, cyan-band check. Negative-tested both ways |
 | evaluate Matugen | DONE | Rejected as authority — Nix module is build-time + IFD, drops hooks, `exit 0` on read-only. 26.05 now ships **4.0.0**, so the Tier-2 option in ADR-005 is available if wanted |
 | evaluate Stylix | DONE | Rejected — `release-25.11` frozen since 2026-04-29; no `mkDefault`; silent CSS concat on waybar |
 | choose theme authority | DONE | **ADR-005** — Tier 1 Nix tokens (frozen), Tier 2 ambient optional/later |
-| migrate ~200 literals onto tokens | TODO | 15 files, 4 syntaxes; fish's 21 bare unquoted hexes are the trap |
-| generate `waybar/palette.css` from tokens | TODO | Today it *is* the definition; it should become output |
+| migrate ~200 literals onto tokens | IN PROGRESS | palette.css done. Remaining: alacritty (`0x`), fish (**21 bare unquoted hexes — the trap**), zellij (94), btop (42), tmux (17), starship (7), walker/waybar/mako/swayosd CSS, hyprland/hyprlock `rgba()`, SDDM, yazi/zathura/imv/lazygit |
+| generate `waybar/palette.css` from tokens | DONE | Verified byte-identical to the installed file — pure refactor |
 | optional Tier-2 ambient via matugen | TODO | Only after Tier 1 lands; capped at 3–4 meaning-free roles |
 
 ## Wallpaper

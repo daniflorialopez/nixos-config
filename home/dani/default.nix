@@ -12,6 +12,7 @@ in
 {
   imports =
     [
+      ./theme
       ./shell
       ./programs
     ]
