@@ -17,26 +17,42 @@ let
   wrapperPad  = 16;   # .box-wrapper padding, baseCss
   popupBorder = 2;    # .box-wrapper border, baseCss
 
-  # Super+S: a 64px icon in 18px of padding is a 100px square tile; 6px of
-  # gutter either side makes a 112px cell; four of those is the grid.
-  boardIcon    = 64;
-  boardTilePad = 18;
-  boardGutter  = 6;
-  boardCols    = 4;
-  boardTile    = boardIcon + 2 * boardTilePad;      # 100
-  boardCell    = boardTile + 2 * boardGutter;       # 112
-  boardGrid    = boardCols * boardCell;             # 448
-  boardWidth   = boardGrid + 2 * wrapperPad;        # 480
+  # Super+S: a 64px icon in 18px of padding, inside a 1px border, is a 102px
+  # square tile; 6px of gutter either side makes a 114px cell; four of those is
+  # the grid; plus the wrapper's padding AND its border.
+  #
+  # `boardTileBorder` is the easiest term to leave out and the reason the old
+  # hand-written comment said 112 — the tile's border is `1px solid transparent`
+  # and the comment two lines above the rule says why: "the border still takes
+  # its 1px". Transparent is not absent. Measured on screen: cell pitch 114, grid
+  # 456, card 492.
+  boardIcon       = 64;
+  boardTilePad    = 18;
+  boardTileBorder = 1;
+  boardGutter     = 6;
+  boardCols       = 4;
+  boardTile  = boardIcon + 2 * boardTilePad + 2 * boardTileBorder;   # 102
+  boardCell  = boardTile + 2 * boardGutter;                          # 114
+  boardGrid  = boardCols * boardCell;                                # 456
+  boardWidth = boardGrid + 2 * wrapperPad + 2 * popupBorder;         # 492
 
-  # The wallpaper contact sheet. Five 304px cells of grid, plus the wrapper.
-  wallGutter = 8;
-  wallCols   = 5;
-  wallRows   = 4;
-  wallCell   = metrics.thumb.width  + 2 * wallGutter;   # 304
-  wallRow    = metrics.thumb.height + 2 * wallGutter;   # 178
-  wallGrid   = wallCols * wallCell;                      # 1520
-  wallHeight = wallRows * wallRow;                       # 712
-  wallWidth  = wallGrid + 2 * wrapperPad;                # 1552
+  # The wallpaper contact sheet. Five 308px cells of grid, plus the wrapper.
+  #
+  # `.wall-tile` is `border: 2px solid transparent` for the same reason the board
+  # tile is — it reserves the layout so a colour-only selection cannot shift
+  # anything — so it occupies 2px on every side and the thumbnail is NOT the only
+  # input to the cell. Omitting it is what pinned the viewport 16px short of the
+  # four rows it has to show. Measured on screen: cell pitch 308, row pitch 182,
+  # grid 1540, content height 728, card 1576.
+  wallGutter     = 8;
+  wallTileBorder = 2;
+  wallCols       = 5;
+  wallRows       = 4;
+  wallCell   = metrics.thumb.width  + 2 * wallTileBorder + 2 * wallGutter;   # 308
+  wallRow    = metrics.thumb.height + 2 * wallTileBorder + 2 * wallGutter;   # 182
+  wallGrid   = wallCols * wallCell;                                          # 1540
+  wallHeight = wallRows * wallRow;                                           # 728
+  wallWidth  = wallGrid + 2 * wrapperPad + 2 * popupBorder;                  # 1576
 
   # The logout confirm derives INWARD: the window is sized to fit a one-line
   # question, and the scroller is whatever is left inside the frame.
@@ -494,7 +510,8 @@ let
   # below sizes the window to exactly this board.
   gridCss = ''
     .item-box.menus-scratchpads {
-      /* 100px tile + 6px margin either side = the 112px grid cell, so the
+      /* 102px tile (64 icon + 2x18 padding + 2x1 border) + 6px margin either
+         side = the 114px grid cell, so the
          tiles are square and the gutter is even in both directions */
       margin: ${metrics.px boardGutter};
       padding: ${metrics.px boardTilePad};
