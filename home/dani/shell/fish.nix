@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
+
+let
+  theme = import ../theme/palette.nix { inherit lib; };
+  inherit (theme) hex noHash;
+in
 
 { 
   programs.fzf = {
@@ -12,21 +17,24 @@
     # matches (yazi find tier), blue for the prompt/position accents,
     # #a0a5c0 as the AAA-calibrated muted
     colors = {
-      "fg" = "#a9b1d6";
-      "fg+" = "#c0caf5";
+      "fg" = hex.subtle;
+      "fg+" = hex.fg;
+      # NOT a colour. "-1" means "the terminal's own default", which is what
+      # keeps the fzf pane transparent so the compositor glass shows through.
+      # Never map this onto a palette role.
       "bg" = "-1";
-      "bg+" = "#283457";
-      "hl" = "#ff9e64";
-      "hl+" = "#ff9e64";
-      "info" = "#a0a5c0";
-      "header" = "#a0a5c0";
-      "prompt" = "#7aa2f7";
-      "pointer" = "#ff9e64";
-      "marker" = "#9ece6a";
-      "spinner" = "#ff9e64";
-      "border" = "#565f89";
-      "separator" = "#565f89";
-      "scrollbar" = "#565f89";
+      "bg+" = hex.selection;
+      "hl" = hex.attention;
+      "hl+" = hex.attention;
+      "info" = hex.muted;
+      "header" = hex.muted;
+      "prompt" = hex.accent;
+      "pointer" = hex.attention;
+      "marker" = hex.success;
+      "spinner" = hex.attention;
+      "border" = hex.slate;
+      "separator" = hex.slate;
+      "scrollbar" = hex.slate;
     };
 
     historyWidgetOptions = [
@@ -60,6 +68,7 @@
     };
 
     functions = {
+      # Greeting colours also come from home/dani/theme/palette.nix.
       fish_greeting = ''
         set -l host (prompt_hostname)
         set -l user $USER
@@ -82,10 +91,10 @@
         end
 
         # Restrained Tokyo Night palette
-        set -l comment "#565f89"
-        set -l fg      "#c0caf5"
-        set -l blue    "#7aa2f7"
-        set -l purple  "#bb9af7"
+        set -l comment "${hex.slate}"
+        set -l fg      "${hex.fg}"
+        set -l blue    "${hex.accent}"
+        set -l purple  "${hex.purple}"
 
         set -l role "local"
         set -l role_color $comment
@@ -123,7 +132,19 @@
       '';
     };
 
-    # Extra initialization when an interactive fish starts
+    # Extra initialization when an interactive fish starts.
+    #
+    # The colour block below uses `noHash` from the palette, because fish takes
+    # a BARE hex — no leading #, no quotes. That is worth knowing beyond fish:
+    # it is the one colour syntax in this repo that a `#[0-9a-f]{6}` search does
+    # not match, so before the palette layer these 21 values were invisible to
+    # any audit that went looking for hex.
+    #
+    # Text roles throughout (accentText / criticalText rather than accent /
+    # critical) — everything fish colours here is read, so it is held to the AAA
+    # floor by the gate in home/dani/theme/default.nix. Two values are NOT
+    # colours and must stay literal: `--underline` is a style, and fzf's
+    # "bg" = "-1" above means "the terminal's own default".
     interactiveShellInit = ''
       # vi-style keybindings
       fish_vi_key_bindings
@@ -135,28 +156,28 @@
 
       # ---- Tokyo Night syntax colors, calibrated to WCAG AAA (>=7:1
       # on #1a1b26) — same hues, lightness raised where canon fell short
-      set -g fish_color_normal c0caf5
-      set -g fish_color_command 7ea5f7
-      set -g fish_color_keyword bb9af7
-      set -g fish_color_quote 9ece6a
-      set -g fish_color_redirection ff9e64
-      set -g fish_color_end ff9e64
-      set -g fish_color_error f88298
-      set -g fish_color_param c0caf5
-      set -g fish_color_comment a0a5c0
-      set -g fish_color_operator ff9e64
-      set -g fish_color_escape bb9af7
-      set -g fish_color_autosuggestion a0a5c0
-      set -g fish_color_cancel f88298
-      set -g fish_color_search_match --background=3d59a1
-      set -g fish_color_selection --background=283457
+      set -g fish_color_normal ${noHash.fg}
+      set -g fish_color_command ${noHash.accentText}
+      set -g fish_color_keyword ${noHash.purple}
+      set -g fish_color_quote ${noHash.success}
+      set -g fish_color_redirection ${noHash.attention}
+      set -g fish_color_end ${noHash.attention}
+      set -g fish_color_error ${noHash.criticalText}
+      set -g fish_color_param ${noHash.fg}
+      set -g fish_color_comment ${noHash.muted}
+      set -g fish_color_operator ${noHash.attention}
+      set -g fish_color_escape ${noHash.purple}
+      set -g fish_color_autosuggestion ${noHash.muted}
+      set -g fish_color_cancel ${noHash.criticalText}
+      set -g fish_color_search_match --background=${noHash.searchMatch}
+      set -g fish_color_selection --background=${noHash.selection}
       set -g fish_color_valid_path --underline
 
-      set -g fish_pager_color_progress ff9e64
-      set -g fish_pager_color_prefix ff9e64
-      set -g fish_pager_color_completion c0caf5
-      set -g fish_pager_color_description a0a5c0
-      set -g fish_pager_color_selected_background --background=283457
+      set -g fish_pager_color_progress ${noHash.attention}
+      set -g fish_pager_color_prefix ${noHash.attention}
+      set -g fish_pager_color_completion ${noHash.fg}
+      set -g fish_pager_color_description ${noHash.muted}
+      set -g fish_pager_color_selected_background --background=${noHash.selection}
     '';
 
     shellInitLast = ''
