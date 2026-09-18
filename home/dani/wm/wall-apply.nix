@@ -33,7 +33,15 @@ rec {
   # with something unreadable, or deleted — and the moment the wallpaper daemon
   # is the thing that failed there is no desktop left to repair it from. This
   # one is read-only, content-addressed, and rolls back with the generation.
-  fallback = "${../assets/wallpapers}/default.png";
+  #
+  # Imported as a single FILE rather than as "${../assets/wallpapers}/default.png".
+  # That form interpolates the whole directory, so wall-apply's hash tracked
+  # every image in it: adding or touching an unrelated wallpaper changed
+  # wall-apply, which changed awww.service's unit file, which made sd-switch
+  # restart the daemon and tear down both layer surfaces on the next rebuild.
+  # (It saves no store space — home.activation.wallpaperLibrary imports the same
+  # directory anyway to seed the library. This is purely about churn.)
+  fallback = ../assets/wallpapers/default.png;
 
   package = pkgs.awww;
 
