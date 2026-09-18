@@ -99,7 +99,9 @@
 #   multi-host wart into an endorsed design decision. It needs a per-host NixOS
 #   option, not a token — a separate task.
 
-{ lib }:
+# No `lib` argument: unlike theme/palette.nix, nothing here needs it. Geometry is
+# integers and one string helper.
+{ }:
 
 rec {
   # ------------------------------------------------------------------ the four

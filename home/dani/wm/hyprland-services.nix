@@ -88,6 +88,11 @@ in
       text-color = theme.hex.fg;
       border-color = theme.hex.accent;
       border-size = 2;
+      # NOT metrics.islandRadius, though it is the same number today. mako is a
+      # framed notification, not a glass island: an accent border at 2px that
+      # switches with urgency, over an opaque-ish 0.88 surface. It belongs to the
+      # popup family and the two must be free to diverge. (a441a36's message said
+      # this note existed; it did not, until now.)
       border-radius = 12;
       padding = "12,16";
       margin = toString metrics.outerMargin;   # the same outer margin a window gets

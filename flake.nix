@@ -62,14 +62,14 @@
       # it would have had to reach up three directories into home/.
       theme = import ./theme/palette.nix { inherit (nixpkgs) lib; };
 
-      # The other half of the shared design state. Same reasoning as `theme`:
-      # the SDDM module and the Home Manager wallpaper module both need this
-      # value and neither may import the other's tree.
       # Geometry's much smaller sibling: the four measurements more than one
       # file must agree on. Not a design scale — that file's header argues at
       # length why a full one would be ceremony with no check behind it.
-      metrics = import ./theme/metrics.nix { inherit (nixpkgs) lib; };
+      metrics = import ./theme/metrics.nix { };
 
+      # The anchor wallpaper. Same reasoning as `theme`: the SDDM module and the
+      # Home Manager wallpaper module both need this value and neither may import
+      # the other's tree.
       scene = import ./theme/scene.nix;
 
       # Every host is wired identically: hosts/<name> plus the shared

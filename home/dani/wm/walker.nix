@@ -579,7 +579,7 @@ let
 
   # --- The wallpaper picker (Super+Ctrl+W) --------------------------------
   #
-  # A contact sheet, not a list: four 16:9 tiles to a row with the selected one
+  # A contact sheet, not a list: five 16:9 tiles to a row with the selected one
   # lit and captioned, and the full-size image in the preview pane beside it.
   # Entries come from the elephant Lua menu in wm/wallpaper.nix, which hands
   # walker a thumbnail path per wallpaper.
