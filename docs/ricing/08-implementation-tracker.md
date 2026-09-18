@@ -42,7 +42,7 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | evaluate Matugen | DONE | Rejected as authority — Nix module is build-time + IFD, drops hooks, `exit 0` on read-only. 26.05 now ships **4.0.0**, so the Tier-2 option in ADR-005 is available if wanted |
 | evaluate Stylix | DONE | Rejected — `release-25.11` frozen since 2026-04-29; no `mkDefault`; silent CSS concat on waybar |
 | choose theme authority | DONE | **ADR-005** — Tier 1 Nix tokens (frozen), Tier 2 ambient optional/later |
-| migrate ~200 literals onto tokens | IN PROGRESS | palette.css done. Remaining: alacritty (`0x`), fish (**21 bare unquoted hexes — the trap**), zellij (94), btop (42), tmux (17), starship (7), walker/waybar/mako/swayosd CSS, hyprland/hyprlock `rgba()`, SDDM, yazi/zathura/imv/lazygit |
+| migrate ~200 literals onto tokens | IN PROGRESS | Done: `palette.css`, **starship** (7), **fish** (36 across 3 syntaxes incl. the 21 bare hexes). Remaining: alacritty (`0x`, 22), zellij (94), btop (42, ordered gradient triples), tmux (17 numbered slots), walker/waybar/mako/swayosd CSS, hyprland+hyprlock `rgba()`, SDDM themeConfig, yazi/zathura/imv/lazygit. Every migration must be proven byte-identical |
 | generate `waybar/palette.css` from tokens | DONE | Verified byte-identical to the installed file — pure refactor |
 | optional Tier-2 ambient via matugen | TODO | Only after Tier 1 lands; capped at 3–4 meaning-free roles |
 
