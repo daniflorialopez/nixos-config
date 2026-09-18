@@ -44,71 +44,6 @@ let
     '';
   };
 
-  kbLayoutScript = pkgs.writeShellApplication {
-    name = "waybar-kblayout";
-    runtimeInputs = [ pkgs.hyprland pkgs.jq ];
-    text = ''
-      data="$(hyprctl -j devices)"
-
-      keymap="$(
-        printf '%s' "$data" \
-          | jq -r '
-              .keyboards[]
-              | select(.name == "keyd-virtual-keyboard")
-              | .active_keymap
-            ' \
-          | head -n1
-      )"
-
-      [ -n "$keymap" ] || keymap="$(
-        printf '%s' "$data" \
-          | jq -r '
-              .keyboards[]
-              | select(.name == "at-translated-set-2-keyboard")
-              | .active_keymap
-            ' \
-          | head -n1
-      )"
-
-      [ -n "$keymap" ] || keymap="$(
-        printf '%s' "$data" \
-          | jq -r '.keyboards[0].active_keymap // empty'
-      )"
-
-      case "$keymap" in
-        "English (US)"|"English")
-          short="US"
-          class="us"
-          ;;
-        "Spanish"|"Spanish; Castilian"|"Spanish (Latin American)")
-          short="ES"
-          class="es"
-          ;;
-        "")
-          short="??"
-          class="unknown"
-          keymap="No keyboard layout found"
-          ;;
-        *)
-          short="$keymap"
-          class="unknown"
-          ;;
-      esac
-
-      # keyboard glyph + layout code (the old format had three bare
-      # spaces where an icon was lost, reading as a hole in the bar)
-      printf '{"text":"󰌌  %s","tooltip":"%s","class":"%s"}\n' \
-        "$short" "$keymap" "$class"
-    '';
-  };
-
-  kbCycleScript = pkgs.writeShellApplication {
-    name = "waybar-kblayout-next";
-    runtimeInputs = [ pkgs.hyprland ];
-    text = ''
-      hyprctl switchxkblayout keyd-virtual-keyboard next
-    '';
-  };
 
   btToggleScript = pkgs.writeShellApplication {
     name = "waybar-bt-toggle";
@@ -390,7 +325,6 @@ in
         "custom/tailscale"
         "custom/efootball"
         "custom/gpu"
-        "custom/kblayout"
         "bluetooth"
         "network"
         "pulseaudio"
@@ -506,13 +440,6 @@ in
         format = "{}";
       };
 
-      "custom/kblayout" = {
-        exec = "${kbLayoutScript}/bin/waybar-kblayout";
-        return-type = "json";
-        interval = 1;
-        format = "{}";
-        on-click = "${kbCycleScript}/bin/waybar-kblayout-next";
-      };
 
       bluetooth = {
         format = "󰂯";
@@ -664,7 +591,6 @@ in
       #custom-efootball,
       #custom-conservation,
       #custom-mouseless,
-      #custom-kblayout,
       #bluetooth,
       #network,
       #pulseaudio,
@@ -677,7 +603,6 @@ in
       }
 
       #mpris { color: @muted; font-style: italic; }
-      #custom-kblayout { min-width: 26px; }
       #custom-gpu.hot { color: @critical; }
       #custom-tailscale.up { color: @muted; }
       #custom-tailscale.down { color: @critical; }

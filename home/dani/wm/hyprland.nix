@@ -10,6 +10,48 @@
 let
   # One palette source: home/dani/theme/palette.nix.
 
+  # Cycle the keyboard layout and say which one you landed on.
+  #
+  # This replaces waybar's `custom/kblayout` module, which polled
+  # `hyprctl -j devices` every second (measured 18.1 ms a go, ~1.8 % of a core
+  # around the clock) purely to render a two-letter string that changes maybe
+  # twice a week. Its on-click was also the ONLY way to reach the `es` layout —
+  # `grp:ctrls_toggle` is commented out in `input.kb_options` — so deleting the
+  # widget without this bind would have quietly removed the Spanish layout.
+  #
+  # A notification is the right surface for this: the layout only matters at the
+  # moment you change it, and mako already persists it until dismissed.
+  kbLayoutNext = pkgs.writeShellApplication {
+    name = "kb-layout-next";
+    runtimeInputs = [ pkgs.hyprland pkgs.jq pkgs.libnotify ];
+    text = ''
+      hyprctl switchxkblayout keyd-virtual-keyboard next >/dev/null
+
+      # Same device-name ladder the waybar module used: the keyd virtual
+      # keyboard first, the builtin second, then whatever is at index 0.
+      data="$(hyprctl -j devices)"
+      keymap="$(
+        printf '%s' "$data" | jq -r '
+          ( .keyboards[] | select(.name == "keyd-virtual-keyboard") | .active_keymap ),
+          ( .keyboards[] | select(.name == "at-translated-set-2-keyboard") | .active_keymap ),
+          ( .keyboards[0].active_keymap // empty )
+        ' | head -n1
+      )"
+
+      # -t 1500 explicitly, because mako runs default-timeout = 0 (notifications
+      # persist until dismissed, so nothing is missed while DND is on). That is
+      # right for mail and backups and wrong for this: a layout toggle you have
+      # to dismiss by hand is worse than no notification at all. mako honours a
+      # client-supplied timeout unless ignore-timeout is set, which it is not.
+      #
+      # The synchronous hint makes a second press REPLACE the first toast rather
+      # than stack another one — verified: two invocations, one notification.
+      notify-send -a keyboard -i input-keyboard -t 1500 \
+        -h string:x-canonical-private-synchronous:kb-layout \
+        "Keyboard layout" "''${keymap:-unknown}"
+    '';
+  };
+
   # This whole wm/ tree is shared with danix-hp, which runs Hyprland on
   # `modesetting` + `fbdev` rather than the proprietary NVIDIA driver. Anything
   # that only makes sense under NVIDIA has to be gated, or it lands there too.
@@ -232,7 +274,7 @@ let
             if (a ~ /wpctl|playerctl|output-volume/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
             if (a ~ /-m windows|scratchpad/) return "Windows"
-            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:logout/) return "System"
+            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:logout/) return "System"
             return "Apps"
           }
           return "Other"
@@ -380,6 +422,10 @@ in
       # the keybinds palette ($mod+/), so a plain bind here would show
       # up as a bare dispatcher in the menu.
       bindd = [
+        # SUPER+SPACE is the launcher, so SHIFT of it is the other thing you
+        # reach for from the keyboard. Verified free before taking it.
+        "$mod SHIFT, SPACE, Switch keyboard layout, exec, kb-layout-next"
+
         # Workspaces
         "$mod, 1, Workspace 1, workspace, 1"
         "$mod, 2, Workspace 2, workspace, 2"
@@ -903,6 +949,10 @@ in
   home.packages = with pkgs; [
     # essentials
     alacritty
+
+    # keyboard layout cycling ($mod SHIFT SPACE) - replaced waybar's
+    # once-a-second custom/kblayout poller
+    kbLayoutNext
 
     # clipboard + screenshots
     grim
