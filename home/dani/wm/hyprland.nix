@@ -645,14 +645,40 @@ in
         ];
 
         # durations are in deciseconds
+        #
+        # Arrivals decelerate, departures leave at constant speed.
+        #
+        # easeOutQuint is an *arrival* curve and it was being used for
+        # departures too. Measured on its actual travel profile: a closing
+        # window collapses 77% of its distance in the first ~60ms and then
+        # spends ~137ms creeping the last 3%. That dead tail is what read as
+        # sluggish — not the duration. `linear` commits and is gone, so the
+        # close reads faster even though the nominal time barely moves
+        # (250 -> 140ms).
+        #
+        # This is also cheaper, not just nicer: windowsOut, layersOut and
+        # fadeSwitch are all registered AVARDAMAGE_ENTIRE, so every frame of
+        # them re-damages the whole window rect and re-runs blur over it.
+        # Shortening them removes full-window re-composites from the three most
+        # frequent events on the desktop.
+        #
+        # `linear` and `default` are the only curves hyprlang predeclares —
+        # almostLinear/quick/easeInOutCubic are Lua-only defaults and would be
+        # "no such bezier" here.
         animation = [
           "windows, 1, 3, easeOutQuint, popin 92%"
-          "windowsOut, 1, 2.5, easeOutQuint, popin 92%"
+          "windowsOut, 1, 1.4, linear, popin 92%"
           "fade, 1, 2.5, default"
+          # Split off from `fade` so the focus step (the 0.94 <-> 0.88 opacity
+          # change this config sets) gets its own, shorter ramp. Previously it
+          # inherited `fade`, whose `default` curve is 66% travelled at 25ms —
+          # a pop with a long tail rather than a fade.
+          "fadeSwitch, 1, 2, default"
           "border, 1, 4, default"
           "workspaces, 1, 3.5, easeOutQuint, slide"
           "specialWorkspace, 1, 3, easeOutQuint, slidevert"
           "layers, 1, 2.5, easeOutQuint, popin 93%"
+          "layersOut, 1, 1.2, linear, popin 93%"
         ];
       };
 
