@@ -35,7 +35,15 @@ let
       sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
       socat -U - "UNIX-CONNECT:$sock" | while read -r line; do
         case "$line" in
-          monitoradded*HDMI-A-1*)
+          # v2 only. Hyprland 0.55.4 emits BOTH `monitoradded>>HDMI-A-1` and
+          # `monitoraddedv2>>ID,HDMI-A-1,DESCRIPTION` for one physical connect
+          # (both names are in the binary; verified with `strings` on
+          # .Hyprland-wrapped), and the old `monitoradded*HDMI-A-1*` pattern
+          # matched both — `*` happily absorbs the `v2`. So a single replug ran
+          # this whole body twice: two sleeps, two repin passes, two waybar
+          # restarts, and two full wallpaper decodes. Pinning the name to v2's
+          # second field matches exactly once.
+          monitoraddedv2*,HDMI-A-1,*)
             sleep 1   # let the monitor rule (mode/position) settle first
             repin
             # waybar duplicates bar surfaces on a re-added output (seen
