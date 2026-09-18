@@ -1,4 +1,4 @@
-{ ... }:
+{ theme, ... }:
 
 {
   # Tokyo Night btop with the desktop's role mapping: slate boxes, blue
@@ -18,58 +18,58 @@
 
   xdg.configFile."btop/themes/tokyo-sunset.theme".text = ''
     # Tokyo Night "sunset" — matches home/dani/wm/theme.nix palette
-    theme[main_bg]="#1a1b26"
-    theme[main_fg]="#c0caf5"
-    theme[title]="#c0caf5"
-    theme[hi_fg]="#7aa2f7"
-    theme[selected_bg]="#283457"
-    theme[selected_fg]="#c0caf5"
-    theme[inactive_fg]="#565f89"
-    theme[graph_text]="#a0a5c0"
-    theme[meter_bg]="#24283b"
-    theme[proc_misc]="#7aa2f7"
+    theme[main_bg]="${theme.hex.bg}"
+    theme[main_fg]="${theme.hex.fg}"
+    theme[title]="${theme.hex.fg}"
+    theme[hi_fg]="${theme.hex.accent}"
+    theme[selected_bg]="${theme.hex.selection}"
+    theme[selected_fg]="${theme.hex.fg}"
+    theme[inactive_fg]="${theme.hex.slate}"
+    theme[graph_text]="${theme.hex.muted}"
+    theme[meter_bg]="${theme.hex.surface}"
+    theme[proc_misc]="${theme.hex.accent}"
 
-    theme[cpu_box]="#565f89"
-    theme[mem_box]="#565f89"
-    theme[net_box]="#565f89"
-    theme[proc_box]="#565f89"
-    theme[div_line]="#565f89"
+    theme[cpu_box]="${theme.hex.slate}"
+    theme[mem_box]="${theme.hex.slate}"
+    theme[net_box]="${theme.hex.slate}"
+    theme[proc_box]="${theme.hex.slate}"
+    theme[div_line]="${theme.hex.slate}"
 
     # temperature: calm green until it isn't
-    theme[temp_start]="#9ece6a"
-    theme[temp_mid]="#e0af68"
-    theme[temp_end]="#f7768e"
+    theme[temp_start]="${theme.hex.success}"
+    theme[temp_mid]="${theme.hex.warning}"
+    theme[temp_end]="${theme.hex.critical}"
 
     # cpu load: the sunset gradient, like the active window border
-    theme[cpu_start]="#e0af68"
-    theme[cpu_mid]="#ff9e64"
-    theme[cpu_end]="#f7768e"
+    theme[cpu_start]="${theme.hex.warning}"
+    theme[cpu_mid]="${theme.hex.attention}"
+    theme[cpu_end]="${theme.hex.critical}"
 
     # memory: free/available stay green, cached goes teal (the palette's
     # "cyan"), used climbs the sunset
-    theme[free_start]="#9ece6a"
-    theme[free_mid]="#b9f27c"
-    theme[free_end]="#b9f27c"
-    theme[cached_start]="#4fd6be"
-    theme[cached_mid]="#4fd6be"
-    theme[cached_end]="#53c7ad"
-    theme[available_start]="#9ece6a"
-    theme[available_mid]="#b9f27c"
-    theme[available_end]="#b9f27c"
-    theme[used_start]="#e0af68"
-    theme[used_mid]="#ff9e64"
-    theme[used_end]="#f7768e"
+    theme[free_start]="${theme.hex.success}"
+    theme[free_mid]="${theme.hex.successText}"
+    theme[free_end]="${theme.hex.successText}"
+    theme[cached_start]="${theme.hex.teal}"
+    theme[cached_mid]="${theme.hex.teal}"
+    theme[cached_end]="${theme.hex.tealDim}"
+    theme[available_start]="${theme.hex.success}"
+    theme[available_mid]="${theme.hex.successText}"
+    theme[available_end]="${theme.hex.successText}"
+    theme[used_start]="${theme.hex.warning}"
+    theme[used_mid]="${theme.hex.attention}"
+    theme[used_end]="${theme.hex.critical}"
 
     # network: blue family down, orange family up (accent vs attention)
-    theme[download_start]="#3d59a1"
-    theme[download_mid]="#7aa2f7"
-    theme[download_end]="#7da6ff"
-    theme[upload_start]="#e0af68"
-    theme[upload_mid]="#ff9e64"
-    theme[upload_end]="#f7768e"
+    theme[download_start]="${theme.hex.searchMatch}"
+    theme[download_mid]="${theme.hex.accent}"
+    theme[download_end]="${theme.hex.brightBlue}"
+    theme[upload_start]="${theme.hex.warning}"
+    theme[upload_mid]="${theme.hex.attention}"
+    theme[upload_end]="${theme.hex.critical}"
 
-    theme[process_start]="#7aa2f7"
-    theme[process_mid]="#bb9af7"
-    theme[process_end]="#f7768e"
+    theme[process_start]="${theme.hex.accent}"
+    theme[process_mid]="${theme.hex.purple}"
+    theme[process_end]="${theme.hex.critical}"
   '';
 }

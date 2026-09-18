@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, theme, ... }:
 
 let
   # Oh My Tmux, fetched once, pinned to a specific commit
@@ -92,23 +92,23 @@ in
     # Oh My Tmux colour slots remapped to the shared palette
     # (see home/dani/wm/theme.nix)
 
-    tmux_conf_theme_colour_1="#1a1b26"   # background
-    tmux_conf_theme_colour_2="#24283b"   # window background
-    tmux_conf_theme_colour_3="#a9b1d6"   # inactive text (kept bright for legibility)
-    tmux_conf_theme_colour_4="#7aa2f7"   # accent (active pane, highlights)
-    tmux_conf_theme_colour_5="#e0af68"   # session name
-    tmux_conf_theme_colour_6="#1a1b26"
-    tmux_conf_theme_colour_7="#c0caf5"   # foreground
-    tmux_conf_theme_colour_8="#1a1b26"
-    tmux_conf_theme_colour_9="#e0af68"
-    tmux_conf_theme_colour_10="#ff9e64"  # prefix/mode indicator
-    tmux_conf_theme_colour_11="#9ece6a"  # copy mode
-    tmux_conf_theme_colour_12="#a9b1d6"
-    tmux_conf_theme_colour_13="#c0caf5"
-    tmux_conf_theme_colour_14="#1a1b26"
-    tmux_conf_theme_colour_15="#c0caf5"
-    tmux_conf_theme_colour_16="#f7768e"  # alerts
-    tmux_conf_theme_colour_17="#c0caf5"
+    tmux_conf_theme_colour_1="${theme.hex.bg}"   # background
+    tmux_conf_theme_colour_2="${theme.hex.surface}"   # window background
+    tmux_conf_theme_colour_3="${theme.hex.subtle}"   # inactive text (kept bright for legibility)
+    tmux_conf_theme_colour_4="${theme.hex.accent}"   # accent (active pane, highlights)
+    tmux_conf_theme_colour_5="${theme.hex.warning}"   # session name
+    tmux_conf_theme_colour_6="${theme.hex.bg}"
+    tmux_conf_theme_colour_7="${theme.hex.fg}"   # foreground
+    tmux_conf_theme_colour_8="${theme.hex.bg}"
+    tmux_conf_theme_colour_9="${theme.hex.warning}"
+    tmux_conf_theme_colour_10="${theme.hex.attention}"  # prefix/mode indicator
+    tmux_conf_theme_colour_11="${theme.hex.success}"  # copy mode
+    tmux_conf_theme_colour_12="${theme.hex.subtle}"
+    tmux_conf_theme_colour_13="${theme.hex.fg}"
+    tmux_conf_theme_colour_14="${theme.hex.bg}"
+    tmux_conf_theme_colour_15="${theme.hex.fg}"
+    tmux_conf_theme_colour_16="${theme.hex.critical}"  # alerts
+    tmux_conf_theme_colour_17="${theme.hex.fg}"
   '';
 }
 

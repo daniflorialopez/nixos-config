@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  theme,
   ...
 }:
 
@@ -35,132 +36,132 @@
 
       themes.tokyo-sunset = {
         text_unselected = {
-          base = "#a0a5c0";
-          background = "#1a1b26";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#b9f27c";
-          emphasis_2 = "#7ea5f7";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.muted;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.successText;
+          emphasis_2 = theme.hex.accentText;
+          emphasis_3 = theme.hex.purple;
         };
         text_selected = {
-          base = "#c0caf5";
-          background = "#283457";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#b9f27c";
-          emphasis_2 = "#7ea5f7";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.fg;
+          background = theme.hex.selection;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.successText;
+          emphasis_2 = theme.hex.accentText;
+          emphasis_3 = theme.hex.purple;
         };
         ribbon_selected = {
           # active tab / mode pill: dark text on Tokyo Night blue
-          base = "#1a1b26";
-          background = "#7aa2f7";
-          emphasis_0 = "#f7768e";
-          emphasis_1 = "#1a1b26";
-          emphasis_2 = "#1a1b26";
-          emphasis_3 = "#1a1b26";
+          base = theme.hex.bg;
+          background = theme.hex.accent;
+          emphasis_0 = theme.hex.critical;
+          emphasis_1 = theme.hex.bg;
+          emphasis_2 = theme.hex.bg;
+          emphasis_3 = theme.hex.bg;
         };
         ribbon_unselected = {
-          base = "#a0a5c0";
-          background = "#24283b";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#c0caf5";
-          emphasis_2 = "#a0a5c0";
-          emphasis_3 = "#a0a5c0";
+          base = theme.hex.muted;
+          background = theme.hex.surface;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.fg;
+          emphasis_2 = theme.hex.muted;
+          emphasis_3 = theme.hex.muted;
         };
         table_title = {
-          base = "#7ea5f7";
-          background = "#1a1b26";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#b9f27c";
-          emphasis_2 = "#7ea5f7";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.accentText;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.successText;
+          emphasis_2 = theme.hex.accentText;
+          emphasis_3 = theme.hex.purple;
         };
         table_cell_selected = {
-          base = "#c0caf5";
-          background = "#283457";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#b9f27c";
-          emphasis_2 = "#7ea5f7";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.fg;
+          background = theme.hex.selection;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.successText;
+          emphasis_2 = theme.hex.accentText;
+          emphasis_3 = theme.hex.purple;
         };
         table_cell_unselected = {
-          base = "#a0a5c0";
-          background = "#1a1b26";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#b9f27c";
-          emphasis_2 = "#7ea5f7";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.muted;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.successText;
+          emphasis_2 = theme.hex.accentText;
+          emphasis_3 = theme.hex.purple;
         };
         list_selected = {
-          base = "#c0caf5";
-          background = "#283457";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#b9f27c";
-          emphasis_2 = "#7ea5f7";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.fg;
+          background = theme.hex.selection;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.successText;
+          emphasis_2 = theme.hex.accentText;
+          emphasis_3 = theme.hex.purple;
         };
         list_unselected = {
-          base = "#a0a5c0";
-          background = "#1a1b26";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#b9f27c";
-          emphasis_2 = "#7ea5f7";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.muted;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.successText;
+          emphasis_2 = theme.hex.accentText;
+          emphasis_3 = theme.hex.purple;
         };
         frame_selected = {
           # active pane frame: blue accent, matching the dark-surface rule
-          base = "#7aa2f7";
-          background = "#1a1b26";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#e0af68";
-          emphasis_2 = "#f7768e";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.accent;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.warning;
+          emphasis_2 = theme.hex.critical;
+          emphasis_3 = theme.hex.purple;
         };
         frame_unselected = {
           # same muted slate as Hyprland's inactive window border
-          base = "#565f89";
-          background = "#1a1b26";
-          emphasis_0 = "#ff9e64";
-          emphasis_1 = "#e0af68";
-          emphasis_2 = "#f7768e";
-          emphasis_3 = "#bb9af7";
+          base = theme.hex.slate;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.attention;
+          emphasis_1 = theme.hex.warning;
+          emphasis_2 = theme.hex.critical;
+          emphasis_3 = theme.hex.purple;
         };
         frame_highlight = {
           # attention (resize, pinned, search hits): the sunset pop
-          base = "#ff9e64";
-          background = "#1a1b26";
-          emphasis_0 = "#e0af68";
-          emphasis_1 = "#ff9e64";
-          emphasis_2 = "#ff9e64";
-          emphasis_3 = "#ff9e64";
+          base = theme.hex.attention;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.warning;
+          emphasis_1 = theme.hex.attention;
+          emphasis_2 = theme.hex.attention;
+          emphasis_3 = theme.hex.attention;
         };
         exit_code_success = {
-          base = "#9ece6a";
-          background = "#1a1b26";
-          emphasis_0 = "#b9f27c";
-          emphasis_1 = "#9ece6a";
-          emphasis_2 = "#9ece6a";
-          emphasis_3 = "#9ece6a";
+          base = theme.hex.success;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.successText;
+          emphasis_1 = theme.hex.success;
+          emphasis_2 = theme.hex.success;
+          emphasis_3 = theme.hex.success;
         };
         exit_code_error = {
-          base = "#f88298";
-          background = "#1a1b26";
-          emphasis_0 = "#f7768e";
-          emphasis_1 = "#f88298";
-          emphasis_2 = "#f88298";
-          emphasis_3 = "#f88298";
+          base = theme.hex.criticalText;
+          background = theme.hex.bg;
+          emphasis_0 = theme.hex.critical;
+          emphasis_1 = theme.hex.criticalText;
+          emphasis_2 = theme.hex.criticalText;
+          emphasis_3 = theme.hex.criticalText;
         };
         multiplayer_user_colors = [
-          "#ff9e64"
-          "#7aa2f7"
-          "#b9f27c"
-          "#bb9af7"
-          "#e0af68"
-          "#f88298"
-          "#4fd6be"
-          "#c0caf5"
-          "#9ece6a"
-          "#7ea5f7"
+          theme.hex.attention
+          theme.hex.accent
+          theme.hex.successText
+          theme.hex.purple
+          theme.hex.warning
+          theme.hex.criticalText
+          theme.hex.teal
+          theme.hex.fg
+          theme.hex.success
+          theme.hex.accentText
         ];
       };
     };

@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, lib, ... }:
+{ config, pkgs, inputs, lib, theme, ... }:
 
 let
   unstablePkgs = import inputs.nixpkgs-unstable {
@@ -31,17 +31,17 @@ in
       gui = {
         nerdFontsVersion = "3";
         theme = {
-          activeBorderColor = [ "#7aa2f7" "bold" ];
-          inactiveBorderColor = [ "#565f89" ];
-          searchingActiveBorderColor = [ "#ff9e64" "bold" ];
-          optionsTextColor = [ "#7aa2f7" ];
-          selectedLineBgColor = [ "#283457" ];
-          cherryPickedCommitFgColor = [ "#7aa2f7" ];
-          cherryPickedCommitBgColor = [ "#283457" ];
-          markedBaseCommitFgColor = [ "#7aa2f7" ];
-          markedBaseCommitBgColor = [ "#e0af68" ];
-          unstagedChangesColor = [ "#f7768e" ];
-          defaultFgColor = [ "#c0caf5" ];
+          activeBorderColor = [ theme.hex.accent "bold" ];
+          inactiveBorderColor = [ theme.hex.slate ];
+          searchingActiveBorderColor = [ theme.hex.attention "bold" ];
+          optionsTextColor = [ theme.hex.accent ];
+          selectedLineBgColor = [ theme.hex.selection ];
+          cherryPickedCommitFgColor = [ theme.hex.accent ];
+          cherryPickedCommitBgColor = [ theme.hex.selection ];
+          markedBaseCommitFgColor = [ theme.hex.accent ];
+          markedBaseCommitBgColor = [ theme.hex.warning ];
+          unstagedChangesColor = [ theme.hex.critical ];
+          defaultFgColor = [ theme.hex.fg ];
         };
       };
     };

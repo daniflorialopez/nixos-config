@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, theme, ... }:
 let
   zathuraPkg = pkgs.zathura.override {
     plugins = with pkgs.zathuraPkgs; [
@@ -15,44 +15,44 @@ in
     options = {
       font = "CaskaydiaMono Nerd Font 11";
 
-      default-bg = "#1a1b26";
-      default-fg = "#c0caf5";
-      statusbar-bg = "#1a1b26";
-      statusbar-fg = "#a9b1d6";
-      inputbar-bg = "#1a1b26";
-      inputbar-fg = "#c0caf5";
+      default-bg = theme.hex.bg;
+      default-fg = theme.hex.fg;
+      statusbar-bg = theme.hex.bg;
+      statusbar-fg = theme.hex.subtle;
+      inputbar-bg = theme.hex.bg;
+      inputbar-fg = theme.hex.fg;
 
-      completion-bg = "#24283b";
-      completion-fg = "#c0caf5";
-      completion-group-bg = "#1a1b26";
-      completion-group-fg = "#7aa2f7";
-      completion-highlight-bg = "#283457";
-      completion-highlight-fg = "#c0caf5";
+      completion-bg = theme.hex.surface;
+      completion-fg = theme.hex.fg;
+      completion-group-bg = theme.hex.bg;
+      completion-group-fg = theme.hex.accent;
+      completion-highlight-bg = theme.hex.selection;
+      completion-highlight-fg = theme.hex.fg;
 
-      index-bg = "#1a1b26";
-      index-fg = "#c0caf5";
-      index-active-bg = "#283457";
-      index-active-fg = "#c0caf5";
+      index-bg = theme.hex.bg;
+      index-fg = theme.hex.fg;
+      index-active-bg = theme.hex.selection;
+      index-active-fg = theme.hex.fg;
 
-      notification-bg = "#1a1b26";
-      notification-fg = "#c0caf5";
-      notification-error-bg = "#1a1b26";
-      notification-error-fg = "#f7768e";
-      notification-warning-bg = "#1a1b26";
-      notification-warning-fg = "#e0af68";
+      notification-bg = theme.hex.bg;
+      notification-fg = theme.hex.fg;
+      notification-error-bg = theme.hex.bg;
+      notification-error-fg = theme.hex.critical;
+      notification-warning-bg = theme.hex.bg;
+      notification-warning-fg = theme.hex.warning;
 
       # search hits: orange = "look here" (yazi find tier), blue = the
       # active hit (position accent), like waybar's urgent/active split
       highlight-color = "rgba(255, 158, 100, 0.4)";
       highlight-active-color = "rgba(122, 162, 247, 0.5)";
 
-      render-loading-bg = "#1a1b26";
-      render-loading-fg = "#565f89";
+      render-loading-bg = theme.hex.bg;
+      render-loading-fg = theme.hex.slate;
 
       recolor = true;
       recolor-keephue = true;
-      recolor-lightcolor = "#1a1b26";
-      recolor-darkcolor = "#c0caf5";
+      recolor-lightcolor = theme.hex.bg;
+      recolor-darkcolor = theme.hex.fg;
     };
   };
 

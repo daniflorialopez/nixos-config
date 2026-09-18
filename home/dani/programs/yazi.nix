@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, theme, ... }:
 
 let
   zathuraPkg = pkgs.zathura.override {
@@ -19,26 +19,26 @@ in
     # Tokyo Night accents (see home/dani/wm/theme.nix for the palette)
     theme = {
       mgr = {
-        cwd = { fg = "#ff9e64"; bold = true; };
-        hovered = { fg = "#1a1b26"; bg = "#7aa2f7"; bold = true; };
-        preview_hovered = { fg = "#1a1b26"; bg = "#565f89"; };
-        find_keyword = { fg = "#e0af68"; bold = true; };
-        find_position = { fg = "#ff9e64"; };
-        marker_selected = { fg = "#9ece6a"; bg = "#9ece6a"; };
-        marker_copied = { fg = "#e0af68"; bg = "#e0af68"; };
-        marker_cut = { fg = "#f7768e"; bg = "#f7768e"; };
-        tab_active = { fg = "#1a1b26"; bg = "#7aa2f7"; };
-        tab_inactive = { fg = "#c0caf5"; bg = "#24283b"; };
-        border_style = { fg = "#565f89"; };
+        cwd = { fg = theme.hex.attention; bold = true; };
+        hovered = { fg = theme.hex.bg; bg = theme.hex.accent; bold = true; };
+        preview_hovered = { fg = theme.hex.bg; bg = theme.hex.slate; };
+        find_keyword = { fg = theme.hex.warning; bold = true; };
+        find_position = { fg = theme.hex.attention; };
+        marker_selected = { fg = theme.hex.success; bg = theme.hex.success; };
+        marker_copied = { fg = theme.hex.warning; bg = theme.hex.warning; };
+        marker_cut = { fg = theme.hex.critical; bg = theme.hex.critical; };
+        tab_active = { fg = theme.hex.bg; bg = theme.hex.accent; };
+        tab_inactive = { fg = theme.hex.fg; bg = theme.hex.surface; };
+        border_style = { fg = theme.hex.slate; };
       };
 
       status = {
-        mode_normal = { fg = "#1a1b26"; bg = "#7aa2f7"; bold = true; };
-        mode_select = { fg = "#1a1b26"; bg = "#9ece6a"; bold = true; };
-        mode_unset = { fg = "#1a1b26"; bg = "#ff9e64"; bold = true; };
-        progress_label = { fg = "#c0caf5"; bold = true; };
-        progress_normal = { fg = "#7aa2f7"; bg = "#1a1b26"; };
-        progress_error = { fg = "#f7768e"; bg = "#1a1b26"; };
+        mode_normal = { fg = theme.hex.bg; bg = theme.hex.accent; bold = true; };
+        mode_select = { fg = theme.hex.bg; bg = theme.hex.success; bold = true; };
+        mode_unset = { fg = theme.hex.bg; bg = theme.hex.attention; bold = true; };
+        progress_label = { fg = theme.hex.fg; bold = true; };
+        progress_normal = { fg = theme.hex.accent; bg = theme.hex.bg; };
+        progress_error = { fg = theme.hex.critical; bg = theme.hex.bg; };
       };
     };
 
