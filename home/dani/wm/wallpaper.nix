@@ -1,4 +1,4 @@
-{ config, pkgs, lib, scene, ... }:
+{ config, pkgs, lib, scene, metrics, ... }:
 let
   # Owns the state file, the store-backed fallback, and the single script that
   # reconciles one with the screen. hyprland-services.nix imports the same file
@@ -30,8 +30,8 @@ let
   #
   # Every tile is the same shape regardless of the source aspect ratio, and
   # walker never has to decode ~35 MB of JPEG to draw twenty tiles.
-  thumbWidth = 288;
-  thumbHeight = 162;
+  thumbWidth = metrics.thumb.width;
+  thumbHeight = metrics.thumb.height;
 
   wallThumbs = pkgs.writeShellApplication {
     name = "wall-thumbs";

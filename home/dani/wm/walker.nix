@@ -1,4 +1,4 @@
-{ inputs, pkgs, theme, ... }:
+{ inputs, pkgs, theme, metrics, ... }:
 
 let
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
@@ -622,8 +622,8 @@ let
                    to 512 until the board is wider than the screen. -->
               <object class="GtkPicture" id="ItemImage">
                 <property name="content-fit">cover</property>
-                <property name="width-request">288</property>
-                <property name="height-request">162</property>
+                <property name="width-request">${toString metrics.thumb.width}</property>
+                <property name="height-request">${toString metrics.thumb.height}</property>
                 <property name="can-shrink">true</property>
               </object>
             </child>
