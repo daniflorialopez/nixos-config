@@ -1,4 +1,4 @@
-{ config, pkgs, theme, scene, ... }:
+{ config, pkgs, theme, scene, metrics, ... }:
 let
   # One palette source: home/dani/theme/palette.nix.
 
@@ -90,7 +90,7 @@ in
       border-size = 2;
       border-radius = 12;
       padding = "12,16";
-      margin = "12";
+      margin = toString metrics.outerMargin;   # the same outer margin a window gets
       width = 380;
       max-visible = 5;
       default-timeout = 0;         # persist until dismissed (Super+')

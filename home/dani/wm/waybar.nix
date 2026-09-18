@@ -27,7 +27,7 @@
 #   - hyprland/window:  muted title next to the workspaces for context.
 #   - tray:             invisible while empty.
 
-{ config, pkgs, theme, ... }:
+{ config, pkgs, theme, metrics, ... }:
 let
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
@@ -299,10 +299,11 @@ in
       position = "top";
       height = 34;
       spacing = 0;
-      # islands align with gaps_out = 12; a touch tighter on top
+      # Islands sit in the same outer margin a window would (theme/metrics.nix).
+      # The top is deliberately tighter and is NOT that value.
       margin-top = 8;
-      margin-left = 12;
-      margin-right = 12;
+      margin-left = metrics.outerMargin;
+      margin-right = metrics.outerMargin;
 
       modules-left = [
         "hyprland/workspaces"

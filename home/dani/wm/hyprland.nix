@@ -3,6 +3,7 @@
   pkgs,
   lib,
   theme,
+  metrics,
   osConfig ? null,
   ...
 }:
@@ -614,8 +615,13 @@ in
       };
 
       general = {
+        # Half of gaps_out on purpose: 6 + 6 between two windows equals the 12
+        # that shows to the edge, so the inter-window rhythm matches the edge
+        # rhythm. Stays a literal rather than `metrics.outerMargin / 2` because
+        # its partner is the very next line — a binding would hide a number you
+        # can already see. theme/metrics.nix records why.
         gaps_in = 6;
-        gaps_out = 12;
+        gaps_out = metrics.outerMargin;
 
         border_size = 2;
 
