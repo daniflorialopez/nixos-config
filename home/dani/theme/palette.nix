@@ -62,6 +62,16 @@ let
     # hyprlock and SDDM placeholders, and the terminal's bright black.
     hint   = { hex = "#737aa2"; tier = "dim"; use = "de-emphasised text: placeholders, terminal bright black. The dim FLOOR — nothing may be dimmer"; };
 
+    # walker's popup surfaces. These are NOT `bg`, and that divergence was
+    # undocumented until the token layer made it visible: walker.nix says
+    # "Tokyo Night (see waybar/palette.css)" and then uses #16161e, which is
+    # Tokyo Night's darker "night" background rather than the #1a1b26 the rest
+    # of the desktop is built on. Naming them records the divergence instead of
+    # hiding it; whether walker SHOULD match `bg` is a design question, and
+    # changing it would be a visual change rather than this refactor.
+    bgDeep = { hex = "#16161e"; tier = "ui"; use = "walker popup background; deliberately darker than bg"; };
+    scrim  = { hex = "#101018"; tier = "ui"; use = "gradient scrim under the wallpaper-picker captions"; };
+
     # --- lines --------------------------------------------------------------
     slate  = { hex = "#565f89"; tier = "ui"; use = "borders, inactive frames, comments"; };
     gutter = { hex = "#3b4261"; tier = "ui"; use = "inactive window border; dark stop of the active-border value ramp"; };
@@ -136,11 +146,28 @@ rec {
   #   theme.hyprRgba "accent" "ff" -> "rgba(7aa2f7ff)"
   hyprRgba = role: alphaHex: "rgba(${noHash.${role}}${alphaHex})";
 
-  # GTK/CSS: rgba(R, G, B, A) with DECIMAL channels and a 0-1 alpha.
+  # GTK/CSS and hyprlock: rgba(R, G, B, A), DECIMAL channels, 0-1 alpha.
   #   theme.cssRgba "bg" "0.85" -> "rgba(26, 27, 38, 0.85)"
   cssRgba = role: alpha:
     let c = rgbOf hex.${role};
     in "rgba(${toString c.r}, ${toString c.g}, ${toString c.b}, ${alpha})";
+
+  # Same, without alpha. hyprlock uses this form for opaque colours.
+  #   theme.cssRgb "fg" -> "rgb(192, 202, 245)"
+  cssRgb = role:
+    let c = rgbOf hex.${role};
+    in "rgb(${toString c.r}, ${toString c.g}, ${toString c.b})";
+
+  # mako: "#rrggbbaa" — hex with a packed alpha suffix.
+  #   theme.hexA "bg" "e0" -> "#1a1b26e0"
+  hexA = role: aa: hex.${role} + aa;
+
+  # NOT roles, deliberately: pure white and pure black exist in this config only
+  # as low-alpha washes — hairline borders, hover tints, drop shadows. They are
+  # material effects rather than palette colours, they would not change if the
+  # palette did, and giving them semantic names would imply otherwise. They stay
+  # as literals at their call sites, which is why a few rgba(255,255,255,0.05)
+  # and rgba(0,0,0,0.3) survive the migration on purpose.
 
   # The JSON the build-time gate validates, and the artifact a future Tier-2
   # generator would read. Ordered attrs so the output is reproducible.

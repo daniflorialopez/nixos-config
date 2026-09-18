@@ -1,6 +1,12 @@
 {
+  lib,
   ...
 }:
+
+let
+  # One palette source: home/dani/theme/palette.nix.
+  theme = import ../theme/palette.nix { inherit lib; };
+in
 
 {
   programs.alacritty = {
@@ -43,13 +49,13 @@
 
       colors = {
         primary = {
-          background = "0x1a1b26";
-          foreground = "0xa9b1d6";
+          background = theme.ox.bg;
+          foreground = theme.ox.subtle;
         };
 
         cursor = {
-          text = "0x1a1b26";
-          cursor = "0xc0caf5";
+          text = theme.ox.bg;
+          cursor = theme.ox.fg;
         };
 
         selection = {
@@ -57,34 +63,34 @@
           # (same #283457 fish uses for its selection); the old solid
           # #7aa2f7 fill put pale lavender on mid-blue at ~1.6:1
           text = "CellForeground";
-          background = "0x283457";
+          background = theme.ox.selection;
         };
 
         normal = {
-          black = "0x32344a";
-          red = "0xf7768e";
-          green = "0x9ece6a";
-          yellow = "0xe0af68";
-          blue = "0x7aa2f7";
-          magenta = "0xad8ee6";
+          black = theme.ox.overlay;
+          red = theme.ox.critical;
+          green = theme.ox.success;
+          yellow = theme.ox.warning;
+          blue = theme.ox.accent;
+          magenta = theme.ox.magenta;
           # cyan reads as teal on purpose (tokyonight-moon family): Dani
           # can't tell blue-ish cyan from blue/white fast. white lightened
           # from canon 0x787c99 (4.2:1) for legibility
-          cyan = "0x53c7ad";
-          white = "0xa2a5b9";
+          cyan = theme.ox.tealDim;
+          white = theme.ox.white;
         };
 
         bright = {
           # lightened from canon 0x444b6a (2.5:1) — bright black is what
           # CLIs use for "muted" text and it was nearly invisible
-          black = "0x737aa2";
-          red = "0xff7a93";
-          green = "0xb9f27c";
-          yellow = "0xff9e64";
-          blue = "0x7da6ff";
-          magenta = "0xbb9af7";
-          cyan = "0x4fd6be";
-          white = "0xacb0d0";
+          black = theme.ox.hint;
+          red = theme.ox.brightRed;
+          green = theme.ox.successText;
+          yellow = theme.ox.attention;
+          blue = theme.ox.brightBlue;
+          magenta = theme.ox.purple;
+          cyan = theme.ox.teal;
+          white = theme.ox.brightWhite;
         };
       };
 
