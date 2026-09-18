@@ -383,6 +383,51 @@ picker, but replaces the config-write + service-restart with a single `awww img 
 
 Revert the commit. hyprpaper stays in nixpkgs and the state file format is unchanged.
 
+#### Implementation notes — 2026-09-18 (`d35d88c`, `00d1bf2`)
+
+Implemented, but the live probe overturned two things asserted above. Both are corrected here
+rather than silently in the code:
+
+- **"keeps the existing `ExecStartPre` / `X-Restart-Triggers` idioms"** — it does not, because
+  there is nothing left for either to act on. awww has no config file; it is configured entirely
+  by the arguments passed to `awww img`. So `hypr/hyprpaper.conf`, the sourced
+  `hyprpaper-selected.conf`, the restart trigger on the former, and the un-PATH-wrapped
+  `hyprpaper-init-selected` script all disappear rather than being ported. This also closes the
+  `01-current-state.md` fragility rows about two heredocs having to stay byte-compatible and about
+  the only script with no PATH wrapper.
+
+- **"`wall-set` … replaces the config-write + service-restart with a single `awww img -t fade`"** —
+  not a single call, and not from `wall-set`. Three separate callers need the same reconciliation
+  (`wall-set` after recording a choice, the unit at login, the dock handler on re-connect), so it
+  is factored into `home/dani/wm/wall-apply.nix` and imported by both modules. They resolve to one
+  store path, which is what makes drift impossible rather than merely unlikely.
+
+Two findings that shaped the design, neither of them documented upstream:
+
+- **`awww-daemon` does not restore anything on startup.** The `--no-cache` flag is documented as
+  *"don't search the cache for the last wallpaper for each output"*, implying the search is the
+  default. A daemon started against a fully populated cache still reported
+  `currently displaying: color: 000000` on both outputs three seconds in. The wallpaper at login is
+  therefore an explicit `ExecStartPost`, not a default.
+- **`awww restore` cannot be used as that `ExecStartPost`.** It exits 0 even when it restored
+  nothing at all — an emptied cache produces two warnings on stderr and status 0 — so no unit can
+  branch on it. (Same shape as `Hyprland --verify-config`; see ADR-013.) Compounding it, the cache
+  lives in `~/.cache/awww/<version>/`, stores a *path* rather than an image, and awww prunes the
+  previous version's directory on startup — so the first login after an awww bump would come up
+  black with nothing to recover from. `~/.local/state/wallpaper/current` is the authority and
+  awww's cache is left as the incidental optimisation it is.
+
+Also resolved while here: `RestartSec` 10 s → 2 s. Under hyprpaper a crashed daemon left the last
+image on screen because the layer surface outlived the process; awww takes its surface down with
+it, so the same ten seconds is now ten seconds of black desktop.
+
+`--format` left at the default `argb`. `bgr` is a 3-channel format and measured 0.2 MiB lighter,
+which is not worth depending on every host's compositor advertising it — this flake also builds a
+non-NVIDIA laptop and a VM.
+
+Still open: the buffer-id warning above was seen against Hyprland 0.52.2 and has not been
+re-observed on 0.55.4; and hot-add restore remains unverified until a physical replug.
+
 ---
 
 ### ADR-007 — Keep walker + elephant; pin the input by revision

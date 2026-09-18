@@ -55,9 +55,10 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | inventory current wallpaper stack | DONE | hyprpaper 0.8.4 (unstable) + walker contact-sheet picker |
 | evaluate swww | DONE | Renamed **awww**; measured 2.6 MiB RSS vs hyprpaper's 123 MiB on this machine |
 | choose backend | DONE | **ADR-006** — migrate to awww, hand-written unit |
-| migrate `wall-set` to `awww img -t fade` | TODO | Replaces config-write + service-restart; keeps the state file |
-| re-apply on HDMI-A-1 re-dock | TODO | One line in `hypr-dock-handler` |
-| store-backed fallback wallpaper | TODO | Today `default.png` lives in mutable `~/Pictures/Wallpapers`; nothing validates the path resolves |
+| migrate `wall-set` to `awww img -t fade` | DONE | `d35d88c`. 122.4 → 2.8 MiB RSS, and changing wallpaper no longer restarts a service, so the black flash on every change is gone |
+| re-apply on HDMI-A-1 re-dock | DONE | `00d1bf2`. Calls the shared `wall-apply`, not `awww restore` — same store path as the unit's `ExecStartPost`, so the two cannot drift. Needs a physical replug to confirm |
+| store-backed fallback wallpaper | DONE | `d35d88c`. Fallback is now `${../assets/wallpapers}/default.png` in the store, read-only and rolling back with the generation. Note it is 1920×1200 against two 2560×1440 panels, so it upscales |
+| `awww restore` / daemon cache | REJECTED | The daemon does **not** restore on start (verified: `color: 000000` on both outputs 3 s in, cache fully populated), `awww restore` exits 0 even having restored nothing, and the cache is keyed by awww *version* — a bump would come up black. `~/.local/state/wallpaper/current` is the authority instead |
 | decouple the SDDM background | TODO | Greeter pins a build-time path; picking any other wallpaper desyncs it permanently |
 
 ## Hyprland visuals

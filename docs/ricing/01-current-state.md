@@ -28,6 +28,27 @@
 > animation node). `motion_blur`, `wobble` and `blur:variant` are genuinely absent
 > — those remain 0.56/0.57 material.
 >
+> **SUPERSEDED IN PART, 2026-09-18, by the wallpaper migration (`d35d88c`,
+> `00d1bf2`).** Everything below describing the *wallpaper stack* is now historical:
+> hyprpaper is gone, and with it the last desktop package taken from
+> nixpkgs-unstable. Specifically obsolete are the hyprpaper rows in the package and
+> user-service tables, the `hyprpaper-selected.conf` entry in the state-file map, and
+> three fragility rows that this resolved rather than ported —
+> `hyprpaper-init-selected` being the only script with no PATH wrapper, the two
+> heredocs that had to stay byte-compatible, and `hyprpaper.conf` as a four-line
+> `source =` indirection into mutable state. The "Static fallback wallpaper — **WEAK**"
+> recovery row is likewise closed: the fallback is a store path now. Replacing them:
+>
+> | | was (hyprpaper 0.8.4) | now (awww 0.12.1) |
+> |---|---|---|
+> | RSS | 122.4 MiB | **2.8 MiB** |
+> | changing wallpaper | restart the daemon, black flash on both outputs | `awww img`, 1 s crossfade |
+> | config files | 2 (one generated, one mutable) | **0** |
+> | fallback | `~/Pictures/Wallpapers/default.png`, mutable | store path, rolls back with the generation |
+>
+> The reasoning, including two undocumented awww behaviours the probe turned up,
+> is in ADR-006's implementation notes.
+>
 > **This is a description, not a plan.** Judgements about what to change live in
 > `06-decisions.md`; open work lives in `08-implementation-tracker.md`.
 
