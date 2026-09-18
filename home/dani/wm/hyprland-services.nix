@@ -4,6 +4,10 @@ let
 
   target = config.wayland.systemd.target; # defaults to "graphical-session.target"
 
+  # Same derivation wallpaper.nix uses — imported rather than reimplemented so
+  # a re-dock repaints through exactly the path login does, fallback included.
+  inherit (import ./wall-apply.nix { inherit pkgs config; }) wallApply;
+
   # Dock/undock workspace repair. Undocking is fine on its own — Hyprland
   # migrates HDMI-A-1's workspaces to eDP-1 when the monitor vanishes —
   # but on re-dock nothing moves them back, leaving everything piled on
@@ -13,7 +17,7 @@ let
   # covers logging in docked and makes it a no-op on HDMI-less hosts.
   dockHandler = pkgs.writeShellApplication {
     name = "hypr-dock-handler";
-    runtimeInputs = with pkgs; [ hyprland jq socat coreutils systemd ];
+    runtimeInputs = (with pkgs; [ hyprland jq socat coreutils systemd ]) ++ [ wallApply ];
     text = ''
       repin() {
         hyprctl monitors -j | jq -e 'any(.[]; .name == "HDMI-A-1")' >/dev/null || return 0
@@ -38,6 +42,13 @@ let
             # live: three stacked bars after replug); a restart redraws
             # one bar per monitor
             systemctl --user try-restart waybar.service || true
+            # A newly bound output has no wallpaper on it. awww would try its
+            # own per-output cache here, but that cache is keyed by awww
+            # version and holds a path, so it is exactly the thing not to
+            # depend on (see wall-apply.nix). Repainting is cheap and the
+            # result is the same image the other output is already showing.
+            # `|| true` so a wallpaper failure never kills the watcher loop.
+            wall-apply || true
             ;;
         esac
       done
