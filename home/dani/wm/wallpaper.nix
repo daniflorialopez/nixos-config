@@ -55,7 +55,21 @@ let
       keep=()
 
       for src in "''${sources[@]}"; do
-        key=$(printf '%s' "$src" | md5sum | cut -d' ' -f1)
+        # The key includes the TARGET SIZE, not just the source path.
+        #
+        # Without it the cache silently defeats the one geometry token with an
+        # objective correctness criterion. theme/metrics.nix calls a thumbnail
+        # size mismatch "a FUNCTIONAL bug, not a drift" — a GtkPicture reports its
+        # texture's own width as its natural width and a GridView sizes cells to
+        # that — but changing metrics.thumb only rewrites the generator and the
+        # width-request. Every already-cached thumbnail would keep its old pixel
+        # size, because the only regeneration trigger below is "missing, or older
+        # than its source", and neither becomes true when the requested size
+        # changes. Folding the size into the key makes a metrics.thumb edit
+        # invalidate every entry, and the stale-pruning pass at the end of this
+        # script then removes the orphans.
+        key=$(printf '%s|%sx%s' "$src" "${toString thumbWidth}" "${toString thumbHeight}" \
+                | md5sum | cut -d' ' -f1)
         thumb="$cache/$key.jpg"
         keep+=("$key.jpg")
 
