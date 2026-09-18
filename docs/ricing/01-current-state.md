@@ -41,7 +41,8 @@
 >
 > | | was (hyprpaper 0.8.4) | now (awww 0.12.1) |
 > |---|---|---|
-> | RSS | 122.4 MiB | **2.8 MiB** |
+> | RSS (process) | 122.4 MiB | **2.8 MiB** |
+> | cgroup (steady) | 97.6 MiB | ~57–70 MiB — awww's wl_shm buffers are charged here, not to RSS |
 > | changing wallpaper | restart the daemon, black flash on both outputs | `awww img`, 1 s crossfade |
 > | config files | 2 (one generated, one mutable) | **0** |
 > | fallback | `~/Pictures/Wallpapers/default.png`, mutable | store path, rolls back with the generation |

@@ -39,7 +39,7 @@ Two layers, one build:
 | Input                | Purpose                                                                 |
 | -------------------- | ----------------------------------------------------------------------- |
 | `nixpkgs`            | Main package set, pinned to the **`nixos-25.11`** release branch.       |
-| `nixpkgs-unstable`   | Unstable channel, imported ad-hoc for a few packages that need to be newer than release (Claude Code, waytrogen, hyprpaper). See [stable vs unstable](#stable-vs-unstable-packages). |
+| `nixpkgs-unstable`   | Unstable channel, imported ad-hoc for the few packages that need to be newer than release (Claude Code, Codex). See [stable vs unstable](#stable-vs-unstable-packages). |
 | `home-manager`       | User-environment manager, following `release-25.11` to match nixpkgs.   |
 | `nixos-hardware`     | Hardware quirk profiles (available; wire in per-host as needed).        |
 | `disko`              | Declarative disk partitioning. Used by `modules/nixos/disko*.nix`.      |
@@ -156,10 +156,12 @@ unstablePkgs = import inputs.nixpkgs-unstable {
 # … then use unstablePkgs.claude-code
 ```
 
-Also used this way: `waytrogen` and `hyprpaper` in `home/dani/wm/wallpaper.nix`
-and `hyprland-services.nix` (via `inputs.nixpkgs-unstable.legacyPackages.*`).
-Everything else comes from the pinned release. When something misbehaves after
-an update, check whether it's a stable or an unstable package first.
+As of the awww migration this is the *only* place the unstable channel is used
+— `claude-code` and `codex` in `home/dani/programs/devtools.nix`. hyprpaper was
+the last desktop package taken from unstable and it is gone; awww comes from the
+pinned release. Everything else comes from the pinned release too. When
+something misbehaves after an update, check whether it's a stable or an unstable
+package first.
 
 ## Where state lives
 

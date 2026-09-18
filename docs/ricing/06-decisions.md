@@ -402,20 +402,17 @@ rather than silently in the code:
   is factored into `home/dani/wm/wall-apply.nix` and imported by both modules. They resolve to one
   store path, which is what makes drift impossible rather than merely unlikely.
 
-Two findings that shaped the design, neither of them documented upstream:
+One finding shaped the design and **was wrong**; see the correction below before relying on it.
 
-- **`awww-daemon` does not restore anything on startup.** The `--no-cache` flag is documented as
-  *"don't search the cache for the last wallpaper for each output"*, implying the search is the
-  default. A daemon started against a fully populated cache still reported
-  `currently displaying: color: 000000` on both outputs three seconds in. The wallpaper at login is
-  therefore an explicit `ExecStartPost`, not a default.
-- **`awww restore` cannot be used as that `ExecStartPost`.** It exits 0 even when it restored
-  nothing at all — an emptied cache produces two warnings on stderr and status 0 — so no unit can
-  branch on it. (Same shape as `Hyprland --verify-config`; see ADR-013.) Compounding it, the cache
+- ~~**`awww-daemon` does not restore anything on startup.**~~ **RETRACTED — see the correction
+  below.** The original claim was that a daemon started against a fully populated cache still
+  reported `currently displaying: color: 000000` on both outputs three seconds in.
+- **`awww restore` cannot be used as an `ExecStartPost`.** This part stands. It exits 0 even when
+  it restored nothing at all — an emptied cache produces two warnings on stderr and status 0 — so
+  no unit can branch on it. (Same shape as `Hyprland --verify-config`; see ADR-013.) The cache also
   lives in `~/.cache/awww/<version>/`, stores a *path* rather than an image, and awww prunes the
-  previous version's directory on startup — so the first login after an awww bump would come up
-  black with nothing to recover from. `~/.local/state/wallpaper/current` is the authority and
-  awww's cache is left as the incidental optimisation it is.
+  previous version's directory on startup, so the first login after an awww bump has nothing to
+  restore from. `~/.local/state/wallpaper/current` is the authority.
 
 Also resolved while here: `RestartSec` 10 s → 2 s. Under hyprpaper a crashed daemon left the last
 image on screen because the layer surface outlived the process; awww takes its surface down with
@@ -425,8 +422,61 @@ it, so the same ten seconds is now ten seconds of black desktop.
 which is not worth depending on every host's compositor advertising it — this flake also builds a
 non-NVIDIA laptop and a VM.
 
-Still open: the buffer-id warning above was seen against Hyprland 0.52.2 and has not been
-re-observed on 0.55.4; and hot-add restore remains unverified until a physical replug.
+#### Correction — 2026-09-18 (`197f02d`, `2c011ca`), found by adversarial review
+
+The retracted finding above was wrong, and wrong for an instructive reason. **awww-daemon does
+restore from its cache on startup.** It does so by forking `sh -c` to run its own `awww` client
+from `PATH`, one child per output — and the probe the claim came from ran the daemon under
+`systemd-run` with a `PATH` that contained no `awww`. The journal had been saying so all along:
+
+```
+awww-daemon[187715]: sh: line 1: exec: awww: not found
+awww-daemon[187716]: sh: line 1: exec: awww: not found
+```
+
+Two per daemon start, one per output. The restore was never absent; the test harness had broken it.
+
+The shipped design therefore had **two writers to one screen with no ordering**. Measured with the
+cache and the state file deliberately diverged: `ExecStartPost` paints the state file's image at
+t=0.0 s and the cache overwrites it at t=0.2 s, permanently. Which one wins is decided by JPEG
+decode time, so it inverts silently with image size — the state file won 10/10 against a 26 KB
+cached PNG and lost 6/6 against a 14 MB JPEG. The store fallback could never reach the screen.
+
+Worse, the fallback guarded the wrong failure. `[ ! -f ]` catches a missing path; a file that
+exists but will not decode took the other branch, so `awww img` exited 1, `wall-apply` exited 1,
+`ExecStartPost` failed the unit, `Restart=always` brought it back, and it looped. Each cycle costs
+~4 s of readiness polling plus `RestartSec`, so fewer than five starts land in any ten-second
+window and the default start limiter never trips: an unbounded flap in `activating (auto-restart)`
+with a black desktop, never reaching `failed` where `systemctl --user --failed` or `check-all`
+would see it. Reproduced, NRestarts climbing through 5.
+
+Fixed in three steps, ordered so the machine is safe at each one — the cache was the only thing
+keeping a bad wallpaper off a black screen, so it had to be removed last:
+
+1. `wall-apply` falls back on **failure to apply**, not merely on a missing path.
+2. `ExecStartPost` gains a leading `-`, so a wallpaper that will not apply cannot take down the
+   daemon that owns the layer surface.
+3. Only then `--no-cache` on `awww-daemon`, making the state file the single writer.
+
+Two further corrections to this ADR's own text:
+
+- **The buffer-id warning has nothing to do with Hyprland 0.52.2.** The risk list above says it was
+  seen "against Hyprland 0.52.2 during the probe". The compositor had been 0.55.4 since that boot
+  began; the probe ran on 0.55.4. It is not a version regression, it is simply how awww 0.12.1
+  behaves here — four lines per paint (ids 11, 24, 17, 25), every paint, with no observed
+  functional consequence. It is also journalled at `PRIORITY=6`, so `journalctl -p warning` will
+  never show it.
+- **The memory claim needs its metric stated.** "122.4 MiB → 2.8 MiB" is true of process RSS only.
+  awww's wl_shm pixel buffers (4 × 2560×1440×4 = 56.25 MiB) are charged to its cgroup but are not
+  in its RSS, so the honest comparison is: RSS 122.4 → 2.8 MiB (~45×), cgroup steady state
+  97.6 → ~57–70 MiB (~1.4–1.7×), and cgroup *peak* is higher than hyprpaper's. The migration
+  lowers the floor dramatically and raises the ceiling. The functional wins — no service restart
+  per change, no black flash, no config files — are the better justification than the memory
+  headline.
+
+Still open: hot-add restore is unverified until a physical replug; `awww.service` has never yet
+started at an actual login (every observation so far is from a mid-session activation); and
+suspend/resume has not been exercised.
 
 ---
 

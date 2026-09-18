@@ -282,11 +282,28 @@ User systemd services bound to the graphical session:
 
 ### wallpaper.nix — wallpaper management
 
-hyprpaper (user service) reading a state file
-(`~/.local/state/hypr/hyprpaper-selected.conf`) that a `wall-apply` script
-rewrites. `wall-picker` (`$mod CTRL+W`) launches **waytrogen** to pick from
-`~/Pictures/Wallpapers` (synced from `assets/wallpapers/`) and applies to both
-monitors with a fit mode. waytrogen/hyprpaper come from nixpkgs-unstable.
+**awww** (user service, `awww-daemon --no-cache`) plus three small scripts that
+split the job cleanly:
+
+- `wall-set <image>` — records the choice in `~/.local/state/wallpaper/current`,
+  then applies it. The only thing that decides *what* the wallpaper is.
+- `wall-apply` — reads that state file and puts it on screen with a 1 s
+  crossfade, falling back to a read-only store copy of `default.png` if the
+  selection is missing or will not decode. The only thing that decides *how* it
+  reaches the screen. Defined in `wm/wall-apply.nix` and imported by both
+  `wallpaper.nix` and `hyprland-services.nix`, so the login path, the picker and
+  the dock handler all repaint through one store path and cannot drift.
+- `wall-thumbs` — builds the 288x162 contact-sheet tiles.
+
+The daemon runs with `--no-cache` deliberately: awww restores its own per-output
+cache asynchronously at startup, which otherwise races `wall-apply` and wins,
+making the state file non-authoritative. See ADR-006.
+
+`$mod CTRL+W` opens the picker — a **walker** theme driven by an elephant menu,
+not a standalone app. waytrogen filled this slot once and was dropped when its
+1.0 release swapped GTK4 for Iced. `~/Pictures/Wallpapers` is a real writable
+directory seeded once from `assets/wallpapers/`, not a store symlink, so new
+images can be dropped in without a rebuild.
 
 ### waybar.nix — status bar
 
