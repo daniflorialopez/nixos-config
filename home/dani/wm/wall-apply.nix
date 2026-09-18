@@ -6,21 +6,23 @@
 #   - the awww unit's ExecStartPost, at login and after a crash restart
 #   - hypr-dock-handler, when an output is (re)connected
 #
-# Deliberately NOT `awww restore`. awww does keep a per-output cache and restore
-# does read it, but it is the wrong thing to build on:
+# Deliberately NOT awww's own cache. awww keeps a per-output cache and restores
+# from it at daemon start, but it is the wrong thing to build on:
 #
-#   - the cache lives in ~/.cache/awww/<version>/, so upgrading awww invalidates
-#     it wholesale — and awww prunes the old version's directory on startup, so
-#     the first login after a bump comes up black with nothing to recover from
-#   - it records a path, not an image, so deleting the file turns restore into a
-#     silent no-op that leaves the previous frame up
+#   - it lives in ~/.cache/awww/<version>/, and awww prunes the previous
+#     version's directory on startup, so the first login after an awww bump has
+#     nothing to restore from
+#   - it records a path, not an image, so deleting or corrupting the file leaves
+#     the restore doing nothing useful
 #   - `awww restore` exits 0 even when it restored nothing whatsoever (verified
 #     against an emptied cache: two warnings on stderr, status 0), so no unit can
 #     branch on it
 #
 # ~/.local/state/wallpaper/current is written by wall-set, lives outside the
-# cache, and survives awww upgrades. That is the authority here; awww's cache is
-# left as the incidental optimisation it is.
+# cache, and survives awww upgrades. That is the authority — and because awww's
+# cache restore would otherwise race this script and win, the daemon is started
+# with `--no-cache` so there is exactly one writer to the screen. See the
+# ExecStart comment in wallpaper.nix.
 { pkgs, config }:
 
 rec {
@@ -73,15 +75,35 @@ rec {
       # stated rather than left to the default because it is load-bearing: any
       # other mode letterboxes the 21:9 wallpapers in the library.
       #
-      # 75 fps is HDMI-A-1's exact refresh; eDP-1 runs 165 but the transition is
-      # composited on the CPU into wl_shm buffers, and a 2560x1440 frame is
-      # ~14 MB, so matching the slower panel halves a second's worth of memcpy
-      # for a difference nobody can see in a one-second crossfade.
-      awww img "$img" \
-        --resize crop \
-        --transition-type fade \
-        --transition-duration 1 \
-        --transition-fps 75
+      # 75 fps is a deliberate fixed ceiling, not a per-output refresh match.
+      # The transition is composited on the CPU into wl_shm buffers and a
+      # 2560x1440 frame is ~14 MB, so this bounds a second's worth of memcpy.
+      # Nobody can distinguish 75 from 165 in a one-second crossfade, and the
+      # other two hosts this module builds for have different panels anyway.
+      apply() {
+        awww img "$1" \
+          --resize crop \
+          --transition-type fade \
+          --transition-duration 1 \
+          --transition-fps 75
+      }
+
+      # Fall back on FAILURE TO APPLY, not merely on a missing path.
+      #
+      # The `[ ! -f ]` test above is necessary but nowhere near sufficient, and
+      # on its own it guarded the wrong failure: a file that exists but cannot
+      # be decoded takes the other branch, so the fallback that exists
+      # precisely for "the wallpaper is broken" was unreachable in exactly that
+      # case. Verified — pointing the state file at a text file named .png
+      # makes awww img exit 1 with "Unrecognized format by image crate".
+      if ! apply "$img"; then
+        if [ "$img" = "${fallback}" ]; then
+          echo "wall-apply: the store fallback itself failed to apply" >&2
+          exit 1
+        fi
+        echo "wall-apply: $img failed to apply; using the store fallback" >&2
+        apply "${fallback}"
+      fi
     '';
   };
 }

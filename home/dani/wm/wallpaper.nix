@@ -267,20 +267,47 @@ in
     Install.WantedBy = [ config.wayland.systemd.target ];
 
     Service = {
+      # --no-cache is what makes ~/.local/state/wallpaper/current authoritative.
+      #
+      # Without it there are two writers to the screen and no ordering between
+      # them: awww restores its own per-output cache asynchronously at startup,
+      # ExecStartPost applies the state file, and whichever finishes last wins.
+      # Measured on this machine with the two deliberately diverged — the state
+      # file's image lands at t=0.0 s and the cache overwrites it at t=0.2 s,
+      # permanently. Whichever wins is decided by JPEG decode time, so it also
+      # silently inverts with image size.
+      #
+      # An earlier comment here claimed awww does not restore at all. That was
+      # wrong, and wrong for an instructive reason: awww-daemon restores by
+      # forking `sh -c` to run its own `awww` client from PATH, and the probe it
+      # was based on ran the daemon under `systemd-run` with a PATH that had no
+      # awww in it. The journal records it plainly — four `sh: line 1: exec:
+      # awww: not found`, two per daemon start, one per output. The restore was
+      # not absent, it was broken by the test harness.
+      #
       # No --format: left at the default argb. bgr is a 3-channel format and
       # measured 0.2 MiB lighter, which is not worth depending on every host's
       # compositor advertising it — this flake also builds a non-NVIDIA laptop
       # and a VM, and argb is the one awww calls most widely supported.
-      ExecStart = lib.getExe' wallpaper.package "awww-daemon";
+      ExecStart = "${lib.getExe' wallpaper.package "awww-daemon"} --no-cache";
 
-      # The daemon comes up showing solid black and stays there. Its --no-cache
-      # flag documents the opposite ("don't search the cache for the last
-      # wallpaper for each output"), but a daemon started with the cache fully
-      # populated still reported `currently displaying: color: 000000` on both
-      # outputs three seconds in — so the restore is this line, not a default.
-      # See wall-apply.nix for why it reads the state file rather than calling
-      # `awww restore`.
-      ExecStartPost = lib.getExe wallApply;
+      # Leading `-`: a wallpaper that will not apply must not take down the
+      # daemon that owns the layer surface.
+      #
+      # Without it this is a hard dependency in the wrong direction, and the
+      # failure mode is not a failed unit but an invisible one. Reproduced by
+      # pointing the state file at an undecodable file: wall-apply exits 1,
+      # ExecStartPost fails the unit, Restart=always brings it back, and it
+      # loops. Each cycle costs ~4 s of readiness polling plus RestartSec, so
+      # fewer than five starts land in any ten-second window and the default
+      # start limiter is never tripped — the unit flaps indefinitely in
+      # `activating (auto-restart)` with a black desktop, and never reaches
+      # `failed` where `systemctl --user --failed` (and check-all) would see it.
+      # Observed climbing through NRestarts=5 before being stopped by hand.
+      #
+      # With the `-`, the same bad state file leaves the daemon up, the previous
+      # frame on screen, and the reason on stderr in the journal.
+      ExecStartPost = "-${lib.getExe wallApply}";
 
       Restart = "always";
 
