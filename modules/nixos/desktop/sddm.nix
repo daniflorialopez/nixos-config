@@ -3,6 +3,7 @@
   pkgs,
   theme,
   scene,
+  metrics,
   ...
 }:
 let
@@ -107,7 +108,11 @@ in
     settings = {
       Theme = {
         CursorTheme = "Bibata-Modern-Ice";
-        CursorSize = 32;
+        # theme/metrics.nix: the same value home/dani/wm/cursor.nix gives
+        # home.pointerCursor and wm/theme.nix gives dconf. This is the one
+        # measurement a user tracks continuously across the greeter/session
+        # boundary, and no comment in home/ is visible from here.
+        CursorSize = metrics.cursorSize;
       };
     };
 

@@ -1,9 +1,9 @@
-{ pkgs, ... }:
+{ pkgs, metrics, ... }:
 
 let
   cursorPackage = pkgs.bibata-cursors;
   cursorName = "Bibata-Modern-Ice";
-  cursorSize = 32;
+  cursorSize = metrics.cursorSize;
 in
 {
   # gtk.enable lives in theme.nix with the rest of the GTK theming

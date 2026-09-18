@@ -1,4 +1,4 @@
-{ config, pkgs, theme, ... }:
+{ config, pkgs, theme, metrics, ... }:
 let
   # The single palette source. See home/dani/theme/palette.nix; the build-time
   # contrast/hue gate lives next to it in home/dani/theme/default.nix.
@@ -79,7 +79,7 @@ in
     # leaving it undeclared means the cursor can silently diverge from the one
     # the rest of the session uses.
     cursor-theme = "Bibata-Modern-Ice";
-    cursor-size = 32;
+    cursor-size = metrics.cursorSize;
   };
 
   # Qt apps follow suit
