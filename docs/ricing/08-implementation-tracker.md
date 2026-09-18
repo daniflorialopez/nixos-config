@@ -20,6 +20,7 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | preserve recovery terminal shortcut | DONE (pre-existing) | `$mod+Return`; Alacritty is installed at *system* level so it survives a failed HM activation |
 | establish the channel-bump plan | DONE | Scoped and written up as `docs/2605-bump-runbook.md`. 26.05 ships Hyprland 0.55.4, kernel 6.18.52, NVIDIA 595.71.05 |
 | execute the 26.05 bump | DONE | Step 0 confirmed by the user (10 entries seen in the firmware menu), then bumped. Hyprland 0.55.4, kernel 6.18.52, NVIDIA 595.71.05 |
+| validate the 26.05 generation | DONE | Gen 209 booted. Zero failed units, all 10 desktop units up, both monitors native, LazyVim intact, GSP `N/A`. Runtime items (suspend/resume, gaming) still need real use |
 | adopt systemd stage 1 | TODO | Pinned `false` during the bump so it is one variable, not two. Deprecated; removal scheduled for 26.11 |
 
 ## Shell
@@ -70,7 +71,7 @@ Last updated 2026-09-17, after the inventory (`01-current-state.md`) and the bak
 | app-specific rules | DONE (pre-existing) | Media viewers at full opacity; portal choosers floated |
 | special workspaces | DONE (pre-existing) | 12-tile scratchpad board on `$mod+S` |
 | gaming rules | TODO | `programs.gamemode.settings` is `{}` — no hook point exists yet |
-| optional advanced effects | REJECTED (for now) | ADR-010 — motion blur is 0.56, glow is 0.56, wobble is 0.57 |
+| optional advanced effects | PARTIALLY UNBLOCKED | **`decoration:glow` is present on 0.55.4** — the earlier survey placed it at 0.56 and was wrong. `motion_blur`, `wobble`, `blur:variant` confirmed absent (0.56/0.57) |
 | Hyprland plugins | REJECTED | ADR-010 — official repo gutted 2026-05-12; hyprexpo/hyprtrails/hyprwinwrap gone |
 | Hyprland rule-grammar migration | DONE | Landed with the bump; gated by `check-all`'s `--verify-config` pass |
 | **Lua config migration** | BLOCKED | Not forced — hyprlang still parses on 0.55.4, and `configType` stays `hyprlang` while `home.stateVersion = "25.05"`. Note `hyprctl keyword` is hyprlang-only, so the effect-profile design is coupled to staying |

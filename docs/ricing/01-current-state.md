@@ -4,6 +4,30 @@
 > session (generation 207, booted 12:52). Where the repo and the running system
 > disagree, both are recorded.
 >
+> **SUPERSEDED IN PART, same day, by the move to nixos-26.05 (`324f4ce`).** The
+> structure, ownership map, recovery paths and conflict list below all still hold.
+> The version facts do not. Post-bump, verified on generation 209:
+>
+> | | was (25.11) | now (26.05) |
+> |---|---|---|
+> | Hyprland | 0.52.2 | **0.55.4** |
+> | kernel | 6.12.93 | **6.18.52** |
+> | NVIDIA | 580.142 | **595.71.05** (GSP reports `N/A`, so `EnableGpuFirmware=0` is honoured) |
+> | Qt / alacritty | 6.10.2 / 0.16.1 | 6.11.1 / 0.17.0 |
+> | idle CPU / GPU temp | 93.9 % / 53 °C | **95.9 % / 44 °C** |
+> | rollback depth | 3 boot entries | **10** |
+>
+> Validated after reboot: zero failed units (system *and* user — `flatpak-remotes`
+> was permanently failed before and is now active), all ten desktop user units
+> running, both monitors at native refresh, the portal still serving
+> `Inter Variable 10`, and `~/.config/nvim/init.lua` still the real LazyVim file
+> with no `.hm-backup` (the `sideloadInitLua` pin held).
+>
+> Newly available and not yet used: **`decoration:glow`** is present on 0.55.4
+> (`enabled`, `range`, `render_power`, `color`, `color_inactive`, plus a `fadeGlow`
+> animation node). `motion_blur`, `wobble` and `blur:variant` are genuinely absent
+> — those remain 0.56/0.57 material.
+>
 > **This is a description, not a plan.** Judgements about what to change live in
 > `06-decisions.md`; open work lives in `08-implementation-tracker.md`.
 
