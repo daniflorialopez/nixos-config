@@ -2,14 +2,21 @@
   config,
   pkgs,
   theme,
+  scene,
   ...
 }:
 let
-  # The same mountain-sunset wallpaper the desktop uses, so login, lock
-  # and desktop are one continuous scene. Pinned here at build time rather
-  # than following ~/.local/state/wallpaper/current — the greeter runs as
-  # sddm, before any user session exists, so it cannot read that file.
-  wallpaper = ../../../home/dani/assets/wallpapers/wallhaven-jevzkp.jpg;
+  # theme/scene.nix, so the greeter and the desktop's fallback are one value
+  # rather than two pins that named different pictures. See that file.
+  #
+  # Pinned at build time rather than following ~/.local/state/wallpaper/current:
+  # SDDM drops the greeter to uid 175 (`sddm`, no supplementary groups) before
+  # any user session exists, and /home/dani is 0700 — so it has no *search*
+  # permission on the path and can read neither the state file nor the image it
+  # names, whatever the bits below are. A symlink does not help either; it is
+  # resolved with the reader's credentials and hits the same wall one hop later.
+  # Making the greeter follow the picker therefore needs bytes pushed out of
+  # $HOME, which is a separate decision and is not taken here.
 
   # sddm-astronaut recolored to Tokyo Night: frosted center column over
   # the wallpaper (hyprlock's sibling), blue accents on dark surfaces,
@@ -27,7 +34,7 @@ let
       DateFormat = "dddd d MMMM";
       HeaderText = "";
 
-      Background = "${wallpaper}";
+      Background = "${scene.anchor}";
       CropBackground = "true";
       DimBackground = "0.0";
 

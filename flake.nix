@@ -62,6 +62,11 @@
       # it would have had to reach up three directories into home/.
       theme = import ./theme/palette.nix { inherit (nixpkgs) lib; };
 
+      # The other half of the shared design state. Same reasoning as `theme`:
+      # the SDDM module and the Home Manager wallpaper module both need this
+      # value and neither may import the other's tree.
+      scene = import ./theme/scene.nix;
+
       # Every host is wired identically: hosts/<name> plus the shared
       # agenix + Home Manager plumbing. Keeping this in one place means
       # the VM really does mirror the real machines (the LUKS rehearsal
@@ -72,7 +77,7 @@
           inherit system;
 
           # Extra args you want modules to see (if needed later)
-          specialArgs = { inherit inputs theme; };
+          specialArgs = { inherit inputs theme scene; };
 
           modules = [
             # Host config (imports hardware + modules/nixos/*.nix)
@@ -96,7 +101,7 @@
               home-manager.backupFileExtension = "hm-backup";
 
               # You can pass extra args to home modules if you want
-              home-manager.extraSpecialArgs = { inherit inputs theme; };
+              home-manager.extraSpecialArgs = { inherit inputs theme scene; };
 
               # Your home config entry point
               home-manager.users.dani = import ./home/dani;

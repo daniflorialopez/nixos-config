@@ -1,4 +1,4 @@
-{ config, pkgs, theme, ... }:
+{ config, pkgs, theme, scene, ... }:
 let
   # One palette source: home/dani/theme/palette.nix.
 
@@ -6,7 +6,7 @@ let
 
   # Same derivation wallpaper.nix uses — imported rather than reimplemented so
   # a re-dock repaints through exactly the path login does, fallback included.
-  inherit (import ./wall-apply.nix { inherit pkgs config; }) wallApply;
+  inherit (import ./wall-apply.nix { inherit pkgs config scene; }) wallApply;
 
   # Dock/undock workspace repair. Undocking is fine on its own — Hyprland
   # migrates HDMI-A-1's workspaces to eDP-1 when the monitor vanishes —

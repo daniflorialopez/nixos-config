@@ -1,9 +1,9 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, scene, ... }:
 let
   # Owns the state file, the store-backed fallback, and the single script that
   # reconciles one with the screen. hyprland-services.nix imports the same file
   # so the dock handler repaints through exactly this path.
-  wallpaper = import ./wall-apply.nix { inherit pkgs config; };
+  wallpaper = import ./wall-apply.nix { inherit pkgs config scene; };
 
   inherit (wallpaper) stateFile wallApply;
 

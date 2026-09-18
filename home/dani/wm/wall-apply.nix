@@ -23,7 +23,7 @@
 # cache restore would otherwise race this script and win, the daemon is started
 # with `--no-cache` so there is exactly one writer to the screen. See the
 # ExecStart comment in wallpaper.nix.
-{ pkgs, config }:
+{ pkgs, config, scene }:
 
 rec {
   stateFile = "${config.home.homeDirectory}/.local/state/wallpaper/current";
@@ -34,14 +34,10 @@ rec {
   # is the thing that failed there is no desktop left to repair it from. This
   # one is read-only, content-addressed, and rolls back with the generation.
   #
-  # Imported as a single FILE rather than as "${../assets/wallpapers}/default.png".
-  # That form interpolates the whole directory, so wall-apply's hash tracked
-  # every image in it: adding or touching an unrelated wallpaper changed
-  # wall-apply, which changed awww.service's unit file, which made sd-switch
-  # restart the daemon and tear down both layer surfaces on the next rebuild.
-  # (It saves no store space — home.activation.wallpaperLibrary imports the same
-  # directory anyway to seed the library. This is purely about churn.)
-  fallback = ../assets/wallpapers/default.png;
+  # theme/scene.nix, so this and the greeter's background are one value. They
+  # used to be two independent pins naming different pictures, which made the
+  # no-selection state the *worst*-looking one. See that file.
+  fallback = scene.anchor;
 
   package = pkgs.awww;
 
