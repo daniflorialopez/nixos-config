@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  theme,
   ...
 }:
 let
@@ -28,43 +29,43 @@ let
       CropBackground = "true";
       DimBackground = "0.0";
 
-      HeaderTextColor = "#c0caf5";
-      DateTextColor = "#a9b1d6"; # subordinate to the clock, like hyprlock
-      TimeTextColor = "#c0caf5";
+      HeaderTextColor = theme.hex.fg;
+      DateTextColor = theme.hex.subtle; # subordinate to the clock, like hyprlock
+      TimeTextColor = theme.hex.fg;
 
-      FormBackgroundColor = "#1a1b26";
-      BackgroundColor = "#1a1b26";
-      DimBackgroundColor = "#1a1b26";
+      FormBackgroundColor = theme.hex.bg;
+      BackgroundColor = theme.hex.bg;
+      DimBackgroundColor = theme.hex.bg;
 
-      LoginFieldBackgroundColor = "#24283b";
-      PasswordFieldBackgroundColor = "#24283b";
-      LoginFieldTextColor = "#c0caf5";
-      PasswordFieldTextColor = "#c0caf5";
-      UserIconColor = "#a9b1d6";
-      PasswordIconColor = "#a9b1d6";
+      LoginFieldBackgroundColor = theme.hex.surface;
+      PasswordFieldBackgroundColor = theme.hex.surface;
+      LoginFieldTextColor = theme.hex.fg;
+      PasswordFieldTextColor = theme.hex.fg;
+      UserIconColor = theme.hex.subtle;
+      PasswordIconColor = theme.hex.subtle;
 
-      PlaceholderTextColor = "#737aa2";
-      WarningColor = "#f7768e";
+      PlaceholderTextColor = theme.hex.hint;
+      WarningColor = theme.hex.critical;
 
-      LoginButtonTextColor = "#1a1b26";
-      LoginButtonBackgroundColor = "#7aa2f7";
-      SystemButtonsIconsColor = "#a9b1d6";
-      SessionButtonTextColor = "#a9b1d6";
-      VirtualKeyboardButtonTextColor = "#a9b1d6";
+      LoginButtonTextColor = theme.hex.bg;
+      LoginButtonBackgroundColor = theme.hex.accent;
+      SystemButtonsIconsColor = theme.hex.subtle;
+      SessionButtonTextColor = theme.hex.subtle;
+      VirtualKeyboardButtonTextColor = theme.hex.subtle;
 
-      DropdownTextColor = "#c0caf5";
-      DropdownSelectedBackgroundColor = "#283457";
-      DropdownBackgroundColor = "#1a1b26";
+      DropdownTextColor = theme.hex.fg;
+      DropdownSelectedBackgroundColor = theme.hex.selection;
+      DropdownBackgroundColor = theme.hex.bg;
 
-      HighlightTextColor = "#1a1b26";
-      HighlightBackgroundColor = "#7aa2f7";
-      HighlightBorderColor = "#7aa2f7";
+      HighlightTextColor = theme.hex.bg;
+      HighlightBackgroundColor = theme.hex.accent;
+      HighlightBorderColor = theme.hex.accent;
 
-      HoverUserIconColor = "#ff9e64";
-      HoverPasswordIconColor = "#ff9e64";
-      HoverSystemButtonsIconsColor = "#ff9e64";
-      HoverSessionButtonTextColor = "#ff9e64";
-      HoverVirtualKeyboardButtonTextColor = "#ff9e64";
+      HoverUserIconColor = theme.hex.attention;
+      HoverPasswordIconColor = theme.hex.attention;
+      HoverSystemButtonsIconsColor = theme.hex.attention;
+      HoverSessionButtonTextColor = theme.hex.attention;
+      HoverVirtualKeyboardButtonTextColor = theme.hex.attention;
 
       PartialBlur = "true";
       HaveFormBackground = "false";
