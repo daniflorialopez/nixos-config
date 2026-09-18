@@ -44,9 +44,23 @@ highlights (yazi/zathura/fzf), the hyprlock password ring. Two things
 recently *left* the orange tier and joined the neutral slate:
 
 - **Hyprland window borders** (2026-07-22): the old sunset gradient painted a
-  different hue per edge and read as noise. Now active = slate `#565f89`,
-  inactive = near-invisible. Focus is signaled by **value, not hue** —
-  "Windows-calm".
+  different hue per edge and read as noise. Focus is signaled by **value, not
+  hue** — "Windows-calm".
+
+  Refined 2026-09-18 in a second live A/B: the flat active slate became a
+  two-stop **value ramp inside one hue**,
+  `rgba(737aa2ff) rgba(3b4261ff) 45deg`. This is the July rule taken further,
+  not reversed — what July rejected was a *hue* gradient; both stops here are
+  slate and both already exist in the palette (`#737aa2` is the hint-text
+  contrast floor, `#3b4261` the inactive gutter at full alpha). The focused
+  frame now reads as a lit bevel and is brighter overall than the `#565f89` it
+  replaced, so focus is more legible rather than merely different. Inactive is
+  unchanged at `rgba(3b426188)`.
+
+  Gradients interpolate in **OkLab**, so the midpoint stays in the slate family
+  instead of going muddy. Never combine with `borderangle ... loop` — it pins
+  both panels at full refresh permanently, even when no gradient border is
+  visible.
 - **Walker's popup frame** (2026-07-24): a launcher is user-invoked chrome, not
   an alert, so it wears slate too.
 

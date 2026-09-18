@@ -573,7 +573,26 @@ in
         # The sunset now lives only in the attention tier (waybar urgent/
         # backup, zellij frame_highlight, btop graphs — walker's frame
         # joined the slate tier on 2026-07-24).
-        "col.active_border" = "rgba(565f89ff)";
+        #
+        # 2026-09-18, second live A/B: the flat active slate became a two-stop
+        # VALUE ramp within the same hue. This is not a walk-back of the July
+        # decision — it is that decision taken further. What July rejected was a
+        # *hue* gradient (yellow → orange → red, a different colour on each
+        # edge); the rule it wrote was "signal by value, not hue". Both stops
+        # here are the same slate family and both are already in the palette:
+        # #737aa2 is the contrast floor used for hint text, #3b4261 is the
+        # inactive gutter colour at full alpha. The focused frame reads as a lit
+        # bevel — bright at the top-left, falling to gutter-dark at the
+        # bottom-right — and is brighter overall than the flat #565f89 it
+        # replaces, so focus is *more* legible, not merely different.
+        #
+        # Gradients interpolate in OkLab, not sRGB, so the midpoint stays in the
+        # slate family instead of going muddy.
+        #
+        # Never pair this with `animation = borderangle, ..., loop`: that pins
+        # both panels at full refresh permanently, on battery, whether or not a
+        # gradient border is even on screen. Showcase profile only, if ever.
+        "col.active_border" = "rgba(737aa2ff) rgba(3b4261ff) 45deg";
         "col.inactive_border" = "rgba(3b426188)";
       };
 
