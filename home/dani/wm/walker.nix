@@ -1,6 +1,50 @@
 { inputs, pkgs, theme, metrics, ... }:
 
 let
+  # The derived board geometry. Every number below is currently written out as a
+  # literal in GtkBuilder XML, hundreds of lines away from the CSS that
+  # determines it, with the addition done by hand in a comment. Nothing checks
+  # the sum, and the longest chain starts in another file entirely (the
+  # thumbnail, from wm/wallpaper.nix via theme/metrics.nix).
+  #
+  # These are deliberately LOCAL, not shared tokens in theme/metrics.nix: none
+  # of them crosses a file boundary except `thumb`, which already is one. No
+  # taste is involved and the arithmetic is already right — the only thing that
+  # changes is who does it. It also closes the three duplications the comments
+  # below already warn about ("this is applied at runtime and overrides the
+  # GridView columns set in the XML, so the two must agree"), by making the
+  # config entry and the XML property read the same binding.
+  wrapperPad  = 16;   # .box-wrapper padding, baseCss
+  popupBorder = 2;    # .box-wrapper border, baseCss
+
+  # Super+S: a 64px icon in 18px of padding is a 100px square tile; 6px of
+  # gutter either side makes a 112px cell; four of those is the grid.
+  boardIcon    = 64;
+  boardTilePad = 18;
+  boardGutter  = 6;
+  boardCols    = 4;
+  boardTile    = boardIcon + 2 * boardTilePad;      # 100
+  boardCell    = boardTile + 2 * boardGutter;       # 112
+  boardGrid    = boardCols * boardCell;             # 448
+  boardWidth   = boardGrid + 2 * wrapperPad;        # 480
+
+  # The wallpaper contact sheet. Five 304px cells of grid, plus the wrapper.
+  wallGutter = 8;
+  wallCols   = 5;
+  wallRows   = 4;
+  wallCell   = metrics.thumb.width  + 2 * wallGutter;   # 304
+  wallRow    = metrics.thumb.height + 2 * wallGutter;   # 178
+  wallGrid   = wallCols * wallCell;                      # 1520
+  wallHeight = wallRows * wallRow;                       # 712
+  wallWidth  = wallGrid + 2 * wrapperPad;                # 1552
+
+  # The logout confirm derives INWARD: the window is sized to fit a one-line
+  # question, and the scroller is whatever is left inside the frame.
+  confirmCols   = 2;
+  confirmWidth  = 400;
+  confirmPad    = 14;   # overrides wrapperPad in confirmCss
+  confirmScroll = confirmWidth - 2 * confirmPad - 2 * popupBorder;   # 368
+
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
   # shadows, hover tints), not palette colours, and would not change with it.
@@ -36,9 +80,9 @@ let
 
     .box-wrapper {
       background: @window_bg_color;
-      border: 2px solid @walker_outer_border;
+      border: ${metrics.px popupBorder} solid @walker_outer_border;
       border-radius: 20px;
-      padding: 16px;
+      padding: ${metrics.px wrapperPad};
       box-shadow:
         0 18px 50px rgba(0, 0, 0, 0.30),
         0 8px 24px rgba(0, 0, 0, 0.16);
@@ -165,7 +209,7 @@ let
   # answers are labelled; the question is not worth that.
   confirmCss = ''
     .box-wrapper {
-      padding: 14px;
+      padding: ${metrics.px confirmPad};
       border-radius: 16px;
       /* Nearly opaque, unlike the launcher's 0.90. A launcher can afford to
          show the desktop through it; a destructive confirmation cannot - at
@@ -289,7 +333,7 @@ let
             <property name="orientation">horizontal</property>
             <property name="valign">center</property>
             <property name="halign">center</property>
-            <property name="width-request">400</property>
+            <property name="width-request">${toString confirmWidth}</property>
             <child>
               <object class="GtkBox" id="Box">
                 <style>
@@ -366,8 +410,8 @@ let
                         <property name="vexpand">true</property>
                         <!-- 400px window - 14px padding - 2px border either
                              side, so the cards sit inside the frame evenly -->
-                        <property name="max-content-width">368</property>
-                        <property name="min-content-width">368</property>
+                        <property name="max-content-width">${toString confirmScroll}</property>
+                        <property name="min-content-width">${toString confirmScroll}</property>
                         <property name="max-content-height">180</property>
                         <property name="propagate-natural-height">true</property>
                         <property name="propagate-natural-width">true</property>
@@ -381,8 +425,8 @@ let
                             <style>
                               <class name="list"></class>
                             </style>
-                            <property name="max_columns">2</property>
-                            <property name="min_columns">2</property>
+                            <property name="max_columns">${toString confirmCols}</property>
+                            <property name="min_columns">${toString confirmCols}</property>
                             <property name="can_focus">false</property>
                           </object>
                         </child>
@@ -452,8 +496,8 @@ let
     .item-box.menus-scratchpads {
       /* 100px tile + 6px margin either side = the 112px grid cell, so the
          tiles are square and the gutter is even in both directions */
-      margin: 6px;
-      padding: 18px;
+      margin: ${metrics.px boardGutter};
+      padding: ${metrics.px boardTilePad};
       border-radius: 16px;
       /* transparent rather than absent: the border still takes its 1px, so
          nothing shifts by a pixel when the selection lands on a tile */
@@ -475,7 +519,7 @@ let
     }
 
     .menus-scratchpads .item-image {
-      -gtk-icon-size: 64px;
+      -gtk-icon-size: ${metrics.px boardIcon};
       /* the shared .item-image rule adds a right margin for list rows, which
          would knock the icon off-centre in a tile */
       margin-right: 0;
@@ -527,7 +571,7 @@ let
        margin here is the whole gutter, and it has to match the cell width the
        GridView is given in layout.xml or the columns stop lining up. */
     .item-box.menus-wallpapers {
-      margin: 8px;
+      margin: ${metrics.px wallGutter};
       padding: 0;
       background: transparent;
       border: none;
@@ -668,7 +712,7 @@ let
             <!-- 448px of grid + the 16px wrapper padding either side. No
                  height-request, so the window is exactly as tall as the board
                  instead of the shared layout's fixed 570px. -->
-            <property name="width-request">480</property>
+            <property name="width-request">${toString boardWidth}</property>
             <child>
               <object class="GtkBox" id="Box">
                 <style>
@@ -739,8 +783,8 @@ let
                         <property name="overlay-scrolling">true</property>
                         <property name="hexpand">true</property>
                         <property name="vexpand">true</property>
-                        <property name="max-content-width">448</property>
-                        <property name="min-content-width">448</property>
+                        <property name="max-content-width">${toString boardGrid}</property>
+                        <property name="min-content-width">${toString boardGrid}</property>
                         <property name="max-content-height">400</property>
                         <property name="propagate-natural-height">true</property>
                         <property name="propagate-natural-width">true</property>
@@ -751,8 +795,8 @@ let
                             <style>
                               <class name="list"></class>
                             </style>
-                            <property name="max_columns">4</property>
-                            <property name="min_columns">4</property>
+                            <property name="max_columns">${toString boardCols}</property>
+                            <property name="min_columns">${toString boardCols}</property>
                             <property name="can_focus">false</property>
                           </object>
                         </child>
@@ -846,7 +890,7 @@ let
             <property name="orientation">horizontal</property>
             <property name="valign">center</property>
             <property name="halign">center</property>
-            <property name="width-request">1552</property>
+            <property name="width-request">${toString wallWidth}</property>
             <child>
               <object class="GtkBox" id="Box">
                 <style>
@@ -923,11 +967,11 @@ let
                         <property name="overlay-scrolling">true</property>
                         <property name="hexpand">false</property>
                         <property name="vexpand">true</property>
-                        <property name="max-content-width">1520</property>
-                        <property name="min-content-width">1520</property>
+                        <property name="max-content-width">${toString wallGrid}</property>
+                        <property name="min-content-width">${toString wallGrid}</property>
                         <!-- four rows of 178px -->
-                        <property name="max-content-height">712</property>
-                        <property name="min-content-height">712</property>
+                        <property name="max-content-height">${toString wallHeight}</property>
+                        <property name="min-content-height">${toString wallHeight}</property>
                         <property name="propagate-natural-height">true</property>
                         <property name="propagate-natural-width">true</property>
                         <property name="hscrollbar-policy">never</property>
@@ -937,8 +981,8 @@ let
                             <style>
                               <class name="list"></class>
                             </style>
-                            <property name="max_columns">5</property>
-                            <property name="min_columns">5</property>
+                            <property name="max_columns">${toString wallCols}</property>
+                            <property name="min_columns">${toString wallCols}</property>
                             <property name="can_focus">false</property>
                           </object>
                         </child>
@@ -1059,13 +1103,13 @@ in
         # 4 x 3 for the 12 tiles, matching dani-grid's layout.xml. Note this is
         # applied at runtime and overrides the GridView columns set in the XML,
         # so the two must agree or the window width stops matching the grid.
-        "menus:scratchpads" = 4;
+        "menus:scratchpads" = boardCols;
         # the logout confirm: Cancel and Log out as two cards, not two rows
-        "menus:logout" = 2;
+        "menus:logout" = confirmCols;
         # the wallpaper contact sheet. Must match max_columns/min_columns in
         # dani-wall's layout.xml: this is applied at runtime and wins, so if the
         # two disagree the window width stops matching the grid.
-        "menus:wallpapers" = 5;
+        "menus:wallpapers" = wallCols;
       };
 
       placeholders."default" = {
