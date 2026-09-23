@@ -78,6 +78,45 @@ in
   # Mako: HM config + systemd service
   services.mako = {
     enable = true;                 # writes config + installs package
+
+    # mako WITHOUT its D-Bus activation file.
+    #
+    # Upstream ships share/dbus-1/services/fr.emersion.mako.service, which
+    # declares Name=org.freedesktop.Notifications with a bare
+    # `Exec=.../bin/mako` — a plain command, not `SystemdService=`. HM installs
+    # it twice from this same package (dbus.packages -> ~/.local/share/dbus-1,
+    # home.packages -> /etc/profiles/per-user/dani/share/dbus-1), so overriding
+    # the package removes both copies at once.
+    #
+    # Why that file is a hazard rather than a convenience: with mako.service
+    # stopped, ANY notification or `makoctl` call makes dbus-broker fork mako
+    # into its own slice, outside its unit. Measured on this machine:
+    #
+    #   mako.service: inactive
+    #   owner PID 12977, Comm=.mako-wrapped, Unit=user@1000.service
+    #   CGroup=.../app.slice/app-dbus\x2d:1.2\x2dorg.freedesktop.Notifications
+    #          .slice/dbus-:1.2-org.freedesktop.Notifications@0.service
+    #
+    # From there it owns the notification name and `systemctl --user stop
+    # mako.service` cannot reach it — wrong unit. (`pgrep -x mako` does not find
+    # it either; the nixpkgs wrapper's comm is `.mako-wrapped`.)
+    #
+    # That matters because four keybinds in hyprland.nix call makoctl
+    # (dismiss, dismiss -a, restore, and dnd-toggle). Any of them pressed while
+    # mako's unit is down resurrects it un-stoppably. Today mako is always up so
+    # this never fires, but it is fatal to running any second notification
+    # daemon — which is the point of the rice work.
+    #
+    # Removing the file means mako runs if and only if its unit runs: one owner,
+    # enforced by the package rather than by care. The cost is that a
+    # notification posted while the unit is down is dropped instead of starting
+    # mako; the unit is WantedBy graphical-session.target, so that window is a
+    # boot race, not a normal state.
+    package = pkgs.mako.overrideAttrs (old: {
+      postInstall = (old.postInstall or "") + ''
+        rm -f "$out/share/dbus-1/services/fr.emersion.mako.service"
+      '';
+    });
     settings = {
       # Tokyo Night, matching waybar (see waybar/palette.css)
       font = "CaskaydiaMono Nerd Font 11";
