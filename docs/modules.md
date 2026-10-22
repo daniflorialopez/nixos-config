@@ -202,15 +202,21 @@ A tiny sshd inside the initrd so a reboot/power-cut away from the machine
 doesn't strand it at the passphrase prompt. **Rehearsed in `danixos-vm`;
 legionix adds it on LUKS migration day.**
 
+- **Requires systemd stage 1** on the host (`boot.initrd.systemd.enable`); the
+  scripted-initrd version (`postCommands`, `udhcpc`) fails assertions there,
+  and the scripted initrd is removed in 26.11.
 - **Wired network only** — Wi-Fi would need firmware + wpa in the initrd, not
-  worth the attack surface. `udhcpc.enable` (NetworkManager hosts don't
-  otherwise give the initrd an address); DHCP retries bounded (`-t 2 -T 1`) so
-  an undocked laptop only loses ~2–3s before the console prompt.
+  worth the attack surface. An initrd systemd-networkd unit does DHCP on `en*`
+  (NetworkManager hosts don't otherwise give the initrd an address). Nothing
+  waits for the lease, so an undocked laptop loses no time before the console
+  prompt.
 - **Port 2222** (not 22) so the initrd host key doesn't collide with the real
   sshd's `known_hosts` entry.
 - **Root login is fine here** — no user DB exists yet; the shell only exists to
-  type the passphrase (`cryptsetup-askpass` appended to `/root/.profile`).
-  Reuses `dani`'s `authorizedKeys`.
+  type the passphrase. Root's initrd shell is `/bin/sh` and an initrd
+  `/etc/profile` runs `systemd-tty-ask-password-agent --query`, so logging in
+  lands in the prompt and Ctrl-C drops to the shell (Drill 2 needs it; rerun
+  the agent there to unlock). Reuses `dani`'s `authorizedKeys`.
 - **Host key** must be readable *before* unlock, so it lives outside LUKS on
   the ESP. Generate once per host (secret material, not in the repo):
   ```bash

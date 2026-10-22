@@ -114,7 +114,7 @@ back in the initrd shell (first terminal):
 ```sh
 cryptsetup luksHeaderRestore /dev/vda2 --header-backup-file /luks-header.img
 # confirm YES, then:
-cryptsetup-askpass    # type the normal passphrase → boot continues
+systemd-tty-ask-password-agent    # type the normal passphrase → boot continues
 ```
 
 Fallback if the initrd shell ever feels too tight: the NixOS ISO is still
@@ -188,6 +188,7 @@ Only after all three drills are done and you're convinced. Order matters.
 6. **Restore** user data with restic; re-pair Bluetooth, re-login sessions.
 7. **Test the remote unlock once** from danarchy while the machine is
    physically reachable: `ssh -p 2222 root@legionix-ip`. If it times out,
-   check link/DHCP timing — first knob is loosening `udhcpc.extraArgs`
-   in `modules/nixos/initrd-ssh.nix` (already loosened to `-t 4 -T 2`
-   after the VM rehearsal lost the lease race at `-t 2 -T 1`).
+   check link/DHCP first: the initrd gets its address from the systemd-networkd
+   unit `10-initrd-wired` in `modules/nixos/initrd-ssh.nix` (matches `en*`;
+   r8169 must be in the initrd). Nothing waits for that lease, so a missing
+   cable never delays the console prompt.
