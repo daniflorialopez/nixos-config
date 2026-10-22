@@ -31,6 +31,10 @@
   # virtio NIC in the initrd so the remote-unlock sshd has a network
   boot.initrd.availableKernelModules = [ "virtio_net" ];
 
+  # initrd-ssh.nix is written for systemd stage 1 (base.nix keeps the scripted
+  # initrd as the default for hosts that have not opted in)
+  boot.initrd.systemd.enable = true;
+
   # Fresh installs (the rehearsal wipes this disk repeatedly) come up
   # with a usable console login; with mutableUsers this only applies
   # when the user is first created, so it never touches existing hosts

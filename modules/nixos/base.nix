@@ -87,11 +87,10 @@
     # unambiguous. Deprecated upstream with removal scheduled for 26.11, so this
     # is a deferral of months, not a permanent opt-out.
     #
-    # Opt-in status: legionix adopted it alone (hosts/legionix/default.nix).
-    # danixos-vm cannot yet — initrd-ssh.nix uses `postCommands` and `udhcpc`,
-    # and systemd stage 1 rejects both by assertion, so that module has to be
-    # ported first. danix-hp follows the next time it is rebuilt. This pin must
-    # be gone before the 26.11 bump.
+    # Opt-in status: legionix adopted it alone (hosts/legionix/default.nix),
+    # then danixos-vm once initrd-ssh.nix was ported off `postCommands` and
+    # `udhcpc`, which systemd stage 1 rejects by assertion. danix-hp follows
+    # the next time it is rebuilt. This pin must be gone before the 26.11 bump.
     initrd.systemd.enable = lib.mkDefault false;
 
     # Suppress routine kernel chatter, but retain errors.

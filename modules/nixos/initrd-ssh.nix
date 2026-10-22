@@ -24,6 +24,10 @@
   #
   # Unlock flow:  ssh -p 2222 root@<host-ip>  → passphrase prompt → boot
   # continues; the console prompt keeps working in parallel.
+  #
+  # Requires systemd stage 1 (boot.initrd.systemd.enable on the host). The
+  # scripted-initrd version used postCommands + udhcpc, which systemd stage 1
+  # rejects by assertion, and the scripted initrd goes away in 26.11.
   boot.initrd.network = {
     enable = true;
 
@@ -37,20 +41,31 @@
       authorizedKeys = config.users.users.dani.openssh.authorizedKeys.keys;
     };
 
-    # Logging in lands straight in the passphrase prompt
-    postCommands = ''
-      echo 'cryptsetup-askpass' >> /root/.profile
-    '';
+    # Drop the initrd's lease before stage 2, as the scripted version did, so
+    # NetworkManager starts from a clean interface. systemd stage 1 defaults
+    # to keeping it.
+    flushBeforeStage2 = true;
+  };
 
-    # Explicit: NetworkManager setups run with networking.useDHCP =
-    # false, and the initrd only inherits DHCP from that — without this
-    # the sshd would listen on an interface that never got an address.
-    udhcpc.enable = true;
-    # Bound the no-cable case (matters for legionix undocked, after the
-    # boot-slack trimming) without losing the lease race: the VM rehearsal
-    # showed 2 tries x 1s is marginal — one boot got a lease, the next got
-    # "udhcpc: no lease, failing". 4 tries x 2s waits long enough for a
-    # slow DHCP answer, ~8-10s worst case when no cable is plugged.
-    udhcpc.extraArgs = [ "-t" "4" "-T" "2" ];
+  # Logging in lands straight in the passphrase prompt, and Ctrl-C drops to a
+  # root shell - the same behaviour the scripted .profile hook had, which
+  # Drill 2 depends on (luksHeaderRestore runs from that shell). Making the
+  # agent itself the login shell would lose the shell; the initrd default,
+  # nologin, would lose the login.
+  boot.initrd.systemd.users.root.shell = "/bin/sh";
+  boot.initrd.systemd.contents."/etc/profile".text = ''
+    systemd-tty-ask-password-agent --query
+  '';
+
+  # DHCP on any wired NIC. Explicit because NetworkManager setups run with
+  # networking.useDHCP = false, so the initrd inherits no DHCP config, and the
+  # sshd would listen on an interface that never got an address.
+  #
+  # The no-cable case (legionix undocked) costs nothing: the initrd sshd only
+  # orders after network.target, never network-online.target, so nothing waits
+  # for a lease — the old `udhcpc -t 4 -T 2` bound is no longer needed.
+  boot.initrd.systemd.network.networks."10-initrd-wired" = {
+    matchConfig.Name = "en*";
+    networkConfig.DHCP = "yes";
   };
 }
