@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   imports = [ ./rebuild-ergonomics.nix ];
@@ -62,7 +62,8 @@
       theme = "bgrt";
     };
 
-    # Pinned FALSE deliberately, for the 26.05 bump.
+    # Pinned FALSE by default since the 26.05 bump; hosts now opt in one at a
+    # time, which is why this is mkDefault rather than a plain value.
     #
     # 26.05 flips this default: `mkEnableOption` (false) on 25.11 becomes
     # `default = true` (nixos/modules/system/boot/systemd/initrd.nix), and this
@@ -85,7 +86,13 @@
     # should be adopted on its own, as a revertable commit, where a failure is
     # unambiguous. Deprecated upstream with removal scheduled for 26.11, so this
     # is a deferral of months, not a permanent opt-out.
-    initrd.systemd.enable = false;
+    #
+    # Opt-in status: legionix adopted it alone (hosts/legionix/default.nix).
+    # danixos-vm cannot yet — initrd-ssh.nix uses `postCommands` and `udhcpc`,
+    # and systemd stage 1 rejects both by assertion, so that module has to be
+    # ported first. danix-hp follows the next time it is rebuilt. This pin must
+    # be gone before the 26.11 bump.
+    initrd.systemd.enable = lib.mkDefault false;
 
     # Suppress routine kernel chatter, but retain errors.
     consoleLogLevel = 3;

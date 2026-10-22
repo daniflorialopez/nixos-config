@@ -38,6 +38,13 @@
 
   networking.hostName = "legionix";
 
+  # systemd stage 1, adopted here first and on its own (modules/nixos/base.nix
+  # keeps the scripted initrd as the default for the other hosts). The disk is
+  # still unencrypted, so a stage-1 failure is unambiguous and booting the
+  # previous generation is a complete rescue. It is also the ground the LUKS
+  # remote unlock has to be rebuilt on before 26.11 drops the scripted initrd.
+  boot.initrd.systemd.enable = true;
+
   disko.devices.disk.main.device = "/dev/disk/by-id/nvme-SAMSUNG_MZVL21T0HCLR-00BL2_S64NNX0T568436";
 }
 
