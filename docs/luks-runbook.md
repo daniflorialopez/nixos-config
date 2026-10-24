@@ -171,17 +171,86 @@ ssh-keygen -R $ip -f ~/.local/share/danixos-vm-rehearsal/known_hosts
 
 ---
 
+## Drill 4 — reinstall with Windows on the same disk
+
+*Proves: the reinstall replaces only the Linux partition. Windows' partitions,
+its boot manager on the shared ESP, and every partition GUID come through
+byte-identical — even with nixos-anywhere's default (destroy) mode.*
+
+Why it works: `disko.devices.disk.main.destroy = false` empties disko's wipe
+list, and the p1/p2 GUIDs are pinned so the GPT step re-applies the same
+values (see `hosts/legionix/default.nix`). disko never touches partitions it is
+not told about. Passed 2026-10-25.
+
+The helpers live outside the repo, in `~/.local/share/danixos-vm-rehearsal/`:
+`drill4-prep.sh` (lays the VM disk out like legionix: ESP + fake Windows Boot
+Manager, plain-btrfs Linux, then MSR/NTFS/recovery stand-ins filled with random
+bytes) and `drill4-fingerprint.sh` (partition table + checksums of everything
+that must survive).
+
+```fish
+# 1. boot the installer ISO, then in the VM window: sudo passwd nixos  (rehearsal)
+virsh --connect qemu:///system destroy danixos-vm
+virt-xml --connect qemu:///system danixos-vm --edit --boot cdrom,hd
+virsh --connect qemu:///system start danixos-vm
+set ip (virsh --connect qemu:///system domifaddr danixos-vm --source arp | awk '/ipv4/ {split($4,a,"/"); print a[1]}')
+
+# 2. legionix-like layout + the "before" fingerprint (the ISO's host key is new
+#    every boot, hence no known_hosts)
+set r ~/.local/share/danixos-vm-rehearsal
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no nixos@$ip sudo bash -s < $r/drill4-prep.sh
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no nixos@$ip sudo bash -s < $r/drill4-fingerprint.sh > $r/drill4-before.txt
+
+# 3. clear stale signatures from the LINUX partition only (see below), then the
+#    exact Drill 3 install command
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no nixos@$ip 'sudo wipefs -a /dev/disk/by-partlabel/disk-main-danixos-vm'
+# → Drill 3 step 2 (env SSHPASS=rehearsal nix run … --phases kexec,disko,install)
+#   expected: "Could not create partition 1/2" then "completed successfully"
+#   (existing partitions kept), no mkfs.vfat, a luksFormat of p2 only
+
+# 4. boot from disk, unlock (vmboot), then the "after" fingerprint and the diff
+virsh --connect qemu:///system shutdown danixos-vm
+virt-xml --connect qemu:///system danixos-vm --edit --boot hd,cdrom
+virsh --connect qemu:///system start danixos-vm
+ssh-keygen -R $ip -f $r/known_hosts
+begin; echo changeme; cat $r/drill4-fingerprint.sh; end | ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$r/known_hosts dani@$ip 'sudo -S -p "" bash -s' > $r/drill4-after.txt
+diff $r/drill4-before.txt $r/drill4-after.txt   # must print nothing
+```
+
+**The stale-header trap (found in this drill):** `mkfs.btrfs` does not
+overwrite the first 64 KiB of a partition, where an old LUKS header lives. The
+VM's partition started where July's encrypted one did, so disko's "is it
+already LUKS?" check said yes, skipped `luksFormat`, and the open failed with
+"No key available with this passphrase". `wipefs -a` on the Linux partition
+removes it. legionix may carry the same leftover from the Omarchy install,
+which encrypted by default — check with `sudo wipefs /dev/nvme0n1p2` (lists,
+erases nothing).
+
+After the drill the VM's LUKS container is new: the Bitwarden recovery key and
+`luks-header.img` belong to the old one. Redo Drill 1 setup and Drill 2 step 1
+before the next rehearsal.
+
+---
+
 ## Migration day — legionix
 
-Only after all three drills are done and you're convinced. Order matters.
+Only after all four drills are done and you're convinced. Order matters.
+**Windows stays**: nothing below may touch p1's filesystem, p3–p5, or any
+partition GUID (Drill 4).
 
 1. **Fresh backup, verified first**: run the restic backup, then
    `restic check --read-data-subset=5%` and a spot-restore of one recent file.
-   The disko install wipes the disk — the backup IS the machine until step 6.
-2. **Config**: `hosts/legionix/...` imports `disko-luks.nix` +
-   `initrd-ssh.nix`; add `"r8169"` to `boot.initrd.availableKernelModules`
-   (wired NIC — WiFi unlock is out of scope by design); set
-   `disko.devices.disk.main.device` to the NVMe by-id path.
+   The install wipes the Linux partition — the backup IS NixOS until step 6.
+   Also copy an image of the ESP (`/dev/nvme0n1p1`, 1 GiB) off the disk, and
+   note that Steam (319 GB) is excluded from restic.
+2. **Config**: `hosts/legionix/...` imports `disko-luks.nix` (instead of
+   `disko.nix`) + `initrd-ssh.nix`; add `"r8169"` to
+   `boot.initrd.availableKernelModules` (wired NIC — WiFi unlock is out of
+   scope by design). Keep the `destroy = false` + pinned-GUID block in
+   `hosts/legionix/default.nix` exactly as it is. Still open before this step
+   (gap study 1d/1e): a declarative password (the fresh `dani` is otherwise
+   locked) and carrying `/etc/ssh/ssh_host_*` + `/var/lib/tailscale` into the
+   `--extra-files` tree.
 3. **Secrets** (fresh, per-host, not in repo):
    ```fish
    mkdir -p /tmp/legionix-extra/etc/secrets/initrd
@@ -190,8 +259,11 @@ Only after all three drills are done and you're convinced. Order matters.
    printf '%s' 'THE-REAL-PASSPHRASE' > /tmp/legionix.key
    ```
 4. **Install** from another machine (danarchy) with the legionix target
-   booted from the installer USB — same nixos-anywhere invocation as Drill 3,
-   swapping flake attr, target IP, extra-files dir, and key file.
+   booted from the installer USB — Drill 4's sequence, swapping flake attr,
+   target IP, extra-files dir, and key file: fingerprint first (adapt
+   `drill4-fingerprint.sh` to `/dev/nvme0n1`), `wipefs -a` on
+   `/dev/disk/by-partlabel/disk-main-legionix` ONLY, the install, then the
+   fingerprint diff — and boot Windows once from the menu before moving on.
 5. **Immediately after first unlock**: Drill 1 setup (recovery key → second
    slot → Bitwarden) and Drill 2 step 1 (header backup → store off-disk,
    e.g. next to the restic repo). Do not postpone these.
