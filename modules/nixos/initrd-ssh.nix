@@ -1,4 +1,4 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 
 {
   # Remote LUKS unlock: a tiny sshd inside the initrd, so a power cut or
@@ -56,6 +56,12 @@
   boot.initrd.systemd.contents."/etc/profile".text = ''
     systemd-tty-ask-password-agent --query
   '';
+
+  # The cryptsetup CLI, for that shell. systemd stage 1 unlocks through
+  # systemd-cryptsetup and libcryptsetup only, so without this the rescue shell
+  # has no `cryptsetup` - Drill 2 (2026-10-24) hit "command not found" at
+  # luksHeaderRestore and had to fall back to dd-ing the backup into place.
+  boot.initrd.systemd.initrdBin = [ pkgs.cryptsetup ];
 
   # DHCP on any wired NIC. Explicit because NetworkManager setups run with
   # networking.useDHCP = false, so the initrd inherits no DHCP config, and the
