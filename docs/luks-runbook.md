@@ -98,8 +98,10 @@ keyslot area):
 ```fish
 vmsys 'echo changeme | sudo -S -p "" dd if=/dev/zero of=/dev/vda2 bs=1M count=1 conv=notrunc; sudo systemctl reboot --force'
 sleep 20; vmboot
-# type the passphrase → "No key available with this passphrase" / not a LUKS device.
-# You are now locked out. Feel it. Then: Ctrl-C to drop from askpass into the initrd shell — DON'T close the connection.
+# systemd stage 1: there is NO passphrase prompt — systemd-cryptsetup fails
+# at once ("Failed to load LUKS superblock") and you land straight in the
+# initrd shell. The initrd also drops into emergency mode; sshd survives it
+# (verified 2026-10-24), so nothing is counting down. DON'T close the connection.
 ```
 
 Step 3 — restore from the initrd shell (a second terminal pushes the backup
@@ -113,8 +115,16 @@ back in the initrd shell (first terminal):
 
 ```sh
 cryptsetup luksHeaderRestore /dev/vda2 --header-backup-file /luks-header.img
-# confirm YES, then:
-systemd-tty-ask-password-agent    # type the normal passphrase → boot continues
+# confirm YES. (If cryptsetup is ever missing from the initrd, the backup is a
+# raw copy of the first 16 MiB and the data starts right after it, so
+#   dd if=/luks-header.img of=/dev/vda2 bs=1M conv=notrunc,fsync
+# is equivalent — that is how the 2026-10-24 drill was recovered.)
+
+# the failed unlock has to be retried, then emergency mode left:
+systemctl restart --no-block systemd-cryptsetup@crypted.service
+systemd-tty-ask-password-agent    # type the normal passphrase
+systemctl default                 # leave emergency mode → boot continues
+# the session then hangs (the initrd drops its address first): Enter, ~ .
 ```
 
 Fallback if the initrd shell ever feels too tight: the NixOS ISO is still
