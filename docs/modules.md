@@ -72,6 +72,15 @@ The initrd sshd (`initrd-ssh.nix`) reuses `authorizedKeys` from here.
 to join. **Backups depend on this** — the restic REST server is reached over
 the tailnet, so the waybar tailscale module flags it when down.
 
+## nix-ld.nix — run prebuilt binaries
+
+`programs.nix-ld.enable` with the module's default library set. NixOS has no
+real `/lib64/ld-linux-x86-64.so.2`, so anything downloaded rather than built by
+Nix (Mason's LSPs for LazyVim, VSCodium/JetBrains plugin binaries, prebuilt
+npm/pip packages) failed with "Could not start dynamically linked executable".
+Takes effect in new sessions. If a binary reports a missing `.so`, add its
+package to `programs.nix-ld.libraries`.
+
 ## fonts.nix — the one font
 
 Installs the Caskaydia/Cascadia Nerd Font (with a fallback lookup across the

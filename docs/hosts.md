@@ -19,6 +19,7 @@ Which `modules/nixos/*` (and host-local files) each host imports. See
 | security                 | ✅ | ✅ | ✅ |
 | gaming                   | ✅ | ✅ | ✅ |
 | tailscale                | ✅ | — | — |
+| nix-ld                   | ✅ | — | — |
 | restic                   | ✅ | — | — |
 | bluetooth                | ✅ | ✅ | — |
 | disko (plain btrfs)      | ✅ | ✅ | — |

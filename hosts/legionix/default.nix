@@ -13,6 +13,7 @@
     ../../modules/nixos/gaming.nix
     ../../modules/nixos/efootball-block.nix
     ../../modules/nixos/tailscale.nix
+    ../../modules/nixos/nix-ld.nix
     ../../modules/nixos/restic.nix
     ../../modules/nixos/bluetooth.nix
 
