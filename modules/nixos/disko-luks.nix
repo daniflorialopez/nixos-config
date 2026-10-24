@@ -17,7 +17,9 @@ in {
     disk = {
       main = {
         type = "disk";
-        content = lib.mkDefault {
+        # Plain attrset, not lib.mkDefault - see the same note in disko.nix:
+        # hosts pin partition uuids into this layout and must merge, not replace.
+        content = {
           type = "gpt";
           partitions = {
             boot = {

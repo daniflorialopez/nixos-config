@@ -14,7 +14,11 @@ in {
     disk = {
       main = {
         type = "disk";
-        content = lib.mkDefault {
+        # A plain attrset, NOT lib.mkDefault: a mkDefault here is dropped
+        # wholesale by any normal-priority host definition, so a host pinning
+        # one partition's uuid (hosts/legionix) would silently REPLACE the
+        # whole layout instead of merging into it - verified as an eval error.
+        content = {
           type = "gpt";
           partitions = {
             boot = {
