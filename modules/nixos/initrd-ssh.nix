@@ -64,8 +64,15 @@
   # The no-cable case (legionix undocked) costs nothing: the initrd sshd only
   # orders after network.target, never network-online.target, so nothing waits
   # for a lease — the old `udhcpc -t 4 -T 2` bound is no longer needed.
+  #
+  # ClientIdentifier = "mac" makes the initrd ask for the SAME lease the booted
+  # system gets. networkd's default is a DUID, NetworkManager sends the MAC, so
+  # the DHCP server saw two different clients and handed the initrd a second
+  # address (seen on the VM: initrd .168, system .167) - remote unlock would
+  # then dial an address nothing is listening on.
   boot.initrd.systemd.network.networks."10-initrd-wired" = {
     matchConfig.Name = "en*";
     networkConfig.DHCP = "yes";
+    dhcpV4Config.ClientIdentifier = "mac";
   };
 }
