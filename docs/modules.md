@@ -336,7 +336,11 @@ Enables `programs.hyprland` (`withUWSM = true`, xwayland on). Also:
 `programs.dconf` (GTK dark preference), a PAM service for **hyprlock**
 (without it hyprlock can't validate the password), Wayland `xdg.portal`
 (hyprland + gtk backends), and `NIXOS_OZONE_WL = "1"` (Electron on Wayland).
-The user-side Hyprland config is `home/dani/wm/hyprland.nix`.
+It also declares the services the session relies on, which used to arrive
+only through Cinnamon: gnome-keyring (Secret Service), gcr-ssh-agent (the
+`SSH_AUTH_SOCK` agent), udisks2, gvfs and upower — plus **rtkit**, so PipeWire
+gets real-time priority. The user-side Hyprland config is
+`home/dani/wm/hyprland.nix`.
 
 ### desktop/cinnamon.nix — fallback DE
 

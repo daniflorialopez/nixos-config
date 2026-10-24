@@ -240,4 +240,16 @@ in
     };
     Install.WantedBy = [ target ];
   };
+
+  # Removable media: plugging in a USB drive mounts it under /run/media/dani
+  # and says so through mako (its notification carries a "Browse" action that
+  # opens the default file manager). No tray icon - the bar keeps no such
+  # leaf, and udisks2 itself comes from desktop/hyprland.nix on the system side.
+  # Notifications follow mako's persist-until-dismissed rule.
+  services.udiskie = {
+    enable = true;
+    automount = true;
+    notify = true;
+    tray = "never";
+  };
 }

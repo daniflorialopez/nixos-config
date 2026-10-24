@@ -270,6 +270,8 @@ User systemd services bound to the graphical session:
   palette true), 4200 K at 21:00, 3700 K at 23:30.
   `hyprctl hyprsunset identity` overrides it for color-sensitive night work.
 - **polkit-gnome-agent** — auth dialogs.
+- **udiskie** — automounts removable drives under `/run/media/dani` and
+  announces them through mako (with a "Browse" action); no tray icon.
 - **hypr-dock-handler** — dock/undock workspace repair. *Un*docking is fine on
   its own: Hyprland migrates HDMI-A-1's workspaces to the panel when the
   monitor vanishes. But on **re-dock nothing moves them back**, leaving
