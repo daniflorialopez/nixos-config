@@ -3,6 +3,9 @@
 What's deliberately not-yet-done, what's half-built and waiting, and the
 mistakes already paid for (encoded as runbook steps so they don't recur).
 
+> **What is open right now** (paused steps, parked branches, known gaps, deadlines)
+> lives in [open-items.md](open-items.md). This file keeps the background.
+
 ## Staged: LUKS disk encryption + remote unlock
 
 Disk encryption is **deliberately not enabled on the real machines yet**. It

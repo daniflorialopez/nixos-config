@@ -62,6 +62,7 @@ does from the code alone.
 | [docs/2605-bump-runbook.md](docs/2605-bump-runbook.md) | **Channel bump 25.11 → 26.05** — what changes (kernel, NVIDIA driver, initrd implementation), the verified non-risks, the Hyprland rule-grammar migration, and the execution order. |
 | [docs/ricing/](docs/ricing/README.md)     | The desktop-rice project: current-state inventory, architectural decision log, implementation tracker, and recovery policy. |
 | [docs/roadmap.md](docs/roadmap.md)        | Staged work (LUKS status, impermanence), known issues, and install post-mortems.   |
+| [docs/open-items.md](docs/open-items.md)  | **Everything left out or unfinished**: paused LUKS steps, parked branches, known gaps with investigation notes, deadlines, gap-study status. |
 
 ## Quick start
 
