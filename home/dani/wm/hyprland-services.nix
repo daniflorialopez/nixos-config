@@ -252,4 +252,9 @@ in
     notify = true;
     tray = "never";
   };
+
+  # The service module runs the daemon but puts none of udiskie's commands on
+  # PATH. With no tray there is no eject button, so this is the eject:
+  #   udiskie-umount -a --detach   unmount every removable drive and power it off
+  home.packages = [ config.services.udiskie.package ];
 }
