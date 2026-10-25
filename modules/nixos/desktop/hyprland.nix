@@ -29,6 +29,13 @@
   # Real-time scheduling for PipeWire. Without it PipeWire logs
   # "RTKit error: org.freedesktop.DBus.Error.ServiceUnknown" and runs its audio
   # threads at normal priority, so heavy load (games, builds) can crackle.
+  #
+  # KNOWN GAP (2026-10-25): necessary but not yet sufficient. rtkit itself
+  # grants RT (verified with a direct MakeThreadRealtimeWithPID call), but
+  # PipeWire asks through xdg-desktop-portal's Realtime interface first, and
+  # that fails on every call ("Could not get pidns for pid ...: Not a
+  # directory") while PipeWire logs success - so data-loop.0 stays SCHED_OTHER.
+  # Investigation notes and what was tried: docs/open-items.md.
   security.rtkit.enable = true;
 
   # Wayland portals (screen sharing, file pickers, etc)
