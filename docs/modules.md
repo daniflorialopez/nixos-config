@@ -200,10 +200,19 @@ The `dani` user is in `libvirtd`/`docker` groups (`users/dani.nix`).
 you can investigate a crash after the fact (e.g. the backup post-mortem lives
 in the persistent journal).
 
-## hardware-health.nix — SMART monitoring
+## hardware-health.nix — disk health and failure alarms
 
-`services.smartd` with `autodetect`. Background disk-health monitoring; manual
-checks in [operations.md](operations.md#disk-health).
+- `services.smartd` with `autodetect`, now with **systembus-notify**: SMART
+  warnings reach mako. Its defaults (`wall`, an X11 popup on `:`) never reached
+  a Wayland session.
+- **Monthly btrfs scrub** of `/` only (`btrfs-scrub--.service`; `/nix`,
+  `/persist`, `/swap` are the same filesystem). Persistent, so it catches up.
+- **`notify-failure@.service`**: any unit with
+  `onFailure = [ "notify-failure@%n.service" ]` posts "<unit> failed" to the
+  session. Wired to the scrub and `nh-clean`; restic keeps its own notifier.
+- Test the channel: `dbus-send --system / net.nuetzlich.SystemNotifications.Notify string:Test string:works`.
+
+Manual checks in [operations.md](operations.md#disk-health).
 
 ## initrd-ssh.nix — remote LUKS unlock
 

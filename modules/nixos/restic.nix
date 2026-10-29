@@ -78,6 +78,15 @@ in
 
   systemd.services.restic-backups-remote.onFailure = [ "restic-backup-failure-notify.service" ];
 
+  # A timestamp of the last fully successful run (backup, unlock, forget all
+  # exited 0 - a oneshot's ExecStartPost only runs then). The unit's own
+  # timestamps reset at every boot, so this file is what the waybar health
+  # leaf reads to notice backups that silently stopped happening, not just
+  # ones that failed. World-readable on purpose: it holds only a time.
+  systemd.services.restic-backups-remote.serviceConfig.ExecStartPost = [
+    "${pkgs.coreutils}/bin/touch /var/lib/restic-backups-remote.last-success"
+  ];
+
   # Weekly integrity check: verifies the repo structure and actually reads
   # back a random 5% of the pack data, so silent corruption in the remote
   # repo is caught within weeks instead of on restore day. Separate from

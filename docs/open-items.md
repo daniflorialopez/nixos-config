@@ -151,7 +151,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 2 | Correct time + DNS not depending on Tailscale | branch `feat/resolved-dns`, parked (section 2) |
 | 3 | Local btrfs snapshots (snapper on a `/home` subvolume; Steam on its own) | not started — wants the migration-day layout |
 | 4 | Second, independent backup copy + system-state paths | not started |
-| 5 | Health alarms (smartd → notifications, btrfs scrub, failed units, backup age) | not started |
+| 5 | Health alarms (smartd → notifications, btrfs scrub, failed units, backup age) | branch `feat/health-alarms`, awaiting test |
 | 6 | Update cadence (local weekly update + `check-all` timer, `configurationRevision`) | not started |
 | 7 | nix-ld | **merged** |
 | 8 | Self-sufficient session (keyring, agent, udisks2, gvfs, upower, udiskie, rtkit) | **merged**; RT audio open (section 3) |

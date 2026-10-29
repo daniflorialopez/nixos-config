@@ -319,6 +319,11 @@ Three **floating glass islands** (left/center/right), Tokyo Night via
 - `custom/backup` — invisible unless `~/BACKUP-FAILED.txt` has content, then a
   blinking red pill (click = open log, right-click = acknowledge/truncate).
   The one loud thing on the bar, and only when earned.
+- `custom/health` — invisible unless a system or user unit has failed, or the
+  last fully successful backup (`/var/lib/restic-backups-remote.last-success`,
+  written by `restic.nix`) is over 72 h old; then an amber `󰀦 N` whose tooltip
+  says why. Click = details in a terminal. Catches backups that silently
+  stopped, which the backup pill (failures only) cannot.
 - `custom/tailscale` — dim while up (glanceable confirmation, since 20:00
   backups need it), red when down.
 - `custom/gpu` — NVIDIA temp on legionix; self-hides elsewhere.

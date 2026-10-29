@@ -18,6 +18,8 @@
 #   - custom/backup:    invisible unless ~/BACKUP-FAILED.txt has content,
 #                       then a red pill. Click opens the log, right-click
 #                       acknowledges (truncates) it.
+#   - custom/health:    invisible unless a system/user unit has failed or the
+#                       last successful backup is over 72 h old; amber.
 #   - custom/tailscale: invisible while up; dim icon when down (backups
 #                       at 20:00 depend on the tailnet, so down = actionable).
 #   - custom/gpu:       NVIDIA temp on legionix; self-hides on danix-hp/VM.
@@ -285,6 +287,52 @@ let
       printf '{"text":"󰍽","class":"armed","tooltip":"Mouseless is holding your keyboard\\nClick to kill it"}\n'
     '';
   };
+
+  # System health, silent when healthy: appears only when a system or user
+  # unit has failed, or when the last fully successful backup is older than
+  # 72 h. The backup pill above only knows backups that FAILED; this catches
+  # backups that quietly stopped happening. The stamp is written by
+  # restic.nix; hosts without restic have no stamp and skip that check.
+  # 60 s poll: two `systemctl --failed` calls and a stat, a few ms.
+  healthStatus = pkgs.writeShellApplication {
+    name = "waybar-health";
+    runtimeInputs = [ pkgs.systemd pkgs.coreutils ];
+    text = ''
+      sys="$(systemctl --failed --no-legend --plain 2>/dev/null | wc -l)"
+      usr="$(systemctl --user --failed --no-legend --plain 2>/dev/null | wc -l)"
+
+      notes=()
+      [ "$sys" -gt 0 ] && notes+=("$sys failed system unit(s)")
+      [ "$usr" -gt 0 ] && notes+=("$usr failed user unit(s)")
+
+      stamp=/var/lib/restic-backups-remote.last-success
+      if [ -e "$stamp" ]; then
+        age=$(( ($(date +%s) - $(stat -c %Y "$stamp")) / 3600 ))
+        [ "$age" -ge 72 ] && notes+=("last successful backup ''${age} h ago")
+      fi
+
+      if [ "''${#notes[@]}" -eq 0 ]; then
+        printf '{"text":"","tooltip":""}\n'
+        exit 0
+      fi
+
+      tip="$(printf '%s\\n' "''${notes[@]}")"
+      printf '{"text":"󰀦 %s","class":"warn","tooltip":"%sclick: details"}\n' "''${#notes[@]}" "$tip"
+    '';
+  };
+
+  healthDetails = pkgs.writeShellApplication {
+    name = "health-details";
+    runtimeInputs = [ pkgs.systemd pkgs.coreutils ];
+    text = ''
+      echo "== failed system units";  systemctl --failed --no-pager
+      echo; echo "== failed user units"; systemctl --user --failed --no-pager
+      echo; echo "== last successful backup"
+      stat -c '%y' /var/lib/restic-backups-remote.last-success 2>/dev/null || echo "no record on this host"
+      echo; echo "Details: journalctl -u <unit> -e   (user units: journalctl --user -u <unit> -e)"
+      read -rp "Enter to close " _
+    '';
+  };
 in
 {
   xdg.configFile = hideAutostart "nm-applet" // hideAutostart "blueman";
@@ -353,6 +401,7 @@ in
         "mpris"
         "custom/dnd"
         "custom/backup"
+        "custom/health"
         "custom/tailscale"
         "custom/efootball"
         "custom/gpu"
@@ -417,6 +466,14 @@ in
         format = "{}";
         on-click = "alacritty -e less +G $HOME/BACKUP-FAILED.txt";
         on-click-right = "truncate -s 0 $HOME/BACKUP-FAILED.txt";
+      };
+
+      "custom/health" = {
+        exec = "${healthStatus}/bin/waybar-health";
+        return-type = "json";
+        interval = 60;
+        format = "{}";
+        on-click = "alacritty -e ${healthDetails}/bin/health-details";
       };
 
       "custom/mouseless" = {
@@ -626,6 +683,7 @@ in
 
       #mpris,
       #custom-dnd,
+      #custom-health,
       #custom-gpu,
       #custom-tailscale,
       #custom-efootball,
@@ -644,6 +702,9 @@ in
 
       #mpris { color: @muted; font-style: italic; }
       #custom-gpu.hot { color: @critical; }
+      /* warning, not critical: something needs a look, nothing is on fire -
+         the blinking critical pill stays reserved for failed backups */
+      #custom-health.warn { color: @warning; }
       #custom-tailscale.up { color: @muted; }
       #custom-tailscale.down { color: @critical; }
       #custom-efootball.on { color: @accent; }
