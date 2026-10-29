@@ -909,12 +909,19 @@ in
 
   # The $mod SHIFT+Escape power menu (it began as a two-card logout confirm),
   # as an elephant menu so the answers can carry icons - walker's dmenu mode
-  # takes plain lines only. Cancel is first so the pre-selected card is the
-  # harmless one, and Escape closes walker without running anything.
+  # takes plain lines only. There is no Cancel card: Escape closes walker
+  # without running anything, and the pre-selected first card is Lock, so
+  # Enter on reflex costs nothing.
+  #
+  # fixed_order is load-bearing. Elephant sorts menu entries alphabetically
+  # unless told not to (`fixed_order`, "don't sort entries alphabetically"),
+  # and the first card is the pre-selected one: sorted, that would be
+  # "Firmware" - Enter on reflex rebooting into UEFI setup. Seen on screen,
+  # 2026-10-29, when the menu still had a Cancel card that sorted first.
   #
   # The bind passes --nosearch, so there is no prompt line and no live filter
   # to mistype into; the labelled cards are the whole interface. Keep each
-  # label unambiguous on its own, and short: the cards are a fixed four to a
+  # label unambiguous on its own, and short: the cards are a fixed three to a
   # row (confirmCols in wm/walker.nix) and a long label would widen them.
   #
   # Declared through `programs.elephant.provider.menus.toml` rather than as an
@@ -944,6 +951,9 @@ in
     let
       systemctl = "${pkgs.systemd}/bin/systemctl";
       card = text: icon: open: { inherit text icon; actions.open = open; };
+      # "destructive" becomes a CSS class on the card (walker maps item state
+      # to classes): the dani-confirm theme turns those cards warm when armed.
+      ends = c: c // { state = [ "destructive" ]; };
       # Windows shares legionix's disk and boot partition, and systemd-boot
       # lists it as `auto-windows`. No other host has it, so no card there.
       hasWindows = osConfig != null && osConfig.networking.hostName == "legionix";
@@ -952,21 +962,22 @@ in
       name = "power";
       name_pretty = "Power";
       icon = "system-shutdown-symbolic";
+      fixed_order = true;
 
-      # Order = grid order, four to a row: the session row, then the reboots.
+      # Order = grid order, three to a row: what ends the session on top,
+      # every kind of restart below. Lock first: it is the pre-selected card.
       entries =
         [
-          (card "Cancel" "window-close-symbolic" "${pkgs.coreutils}/bin/true")
           (card "Lock" "system-lock-screen-symbolic" "${pkgs.systemd}/bin/loginctl lock-session")
-          (card "Log out" "system-log-out-symbolic" "${systemctl} start --no-block logout-to-greeter.service")
-          (card "Shut down" "system-shutdown-symbolic" "${systemctl} poweroff")
-          (card "Reboot" "system-reboot-symbolic" "${systemctl} reboot")
+          (ends (card "Log out" "system-log-out-symbolic" "${systemctl} start --no-block logout-to-greeter.service"))
+          (ends (card "Shut down" "system-shutdown-symbolic" "${systemctl} poweroff"))
+          (ends (card "Reboot" "system-reboot-symbolic" "${systemctl} reboot"))
         ]
         # one-shot: the next boot only, the default entry stays NixOS
         ++ lib.optional hasWindows
-          (card "Windows" "computer-symbolic" "${systemctl} reboot --boot-loader-entry=auto-windows")
+          (ends (card "Windows" "computer-symbolic" "${systemctl} reboot --boot-loader-entry=auto-windows"))
         ++ [
-          (card "Firmware" "preferences-system-symbolic" "${systemctl} reboot --firmware-setup")
+          (ends (card "Firmware" "preferences-system-symbolic" "${systemctl} reboot --firmware-setup"))
         ];
     };
 

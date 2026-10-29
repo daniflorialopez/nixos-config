@@ -55,20 +55,20 @@ let
   wallWidth  = wallGrid + 2 * wrapperPad + 2 * popupBorder;                  # 1576
 
   # The power menu (formerly the two-card logout confirm) derives INWARD: the
-  # window is sized for four short-labelled cards per row, and the scroller is
-  # whatever is left inside the frame. Two rows hold the seven answers.
+  # window is sized for three short-labelled cards per row, and the scroller is
+  # whatever is left inside the frame. Two rows hold the six answers.
   #
-  # confirmRow is ESTIMATED, not yet measured on screen: card margin 2x5 +
-  # padding 16+14 + 30px icon + 10px gap + ~18px label + 2px border = 100.
-  # If the second row clips or the window leaves a gap, measure and fix it
-  # here - max-content-height is the only thing it drives.
-  confirmCols   = 4;
+  # confirmRow: card margin 2x6 + padding 20+16 + 36px icon + 10px gap +
+  # ~18px label + 2px border = 114. The 30px/100 version was checked on screen
+  # 2026-10-29 (both rows visible, no slack); this airier one is recomputed
+  # the same way and wants the same check.
+  confirmCols   = 3;
   confirmRows   = 2;
-  confirmWidth  = 520;
-  confirmPad    = 14;   # overrides wrapperPad in confirmCss
-  confirmRow    = 100;
-  confirmScroll = confirmWidth - 2 * confirmPad - 2 * popupBorder;   # 488
-  confirmHeight = confirmRows * confirmRow;                          # 200
+  confirmWidth  = 448;   # ~139 px cells: room for the larger cards
+  confirmPad    = 14;    # overrides wrapperPad in confirmCss
+  confirmRow    = 114;
+  confirmScroll = confirmWidth - 2 * confirmPad - 2 * popupBorder;   # 416
+  confirmHeight = confirmRows * confirmRow;                          # 228
 
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
@@ -175,7 +175,7 @@ let
     }
 
     .large-icons {
-      -gtk-icon-size: 30px;
+      -gtk-icon-size: 36px;
     }
 
     .item-quick-activation {
@@ -250,9 +250,9 @@ let
        question is "which one is armed", and a second button with no resting
        surface reads as missing rather than calm. */
     .item-box.menus-power {
-      margin: 5px;
-      padding: 16px 12px 14px 12px;
-      border-radius: 14px;
+      margin: 6px;
+      padding: 20px 14px 16px 14px;
+      border-radius: 16px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.09);
       transition:
@@ -268,6 +268,26 @@ let
     child:selected .item-box.menus-power {
       background: @accent_bg_color;
       border-color: @accent_line_color;
+    }
+
+    /* Warm when armed. Cards carrying state "destructive" (everything that
+       ends the session; set in wm/hyprland.nix, walker turns item state into
+       CSS classes) take the attention role instead of the accent - but only
+       on hover/selection. At rest every card is the same quiet slate; the
+       sunset appears only on the one answer that is about to act, which is
+       exactly what the design system reserves orange for. Lock stays blue. */
+    child:hover .item-box.menus-power.destructive {
+      background: ${theme.cssRgba "attention" "0.08"};
+      border-color: ${theme.cssRgba "attention" "0.20"};
+    }
+
+    child:selected .item-box.menus-power.destructive {
+      background: ${theme.cssRgba "attention" "0.14"};
+      border-color: ${theme.cssRgba "attention" "0.32"};
+    }
+
+    child:selected .item-box.menus-power.destructive .item-image {
+      color: ${theme.hex.attention};
     }
 
     /* The icons are the -symbolic names, which GTK recolours to `color`, so
@@ -443,7 +463,7 @@ let
                         <property name="hscrollbar-policy">never</property>
                         <property name="vscrollbar-policy">automatic</property>
                         <child>
-                          <!-- four cards per row. This must agree with
+                          <!-- three cards per row. This must agree with
                                the `columns` entry in the walker config, which
                                is applied at runtime and overrides it. -->
                           <object class="GtkGridView" id="List">
@@ -1130,7 +1150,7 @@ in
         # applied at runtime and overrides the GridView columns set in the XML,
         # so the two must agree or the window width stops matching the grid.
         "menus:scratchpads" = boardCols;
-        # the power menu: cards, four to a row
+        # the power menu: cards, three to a row
         "menus:power" = confirmCols;
         # the wallpaper contact sheet. Must match max_columns/min_columns in
         # dani-wall's layout.xml: this is applied at runtime and wins, so if the
@@ -1195,7 +1215,7 @@ in
       dani-soft.style = baseCss;
 
       # the power menu ($mod SHIFT+Escape): same chrome, own window geometry so
-      # a seven-card question isn't a 600x570 board
+      # a six-card question isn't a 600x570 board
       dani-confirm = {
         style = baseCss + confirmCss;
         layouts = {
