@@ -2,7 +2,7 @@
 
 The one place that lists what is **not** done: paused work, parked branches,
 known gaps, and the investigation notes needed to pick each one up again.
-Last updated 2026-10-25. If you finish something here, delete it here in the
+Last updated 2026-10-29. If you finish something here, delete it here in the
 same commit.
 
 Context: on 2026-10-22 a gap study listed 17 things this machine lacked as a
@@ -119,10 +119,6 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
   no usable text console a failed resume means a hard power-off. Test once by
   hand (`systemctl suspend`, then wake it) and, if it comes back with a working
   display, add the card in `home/dani/wm/hyprland.nix`.
-- **Card height is computed, not yet seen** for the airier cards
-  (`confirmRow = 114` in `home/dani/wm/walker.nix`; the earlier 100 px version
-  was confirmed by screenshot). If the second row clips or leaves a gap, fix it
-  there.
 - **The Super+S scratchpad board is sorted alphabetically**, not in the
   written order its comments describe ("the four most-used land in the top
   row"): elephant sorts menus unless `fixed_order = true`, found while fixing
@@ -168,11 +164,11 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 2 | Correct time + DNS not depending on Tailscale | branch `feat/resolved-dns`, parked (section 2) |
 | 3 | Local btrfs snapshots (snapper on a `/home` subvolume; Steam on its own) | not started — wants the migration-day layout |
 | 4 | Second, independent backup copy + system-state paths | not started |
-| 5 | Health alarms (smartd → notifications, btrfs scrub, failed units, backup age) | branch `feat/health-alarms`, awaiting test |
+| 5 | Health alarms (smartd → notifications, btrfs scrub, failed units, backup age) | **merged** |
 | 6 | Update cadence (local weekly update + `check-all` timer, `configurationRevision`) | not started |
 | 7 | nix-ld | **merged** |
 | 8 | Self-sufficient session (keyring, agent, udisks2, gvfs, upower, udiskie, rtkit) | **merged**; RT audio open (section 3) |
-| 9 | Power menu, incl. reboot into Windows | branch `feat/power-menu`, awaiting test |
+| 9 | Power menu, incl. reboot into Windows | **merged**; Suspend left out (section 3b) |
 | 10 | Screen capture: window/output/freeze, recording, instant replay | not started |
 | 11 | Launcher search: elephant `files` + `websearch` | not started |
 | 12 | Firmware updates (fwupd) | not started |
