@@ -364,15 +364,24 @@ joins the `video` group. Home Manager alone cannot grant that.
 ### walker.nix — launcher
 
 The `walker` launcher + `elephant` provider backend. Providers: desktop apps,
-runner, calc, clipboard, windows, symbols, menus. Prefix routing (`;` provider
-list, `>` run, `=` calc, `:` clipboard, `.` symbols, `$` windows).
+runner, calc, clipboard, windows, symbols, menus, files, websearch. Prefix
+routing (`;` provider list, `>` run, `=` calc, `:` clipboard, `.` symbols,
+`$` windows, `/` files, `@` web).
+
+- **Files (`/`):** an fd index of `$HOME` (hidden dirs and git-ignored files
+  skipped by fd; `~/src/qmk_firmware` excluded — it was 58k of 60k entries),
+  kept current with `watch = true`. Enter opens, Ctrl+Enter opens the folder,
+  Ctrl+Shift+C copies the path.
+- **Web (`@`):** every Super+Space query also offers "Search: …" with Google.
+  Engine prefixes after `@`: `np` NixOS packages, `no` NixOS options, `hm` Home
+  Manager options, `gh` GitHub (e.g. `@np firefox`).
 
 **Three themes.** `dani-soft` is the search pickers' Tokyo Night GTK theme —
 **slate popup frame** (joined the neutral tier 2026-07-24; orange means "needs
 you", and a launcher doesn't). `dani-grid` is the `$mod+S` scratchpad board: a
 4×3 icon grid with its own `layout.xml`, because in walker the window geometry
 belongs to the theme, not to the stylesheet. `dani-confirm` is the yes/no
-prompt used by the power-menu bind: two icon cards and nothing else, in a window
+prompt used by the power-menu bind: six icon cards and nothing else, in a window
 that hugs its content — walker's stock layout is a fixed 600×570 search board,
 which a two-answer question has no business filling. Its card layout is its own
 (`item_menus-power_grid.xml`) rather than the board's, since the board's tile

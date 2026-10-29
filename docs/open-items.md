@@ -180,7 +180,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 8 | Self-sufficient session (keyring, agent, udisks2, gvfs, upower, udiskie, rtkit) | **merged**; RT audio open (section 3) |
 | 9 | Power menu, incl. reboot into Windows | **merged**; Suspend left out (section 3b) |
 | 10 | Screen capture: window/output/freeze, recording, instant replay | not started |
-| 11 | Launcher search: elephant `files` + `websearch` | not started |
+| 11 | Launcher search: elephant `files` + `websearch` | branch `feat/launcher-search`, awaiting test |
 | 12 | Firmware updates (fwupd) | **merged**; findings in section 3c |
 | 13 | direnv + nix-direnv, repo devShell/formatter | not started |
 | 14 | Regional formats (dates, A4, metric) | **merged**; applies from the next login (check `date`, waybar calendar Monday-first) |

@@ -1,4 +1,4 @@
-{ inputs, pkgs, theme, metrics, ... }:
+{ config, inputs, pkgs, theme, metrics, ... }:
 
 let
   # The derived board geometry. Every number below is currently written out as a
@@ -1102,6 +1102,33 @@ in
       "clipboard"
       "symbols"
       "menus"
+      "files"
+      "websearch"
+    ];
+
+    # Gap item 11: find files and search the web from the launcher.
+    #
+    # files: elephant indexes $HOME with fd into a small database at startup.
+    # fd already skips hidden directories (~/.cache, ~/.local/share/Steam,
+    # browser profiles) and anything git ignores, so the only thing worth
+    # excluding is ~/src/qmk_firmware - a vendored firmware tree that was
+    # 58,603 of the 60,693 entries (measured 2026-10-29); without it the index
+    # is ~1,800 entries. `watch` keeps it current as files come and go, instead
+    # of only at the next login.
+    provider.files.settings = {
+      ignored_dirs = [ "^${config.home.homeDirectory}/src/qmk_firmware" ];
+      watch = true;
+    };
+
+    # websearch: the default engine is offered under every Super+Space query
+    # ("Search: …"); the others are reached with their prefix after `@`, e.g.
+    # "@np firefox". The Nix searches are pinned to this flake's channel.
+    provider.websearch.settings.entries = [
+      { name = "Google"; default = true; url = "https://www.google.com/search?q=%TERM%"; }
+      { name = "NixOS packages"; prefix = "np"; url = "https://search.nixos.org/packages?channel=26.05&query=%TERM%"; }
+      { name = "NixOS options"; prefix = "no"; url = "https://search.nixos.org/options?channel=26.05&query=%TERM%"; }
+      { name = "Home Manager options"; prefix = "hm"; url = "https://home-manager-options.extranix.com/?query=%TERM%&release=release-26.05"; }
+      { name = "GitHub"; prefix = "gh"; url = "https://github.com/search?q=%TERM%"; }
     ];
   };
 
@@ -1159,7 +1186,7 @@ in
       };
 
       placeholders."default" = {
-        input = "Search apps, commands, clipboard…";
+        input = "Search apps…  / files  @ web  : clipboard";
         list = "No results";
       };
 
@@ -1168,6 +1195,9 @@ in
           "desktopapplications"
           "runner"
           "calc"
+          # contributes one "Search: …" row (the default engine) under the
+          # results, so any query can fall through to the web
+          "websearch"
         ];
 
         empty = [ "desktopapplications" ];
@@ -1179,6 +1209,9 @@ in
           { prefix = ":"; provider = "clipboard"; }
           { prefix = "."; provider = "symbols"; }
           { prefix = "$"; provider = "windows"; }
+          # walker's own conventions for these two
+          { prefix = "/"; provider = "files"; }
+          { prefix = "@"; provider = "websearch"; }
         ];
 
         actions = {
@@ -1192,6 +1225,19 @@ in
 
           calc = [
             { action = "copy"; default = true; bind = "Return"; }
+          ];
+
+          # Restated from walker's built-in defaults on purpose: this table is
+          # ours now, so nothing should depend on the built-in one surviving
+          # the merge.
+          files = [
+            { action = "open"; default = true; bind = "Return"; }
+            { action = "opendir"; label = "open dir"; bind = "ctrl Return"; }
+            { action = "copypath"; label = "copy path"; bind = "ctrl shift c"; }
+          ];
+
+          websearch = [
+            { action = "search"; default = true; bind = "Return"; }
           ];
         };
       };
