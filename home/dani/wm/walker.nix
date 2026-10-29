@@ -54,12 +54,21 @@ let
   wallHeight = wallRows * wallRow;                                           # 728
   wallWidth  = wallGrid + 2 * wrapperPad + 2 * popupBorder;                  # 1576
 
-  # The logout confirm derives INWARD: the window is sized to fit a one-line
-  # question, and the scroller is whatever is left inside the frame.
-  confirmCols   = 2;
-  confirmWidth  = 400;
+  # The power menu (formerly the two-card logout confirm) derives INWARD: the
+  # window is sized for four short-labelled cards per row, and the scroller is
+  # whatever is left inside the frame. Two rows hold the seven answers.
+  #
+  # confirmRow is ESTIMATED, not yet measured on screen: card margin 2x5 +
+  # padding 16+14 + 30px icon + 10px gap + ~18px label + 2px border = 100.
+  # If the second row clips or the window leaves a gap, measure and fix it
+  # here - max-content-height is the only thing it drives.
+  confirmCols   = 4;
+  confirmRows   = 2;
+  confirmWidth  = 520;
   confirmPad    = 14;   # overrides wrapperPad in confirmCss
-  confirmScroll = confirmWidth - 2 * confirmPad - 2 * popupBorder;   # 368
+  confirmRow    = 100;
+  confirmScroll = confirmWidth - 2 * confirmPad - 2 * popupBorder;   # 488
+  confirmHeight = confirmRows * confirmRow;                          # 200
 
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
@@ -213,8 +222,8 @@ let
     }
   '';
 
-  # A yes/no confirmation on top of the shared chrome. The stock layout is a
-  # 600x570 search board, which is absurd for two answers, so this theme
+  # The power menu on top of the shared chrome. The stock layout is a 600x570
+  # search board, which is absurd for a handful of answers, so this theme
   # brings its own geometry: the window hugs its content.
   #
   # Pair with --nohints and --nosearch on the caller. --nosearch is a safety
@@ -240,7 +249,7 @@ let
        look", and eleven bare icons keep it calm. With two answers the
        question is "which one is armed", and a second button with no resting
        surface reads as missing rather than calm. */
-    .item-box.menus-logout {
+    .item-box.menus-power {
       margin: 5px;
       padding: 16px 12px 14px 12px;
       border-radius: 14px;
@@ -251,12 +260,12 @@ let
         border-color 140ms ease;
     }
 
-    child:hover .item-box.menus-logout {
+    child:hover .item-box.menus-power {
       background: ${theme.cssRgba "accent" "0.09"};
       border-color: ${theme.cssRgba "accent" "0.18"};
     }
 
-    child:selected .item-box.menus-logout {
+    child:selected .item-box.menus-power {
       background: @accent_bg_color;
       border-color: @accent_line_color;
     }
@@ -267,7 +276,7 @@ let
        ships actions/system-log-out.svg only up to 24px, so at a card-sized
        request GTK falls through to the 32px apps/ variant, which is a
        full-colour green glyph: the success role, on the destructive answer. */
-    .menus-logout .item-image {
+    .menus-power .item-image {
       -gtk-icon-size: 30px;
       /* the shared .item-image rule adds a right margin for list rows, which
          would knock the icon off-centre in a card */
@@ -277,15 +286,15 @@ let
       transition: color 140ms ease;
     }
 
-    .menus-logout .item-text {
+    .menus-power .item-text {
       color: @subtext_color;
       transition: color 140ms ease;
     }
 
-    child:hover .item-box.menus-logout .item-image,
-    child:selected .item-box.menus-logout .item-image,
-    child:hover .item-box.menus-logout .item-text,
-    child:selected .item-box.menus-logout .item-text {
+    child:hover .item-box.menus-power .item-image,
+    child:selected .item-box.menus-power .item-image,
+    child:hover .item-box.menus-power .item-text,
+    child:selected .item-box.menus-power .item-text {
       color: @theme_fg_color;
     }
   '';
@@ -424,17 +433,17 @@ let
                         <property name="overlay-scrolling">true</property>
                         <property name="hexpand">true</property>
                         <property name="vexpand">true</property>
-                        <!-- 400px window - 14px padding - 2px border either
+                        <!-- window width - 14px padding - 2px border either
                              side, so the cards sit inside the frame evenly -->
                         <property name="max-content-width">${toString confirmScroll}</property>
                         <property name="min-content-width">${toString confirmScroll}</property>
-                        <property name="max-content-height">180</property>
+                        <property name="max-content-height">${toString confirmHeight}</property>
                         <property name="propagate-natural-height">true</property>
                         <property name="propagate-natural-width">true</property>
                         <property name="hscrollbar-policy">never</property>
                         <property name="vscrollbar-policy">automatic</property>
                         <child>
-                          <!-- two answers, two columns. This must agree with
+                          <!-- four cards per row. This must agree with
                                the `columns` entry in the walker config, which
                                is applied at runtime and overrides it. -->
                           <object class="GtkGridView" id="List">
@@ -1121,8 +1130,8 @@ in
         # applied at runtime and overrides the GridView columns set in the XML,
         # so the two must agree or the window width stops matching the grid.
         "menus:scratchpads" = boardCols;
-        # the logout confirm: Cancel and Log out as two cards, not two rows
-        "menus:logout" = confirmCols;
+        # the power menu: cards, four to a row
+        "menus:power" = confirmCols;
         # the wallpaper contact sheet. Must match max_columns/min_columns in
         # dani-wall's layout.xml: this is applied at runtime and wins, so if the
         # two disagree the window width stops matching the grid.
@@ -1185,13 +1194,13 @@ in
       # the search pickers: shared chrome, walker's stock layout
       dani-soft.style = baseCss;
 
-      # yes/no prompts (currently just the logout confirm): same chrome, own
-      # window geometry so a two-item question isn't a 600x570 board
+      # the power menu ($mod SHIFT+Escape): same chrome, own window geometry so
+      # a seven-card question isn't a 600x570 board
       dani-confirm = {
         style = baseCss + confirmCss;
         layouts = {
           "layout" = confirmLayout;
-          "item_menus-logout_grid" = confirmItem;
+          "item_menus-power_grid" = confirmItem;
         };
       };
 

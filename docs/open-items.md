@@ -112,6 +112,16 @@ Next ideas: check the xdg-desktop-portal version against upstream issues;
 replace `context.modules` wholesale so the portal-free module-rt is first;
 or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 
+## 3b. Power menu leftovers (gap item 9)
+
+- **No Suspend card, deliberately.** Nothing has suspended legionix since at
+  least 2026-04 and suspend was never tested on 26.05; on an NVIDIA laptop with
+  no usable text console a failed resume means a hard power-off. Test once by
+  hand (`systemctl suspend`, then wake it) and, if it comes back with a working
+  display, add the card in `home/dani/wm/hyprland.nix`.
+- **Card height is estimated** (`confirmRow = 100` in `home/dani/wm/walker.nix`).
+  If the second row clips or leaves a gap, measure on screen and fix it there.
+
 ## 4. danix-hp
 
 - Still on the **scripted initrd** (`base.nix` pin). Must adopt systemd stage 1
@@ -155,7 +165,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 6 | Update cadence (local weekly update + `check-all` timer, `configurationRevision`) | not started |
 | 7 | nix-ld | **merged** |
 | 8 | Self-sufficient session (keyring, agent, udisks2, gvfs, upower, udiskie, rtkit) | **merged**; RT audio open (section 3) |
-| 9 | Power menu, incl. reboot into Windows | not started |
+| 9 | Power menu, incl. reboot into Windows | branch `feat/power-menu`, awaiting test |
 | 10 | Screen capture: window/output/freeze, recording, instant replay | not started |
 | 11 | Launcher search: elephant `files` + `websearch` | not started |
 | 12 | Firmware updates (fwupd) | not started |

@@ -275,7 +275,7 @@ let
             if (a ~ /wpctl|playerctl|output-volume/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
             if (a ~ /-m windows|scratchpad/) return "Windows"
-            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:logout/) return "System"
+            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:power/) return "System"
             return "Apps"
           }
           return "Other"
@@ -564,7 +564,7 @@ in
         # (see the comment in wm/hyprlock.nix). 2s of "any key unlocks" covers
         # locking by reflex and immediately changing your mind.
         "$mod, Escape, Lock screen, exec, hyprlock --grace 2"
-        "$mod SHIFT, Escape, Log out (confirm), exec, walker -m menus:logout --theme dani-confirm --nohints --nosearch"
+        "$mod SHIFT, Escape, Power menu, exec, walker -m menus:power --theme dani-confirm --nohints --nosearch"
 
         # Notifications (code:48 = the ' key on the us layout, same physical key on es)
         "$mod, code:48, Dismiss newest notification, exec, makoctl dismiss"
@@ -907,50 +907,68 @@ in
     ];
   };
 
-  # The $mod SHIFT+Escape logout confirmation, as an elephant menu so the two
-  # answers can carry icons - walker's dmenu mode takes plain lines only.
-  # Cancel is first so the pre-selected card is the harmless one, and Escape
-  # closes walker without running anything either way.
+  # The $mod SHIFT+Escape power menu (it began as a two-card logout confirm),
+  # as an elephant menu so the answers can carry icons - walker's dmenu mode
+  # takes plain lines only. Cancel is first so the pre-selected card is the
+  # harmless one, and Escape closes walker without running anything.
   #
   # The bind passes --nosearch, so there is no prompt line and no live filter
-  # to mistype into; the two labelled cards are the whole interface. Keep the
-  # entries' text unambiguous on its own, since nothing above them explains
-  # what is being asked.
+  # to mistype into; the labelled cards are the whole interface. Keep each
+  # label unambiguous on its own, and short: the cards are a fixed four to a
+  # row (confirmCols in wm/walker.nix) and a long label would widen them.
   #
   # Declared through `programs.elephant.provider.menus.toml` rather than as an
   # xdg.configFile, because elephant.service's X-Restart-Triggers hashes that
   # option and nothing hashes a raw config file. Written the other way the
   # menu file lands on switch but the running daemon never rereads it, so the
   # picker comes up empty until the next reboot - elephant logs the giveaway,
-  # `providers p=menus:logout results=0`. (scratchpads.toml above still has
+  # `providers p=menus:power results=0`. (scratchpads.toml above still has
   # this problem; it just gets masked by how rarely the board changes.)
+  #
+  # Every command is an absolute path: elephant runs the action and does not
+  # inherit the graphical session PATH. polkit resolves elephant's process to
+  # the active local session, which is what lets reboot, power-off and the
+  # boot-loader/firmware one-shots through without a password (allow_active,
+  # checked in org.freedesktop.login1.policy) and what the unit-scoped rule
+  # for logout-to-greeter.service needs.
   #
   # Logging out restarts the display manager rather than stopping UWSM,
   # because SDDM will not bring the greeter back on its own; the reasoning
   # lives on logout-to-greeter.service in modules/nixos/desktop/sddm.nix.
-  # Both commands are absolute paths for the same reason the scratchpad
-  # helper above is: elephant runs the action and does not inherit the
-  # graphical session PATH. polkit still resolves elephant's process to the
-  # active local session, so the unit-scoped rule applies and there is no
-  # password prompt on the way out.
-  programs.elephant.provider.menus.toml.logout = {
-    name = "logout";
-    name_pretty = "Log out";
-    icon = "system-log-out-symbolic";
+  #
+  # Deliberately NO suspend: nothing has suspended this machine since at least
+  # 2026-04 (journal), it was never tested on 26.05, and on an NVIDIA laptop
+  # without a usable text console a failed resume is a hard power-off. Add it
+  # after a deliberate test (docs/open-items.md).
+  programs.elephant.provider.menus.toml.power =
+    let
+      systemctl = "${pkgs.systemd}/bin/systemctl";
+      card = text: icon: open: { inherit text icon; actions.open = open; };
+      # Windows shares legionix's disk and boot partition, and systemd-boot
+      # lists it as `auto-windows`. No other host has it, so no card there.
+      hasWindows = osConfig != null && osConfig.networking.hostName == "legionix";
+    in
+    {
+      name = "power";
+      name_pretty = "Power";
+      icon = "system-shutdown-symbolic";
 
-    entries = [
-      {
-        text = "Cancel";
-        icon = "window-close-symbolic";
-        actions.open = "${pkgs.coreutils}/bin/true";
-      }
-      {
-        text = "Log out";
-        icon = "system-log-out-symbolic";
-        actions.open = "${pkgs.systemd}/bin/systemctl start --no-block logout-to-greeter.service";
-      }
-    ];
-  };
+      # Order = grid order, four to a row: the session row, then the reboots.
+      entries =
+        [
+          (card "Cancel" "window-close-symbolic" "${pkgs.coreutils}/bin/true")
+          (card "Lock" "system-lock-screen-symbolic" "${pkgs.systemd}/bin/loginctl lock-session")
+          (card "Log out" "system-log-out-symbolic" "${systemctl} start --no-block logout-to-greeter.service")
+          (card "Shut down" "system-shutdown-symbolic" "${systemctl} poweroff")
+          (card "Reboot" "system-reboot-symbolic" "${systemctl} reboot")
+        ]
+        # one-shot: the next boot only, the default entry stays NixOS
+        ++ lib.optional hasWindows
+          (card "Windows" "computer-symbolic" "${systemctl} reboot --boot-loader-entry=auto-windows")
+        ++ [
+          (card "Firmware" "preferences-system-symbolic" "${systemctl} reboot --firmware-setup")
+        ];
+    };
 
   home.packages = with pkgs; [
     # essentials

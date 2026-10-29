@@ -333,8 +333,8 @@ scene. Blue accents, orange only on hover (the shared role rule — see
   instead, which is the same path a reboot already takes. The polkit rule is
   scoped to that one unit, the `start` verb, and a local active `wheel`
   session, so `$mod SHIFT+Escape` doesn't raise a password prompt on the way
-  out. Started only by the logout menu's "Log out" action
-  (`elephant/menus/logout.toml`, written from `home/dani/wm/hyprland.nix`).
+  out. Started only by the power menu's "Log out" action
+  (`elephant/menus/power.toml`, written from `home/dani/wm/hyprland.nix`).
   polkit resolves elephant's process to the active local session, so the rule
   applies even though the action runs from `elephant.service` rather than from
   the compositor's own scope.

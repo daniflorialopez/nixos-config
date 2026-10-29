@@ -146,7 +146,9 @@ rollback beyond the last three is still reachable with `nixos-rebuild
 - **Wallpaper:** `$mod CTRL+W` → waytrogen picker → applies to both monitors.
 - **Lock:** `$mod+Escape` (manual only; no idle auto-lock). Locks before
   suspend automatically.
-- **Log out:** `$mod SHIFT+Escape` → confirm **Log out** → SDDM login greeter.
+- **Power menu:** `$mod SHIFT+Escape` → Cancel · Lock · Log out · Shut down ·
+  Reboot · Windows (reboots into Windows once, legionix only) · Firmware
+  (reboots into UEFI setup). Log out returns to the SDDM greeter.
 - **Notifications:** persist until dismissed — `$mod+'` newest,
   `$mod SHIFT+'` all, `$mod CTRL+'` restore last.
 - **Keybind palette:** `$mod+/` — searchable list of *live* binds.

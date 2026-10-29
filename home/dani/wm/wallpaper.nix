@@ -253,7 +253,7 @@ in
   # try-restart rather than restart, so a rebuild from a TTY with no graphical
   # session leaves elephant stopped instead of failing to start it.
   #
-  # (scratchpads.toml and logout.toml carry the same latent race; they get away
+  # (scratchpads.toml and power.toml carry the same latent race; they get away
   # with it only because they almost never change.)
   xdg.configFile."elephant/menus/wallpapers.lua" = {
     text = wallpapersMenu;
