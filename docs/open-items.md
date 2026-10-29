@@ -119,11 +119,6 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
   no usable text console a failed resume means a hard power-off. Test once by
   hand (`systemctl suspend`, then wake it) and, if it comes back with a working
   display, add the card in `home/dani/wm/hyprland.nix`.
-- **The Super+S scratchpad board is sorted alphabetically**, not in the
-  written order its comments describe ("the four most-used land in the top
-  row"): elephant sorts menus unless `fixed_order = true`, found while fixing
-  the power menu (2026-10-29). One line in `home/dani/wm/hyprland.nix` if the
-  intended order is wanted.
 
 ## 3c. Firmware (gap item 12) — what fwupd found, 2026-10-29
 

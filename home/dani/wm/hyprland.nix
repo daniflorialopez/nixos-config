@@ -885,6 +885,10 @@ in
     name = "scratchpads";
     name_pretty = "Scratchpads";
     icon = "view-restore";
+    # Without this elephant sorts the entries alphabetically and the order
+    # below never reached the screen (found 2026-10-29 via the power menu,
+    # which had the same problem).
+    fixed_order = true;
 
     # Order matters: walker fills the grid row by row, four to a row, so the
     # first four are the most-used (Bluetooth, btop, quick note, WhatsApp) and
