@@ -6,6 +6,21 @@
   time.timeZone = "Europe/Madrid";
   i18n.defaultLocale = "en_US.UTF-8";
 
+  # English everywhere, European formats. en_US alone meant month/day/year
+  # dates, weeks starting on Sunday (waybar's calendar included), Letter paper
+  # (new LibreOffice documents, CVs included) and imperial units.
+  #   LC_TIME en_GB        day/month/year, Monday first, 24 h - still English
+  #   LC_PAPER es_ES       A4
+  #   LC_MEASUREMENT es_ES metric
+  # LC_NUMERIC is left alone on purpose: a decimal comma breaks scripts and
+  # tools that parse numbers. LC_MONETARY too (currency follows where you live,
+  # which is about to change). NixOS generates these locales automatically.
+  i18n.extraLocaleSettings = {
+    LC_TIME = "en_GB.UTF-8";
+    LC_PAPER = "es_ES.UTF-8";
+    LC_MEASUREMENT = "es_ES.UTF-8";
+  };
+
   networking.networkmanager.enable = true;
 
   boot = {

@@ -188,7 +188,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 11 | Launcher search: elephant `files` + `websearch` | not started |
 | 12 | Firmware updates (fwupd) | **merged**; findings in section 3c |
 | 13 | direnv + nix-direnv, repo devShell/formatter | not started |
-| 14 | Regional formats (dates, A4, metric) | not started |
+| 14 | Regional formats (dates, A4, metric) | branch `feat/regional-formats`, awaiting test |
 | 15 | Printing and scanning | not started |
 | 16 | Calendar sync (gnome-calendar has no accounts) | not started |
 | 17 | Phone integration (KDE Connect) | not started, optional |

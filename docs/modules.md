@@ -37,6 +37,11 @@ core Nix/boot settings every host shares.
 **Test:** `nh os switch .` rebuilds; `systemctl status nix-gc.timer` /
 `nix-optimise.timer` show the housekeeping timers.
 
+
+**Locale:** English (`en_US`) with European formats via `i18n.extraLocaleSettings`:
+`LC_TIME=en_GB` (day/month/year, Monday first, 24 h), `LC_PAPER` and
+`LC_MEASUREMENT=es_ES` (A4, metric). `LC_NUMERIC` stays `en_US` (a decimal comma
+breaks scripts). Takes effect in new login sessions.
 ## access.nix — SSH & sudo hardening
 
 - Root account locked (`hashedPassword = "!"`), no root login.
