@@ -182,7 +182,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 10 | Screen capture: window/output/freeze, recording, instant replay | not started |
 | 11 | Launcher search: elephant `files` + `websearch` | **merged** |
 | 12 | Firmware updates (fwupd) | **merged**; findings in section 3c |
-| 13 | direnv + nix-direnv, repo devShell/formatter | branch `feat/direnv`, awaiting test (no formatter output on purpose: the repo is not uniformly formatted) |
+| 13 | direnv + nix-direnv, repo devShell/formatter | **merged** (no formatter output on purpose: the repo is not uniformly formatted) |
 | 14 | Regional formats (dates, A4, metric) | **merged**; applies from the next login (check `date`, waybar calendar Monday-first) |
 | 15 | Printing and scanning | not started |
 | 16 | Calendar sync (gnome-calendar has no accounts) | not started |
