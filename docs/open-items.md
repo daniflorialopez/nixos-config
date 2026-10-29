@@ -125,6 +125,21 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
   the power menu (2026-10-29). One line in `home/dani/wm/hyprland.nix` if the
   intended order is wanted.
 
+## 3c. Firmware (gap item 12) — what fwupd found, 2026-10-29
+
+- **No LVFS updates for the BIOS** (`System Firmware`, Lenovo 82RB), the
+  Samsung SSD (CL1QGXA7) or the Genesys USB hub. BIOS updates stay with Lenovo
+  Vantage on Windows.
+- **Pending, deliberately not installed:** Secure Boot certificate updates
+  (KEK CA and UEFI CA 2011 → 2023, Microsoft's rollover before the 2011
+  certificates expire in 2026) and the dbx revocation list. Secure Boot is off
+  here, so none of them is enforced today, and Windows Update handles the
+  rollover for Windows.
+- **The UEFI variable store is nearly full:** the dbx update fails with "Not
+  enough efivarfs space, requested 30.7 kB and got 23.7 kB". Don't write
+  certificates into it from Linux on a whim; if Secure Boot is ever adopted,
+  apply these at home, on mains power, after Windows has had its turn.
+
 ## 4. danix-hp
 
 - Still on the **scripted initrd** (`base.nix` pin). Must adopt systemd stage 1
@@ -171,7 +186,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 9 | Power menu, incl. reboot into Windows | **merged**; Suspend left out (section 3b) |
 | 10 | Screen capture: window/output/freeze, recording, instant replay | not started |
 | 11 | Launcher search: elephant `files` + `websearch` | not started |
-| 12 | Firmware updates (fwupd) | branch `feat/fwupd`, awaiting test |
+| 12 | Firmware updates (fwupd) | **merged**; findings in section 3c |
 | 13 | direnv + nix-direnv, repo devShell/formatter | not started |
 | 14 | Regional formats (dates, A4, metric) | not started |
 | 15 | Printing and scanning | not started |
