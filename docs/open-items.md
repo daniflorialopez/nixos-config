@@ -171,7 +171,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 9 | Power menu, incl. reboot into Windows | **merged**; Suspend left out (section 3b) |
 | 10 | Screen capture: window/output/freeze, recording, instant replay | not started |
 | 11 | Launcher search: elephant `files` + `websearch` | not started |
-| 12 | Firmware updates (fwupd) | not started |
+| 12 | Firmware updates (fwupd) | branch `feat/fwupd`, awaiting test |
 | 13 | direnv + nix-direnv, repo devShell/formatter | not started |
 | 14 | Regional formats (dates, A4, metric) | not started |
 | 15 | Printing and scanning | not started |

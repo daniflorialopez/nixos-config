@@ -35,6 +35,15 @@ in
     fileSystems = [ "/" ];
   };
 
+  # Firmware updates from Linux (LVFS). legionix's UEFI publishes an ESRT
+  # with three updatable components, so capsule updates are possible; whether
+  # Lenovo ships this Legion's BIOS on LVFS is another matter - if not, BIOS
+  # updates stay a Lenovo Vantage job on Windows, while NVMe/USB/dock firmware
+  # may still come through here. Only listing is automatic (a refresh timer
+  # fetches metadata); installing is always a deliberate `fwupdmgr update`,
+  # and never on battery or away from a reliable power socket.
+  services.fwupd.enable = true;
+
   systemd.services."notify-failure@" = {
     description = "Tell the desktop session that %i failed";
     serviceConfig.Type = "oneshot";

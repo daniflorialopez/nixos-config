@@ -211,6 +211,9 @@ in the persistent journal).
   `onFailure = [ "notify-failure@%n.service" ]` posts "<unit> failed" to the
   session. Wired to the scrub and `nh-clean`; restic keeps its own notifier.
 - Test the channel: `dbus-send --system / net.nuetzlich.SystemNotifications.Notify string:Test string:works`.
+- **fwupd** — firmware updates from LVFS (`fwupdmgr get-devices`,
+  `get-updates`; install with `fwupdmgr update`, on mains power only). A
+  refresh timer only fetches metadata.
 
 Manual checks in [operations.md](operations.md#disk-health).
 
