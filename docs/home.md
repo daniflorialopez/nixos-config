@@ -162,6 +162,14 @@ Just `bitwarden-cli` (`bw`). Pipe secrets to `pwcopy` (see
      `options.lua`/`init.lua`, loading the HM-generated
      `nvim/lua/config/nix.lua` (currently just `clipboard = "unnamedplus"`).
 
+
+**Per-project environments (direnv + nix-direnv).** A folder with an `.envrc`
+loads its tools on `cd` and unloads them on leaving; nix-direnv caches the
+environment and pins it against garbage collection. Approve a new `.envrc` once
+with `direnv allow`. Typical `.envrc`: `use flake` (a flake with a devShell) or
+`use nix -p python3 nodejs` (ad hoc). This repo has one: `devShells.default` in
+`flake.nix` brings nixd, nixfmt, statix, deadnix and agenix. Format only files
+you touch — the repo is not uniformly formatted.
 ### media.nix — media apps
 
 `kdenlive`, `obs-studio`, `spotify`.

@@ -117,6 +117,25 @@ in
     ];
   };
 
+  # Per-project environments (gap item 13). A project folder with an `.envrc`
+  # (usually just `use flake` or `use nix`) loads its own tools when you cd in
+  # and unloads them when you leave. nix-direnv caches the environment, so
+  # re-entering is instant, and registers it as a GC root so `nh clean` does
+  # not delete a shell you are still using. The fish hook is wired by Home
+  # Manager. A new .envrc must be approved once with `direnv allow`.
+  # restic.nix already excludes **/.direnv from backups.
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+    config.global = {
+      # The default prints every exported variable on each cd - one line per
+      # variable, a wall of text for a Nix shell. Quiet says only "loading".
+      hide_env_diff = true;
+      # First evaluation of a big flake can take a while; don't nag before 30s.
+      warn_timeout = "30s";
+    };
+  };
+
   # Optional but nice: ensure these are set globally for CLI tools (git commit, etc.)
   home.sessionVariables = {
     EDITOR = "nvim";

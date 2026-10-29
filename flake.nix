@@ -120,5 +120,23 @@
         danix-hp = mkHost "danix-hp";
         legionix = mkHost "legionix";
       };
+
+      # Tools for working on this repo, loaded automatically by direnv via
+      # .envrc (`use flake`). Kept out of the system and home profiles on
+      # purpose: they only matter inside this directory.
+      devShells.${system}.default =
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        pkgs.mkShell {
+          packages = [
+            pkgs.nixd # Nix language server (Neovim/VSCodium)
+            pkgs.nixfmt # formatter - run on changed files only; the repo is not
+            # uniformly formatted, so formatting everything would bury real diffs
+            pkgs.statix # lints for Nix anti-patterns
+            pkgs.deadnix # unused bindings
+            inputs.agenix.packages.${system}.default # edit secrets/*.age
+          ];
+        };
     };
 }

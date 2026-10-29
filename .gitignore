@@ -11,3 +11,6 @@
 # Point those at a runtime path (e.g. ~/Pictures/Wallpapers, populated by hand)
 # or at a fetched derivation before dropping the tracked copies.
 home/dani/assets/wallpapers/
+
+# direnv / nix-direnv cache for this repo's devShell (.envrc)
+.direnv/
