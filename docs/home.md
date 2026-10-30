@@ -271,6 +271,20 @@ Config highlights:
 Full keybind list: press `$mod+/` on a running machine, or read the `bindd`
 block. See also [design-system.md](design-system.md) for the color rationale.
 
+### recording.nix — screen recording and instant replay
+
+gpu-screen-recorder (NVENC on legionix), active only on hosts that import
+`modules/nixos/screen-recording.nix` (the setcap capture helper; without it the
+recorder would ask for a password).
+
+- **`ALT+Print`** — start/stop recording the focused monitor (Wayland has no
+  per-window capture here) with desktop audio → `~/Videos/Recordings`.
+- **`$mod SHIFT+Print`** — arm/disarm instant replay: `gsr-replay.service`
+  keeps the last 30 s in RAM. **`$mod+Print`** saves it → `~/Videos/Replays`.
+  Not started at login until its idle cost is measured (open-items).
+- A toast announces every saved file; the waybar `custom/recording` leaf shows
+  an orange `● REC` while recording and a dim marker while replay is armed.
+
 ### hyprland-services.nix — session services
 
 User systemd services bound to the graphical session:

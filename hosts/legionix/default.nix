@@ -14,6 +14,7 @@
     ../../modules/nixos/efootball-block.nix
     ../../modules/nixos/tailscale.nix
     ../../modules/nixos/nix-ld.nix
+    ../../modules/nixos/screen-recording.nix
     ../../modules/nixos/restic.nix
     ../../modules/nixos/bluetooth.nix
 
