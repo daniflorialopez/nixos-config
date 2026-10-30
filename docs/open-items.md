@@ -179,7 +179,7 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 7 | nix-ld | **merged** |
 | 8 | Self-sufficient session (keyring, agent, udisks2, gvfs, upower, udiskie, rtkit) | **merged**; RT audio open (section 3) |
 | 9 | Power menu, incl. reboot into Windows | **merged**; Suspend left out (section 3b) |
-| 10 | Screen capture: window/output/freeze, recording, instant replay | not started |
+| 10 | Screen capture: window/output/freeze, recording, instant replay | 10a screenshots: branch `feat/screenshot-modes`, awaiting test; 10b recording/replay: not started |
 | 11 | Launcher search: elephant `files` + `websearch` | **merged** |
 | 12 | Firmware updates (fwupd) | **merged**; findings in section 3c |
 | 13 | direnv + nix-direnv, repo devShell/formatter | **merged** (no formatter output on purpose: the repo is not uniformly formatted) |

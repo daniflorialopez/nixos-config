@@ -212,9 +212,12 @@ rest.
 
 The core Hyprland config plus two generated helper scripts:
 
-- **`screenshot-satty`** — `slurp` region select (orange selection box) →
-  `grim` → `satty` editor, saved to `~/Pictures/Screenshots` and copied. Bound
-  to `Print`.
+- **`screenshot [region|output|window]`** — saved to `~/Pictures/Screenshots`
+  and copied. `Print`: the screen freezes (`hyprpicker -r -z`), `slurp` region
+  select (orange box) → `grim` → `satty` editor. `Shift+Print`: the focused
+  monitor, `Ctrl+Print`: the active window — both straight to file and
+  clipboard with a 3 s toast. (Descriptions in `bindd` must not contain commas:
+  Hyprland splits on them — `check-all`'s `--verify-config` catches it.)
 - **`scratchpad`** / **`scratchpad-toggle`** (`$mod+S`) — twelve apps on hidden
   special workspaces, picked from a walker icon grid. `scratchpad-toggle` hides
   whatever scratchpad is showing, or opens the board if none is. Geometry is

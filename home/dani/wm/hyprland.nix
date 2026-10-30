@@ -64,32 +64,79 @@ let
   # is a "look here" interaction, which is exactly what orange is reserved for.
   # (Comment lives here rather than in the script body — writeShellApplication
   # emits the body verbatim, so a # comment inside it lands in the built script.)
+  # Three subjects, one script (gap item 10a):
+  #   region  - Print: the screen FREEZES first (hyprpicker -r -z paints a
+  #             still copy over every output, the trick Hyprshot's --freeze
+  #             uses), so menus, tooltips and video hold still while slurp's
+  #             box is dragged; the crop then opens in Satty to annotate.
+  #   output  - Shift+Print: the focused monitor, saved and copied at once.
+  #   window  - Ctrl+Print: the active window's rectangle, saved and copied.
+  # Window shots are what is on screen in that rectangle, so the 0.94 glass
+  # lets a little wallpaper through - same as you see it.
   screenshotSatty = pkgs.writeShellApplication {
-    name = "screenshot-satty";
+    name = "screenshot";
     runtimeInputs = with pkgs; [
       grim
       slurp
       satty
+      hyprpicker
+      hyprland
+      jq
+      libnotify
       wl-clipboard
       coreutils
     ];
     text = ''
       set -eu
 
+      mode="''${1:-region}"
       outdir="$HOME/Pictures/Screenshots"
       mkdir -p "$outdir"
+      stamp="$(date +%Y%m%d-%H%M%S)"
 
-      region="$(slurp -c '#${theme.noHash.attention}ff')" || exit 0
-      outfile="$outdir/satty-$(date +%Y%m%d-%H%M%S).png"
+      # output/window: no editor, straight to file + clipboard + a short toast
+      # (-t: mako persists by default, and a confirmation has nothing to act on)
+      quick() {
+        local file="$outdir/$mode-$stamp.png"
+        grim "$@" "$file"
+        wl-copy --type image/png < "$file"
+        notify-send -t 3000 -i camera-photo "Screenshot saved" "''${file/#$HOME/\~} · copied"
+      }
 
-      export GSK_RENDERER=ngl
+      case "$mode" in
+        output)
+          quick -o "$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')"
+          ;;
+        window)
+          geom="$(hyprctl activewindow -j | jq -r 'if .at then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else empty end')"
+          [ -n "$geom" ] || exit 0   # nothing focused, nothing to shoot
+          quick -g "$geom"
+          ;;
+        region)
+          tmp="$(mktemp --suffix .ppm)"
+          hyprpicker -r -z >/dev/null 2>&1 &
+          freeze=$!
+          trap 'kill "$freeze" 2>/dev/null || true; rm -f "$tmp"' EXIT
+          sleep 0.2   # let the frozen frame land before slurp draws on it
 
-      grim -g "$region" -t ppm - | satty \
-        --filename - \
-        --fullscreen \
-        --initial-tool crop \
-        --copy-command wl-copy \
-        --output-filename "$outfile"
+          region="$(slurp -c '#${theme.noHash.attention}ff')" || exit 0
+          outfile="$outdir/satty-$stamp.png"
+          grim -g "$region" -t ppm "$tmp"
+          kill "$freeze" 2>/dev/null || true
+
+          export GSK_RENDERER=ngl
+          satty \
+            --filename "$tmp" \
+            --fullscreen \
+            --initial-tool crop \
+            --copy-command wl-copy \
+            --output-filename "$outfile"
+          ;;
+        *)
+          echo "usage: screenshot [region|output|window]" >&2
+          exit 2
+          ;;
+      esac
     '';
   };
 
@@ -541,7 +588,9 @@ in
         "$mod CTRL, B, Firefox work profile, exec, $browser -p work"
 
         # Screenshots
-        ", Print, Screenshot with Satty, exec, screenshot-satty"
+        ", Print, Screenshot region - frozen - into Satty, exec, screenshot region"
+        "SHIFT, Print, Screenshot monitor, exec, screenshot output"
+        "CTRL, Print, Screenshot window, exec, screenshot window"
 
         # Pickers (Super+. mirrors walker's '.' symbols prefix; D = dropper)
         "$mod, Period, Emoji & symbols, exec, walker -m symbols --theme dani-soft"
