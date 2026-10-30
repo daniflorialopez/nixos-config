@@ -284,6 +284,12 @@ recorder would ask for a password).
   Not started at login until its idle cost is measured (open-items).
 - A toast announces every saved file; the waybar `custom/recording` leaf shows
   an orange `● REC` while recording and a dim marker while replay is armed.
+- **`$mod SHIFT+S`** (Windows' snipping-tool chord) opens the **Capture menu**,
+  six cards in the power-menu style: Region · Monitor · Window / Record ·
+  Replay · Save replay. A Lua elephant menu (`elephant/menus/capture.lua`) that
+  re-reads `capture-state` on every open, so the cards say "Stop rec" /
+  "Replay off" while those are live. Screenshot cards wait 0.35 s for the menu
+  to unmap before capturing.
 
 ### hyprland-services.nix — session services
 

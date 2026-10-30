@@ -6,6 +6,8 @@
 #   ALT+Print          start / stop recording the monitor you are on
 #   $mod SHIFT+Print   arm / disarm instant replay (keeps the last 30 s)
 #   $mod+Print         save the replay buffer
+#   $mod SHIFT+S       the Capture menu: all of the above plus the three
+#                      screenshot subjects, as cards
 #
 # Files land in ~/Videos/Recordings and ~/Videos/Replays. A waybar leaf shows
 # an orange dot while recording and a quiet replay marker while armed.
@@ -105,6 +107,84 @@ let
     '';
   };
 
+  # The Capture menu ($mod SHIFT+S): one front door for every capture
+  # action, so none of the shortcuts has to be remembered.
+  #
+  # capture-state tells the Lua menu what is running, so the cards read
+  # "Stop recording" / "Disarm replay" when those are live.
+  captureState = pkgs.writeShellApplication {
+    name = "capture-state";
+    runtimeInputs = with pkgs; [ systemd coreutils ];
+    text = ''
+      pidfile="$XDG_RUNTIME_DIR/record-toggle.pid"
+      if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+        echo recording
+      else
+        echo idle
+      fi
+      if systemctl --user is-active --quiet gsr-replay.service; then
+        echo armed
+      else
+        echo off
+      fi
+    '';
+  };
+
+  # What each card does. Screenshots wait for walker's layer to unmap first:
+  # otherwise the frozen frame (and the monitor/window shots) would contain
+  # the menu that launched them. elephant runs this with its own PATH, which
+  # includes the home-manager profile, so the bare names below resolve.
+  captureDo = pkgs.writeShellApplication {
+    name = "capture-do";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      case "''${1:-}" in
+        region|output|window) sleep 0.35; exec screenshot "$1" ;;
+        record) exec record-toggle ;;
+        replay) exec replay-toggle ;;
+        save)   exec replay-save ;;
+        *) echo "capture-do: unknown action ''${1:-}" >&2; exit 2 ;;
+      esac
+    '';
+  };
+
+  captureMenu = ''
+    Name = "capture"
+    NamePretty = "Capture"
+    Icon = "camera-photo-symbolic"
+    -- fixed order: elephant otherwise sorts A-Z, and the first card is the
+    -- pre-selected one (see the power menu in wm/hyprland.nix)
+    FixedOrder = true
+    -- no Cache: GetEntries runs on every open, so the labels follow state
+    Action = '${lib.getExe captureDo} %VALUE%'
+
+    function GetEntries()
+      local recording, armed = false, false
+      local h = io.popen("${lib.getExe captureState}")
+      if h then
+        local state = h:read("*a") or ""
+        h:close()
+        recording = state:find("recording") ~= nil
+        armed = state:find("armed") ~= nil
+      end
+
+      local function card(text, icon, value)
+        return { Text = text, Icon = icon, Value = value }
+      end
+
+      return {
+        card("Region", "selection-mode-symbolic", "region"),
+        card("Monitor", "video-display-symbolic", "output"),
+        card("Window", "focus-windows-symbolic", "window"),
+        recording and card("Stop rec", "media-playback-stop-symbolic", "record")
+                   or card("Record", "media-record-symbolic", "record"),
+        armed and card("Replay off", "media-playback-stop-symbolic", "replay")
+               or card("Replay", "media-playlist-repeat-symbolic", "replay"),
+        card("Save replay", "document-save-symbolic", "save"),
+      }
+    end
+  '';
+
   # Silent when idle: an orange dot while recording (attention: the screen is
   # being captured), a dim marker while the replay buffer is armed.
   recordingStatus = pkgs.writeShellApplication {
@@ -138,6 +218,15 @@ lib.mkMerge [
 (lib.mkIf enabled {
   home.packages = [ recordToggle replayToggle replaySave ];
 
+  # Written as a file with an onChange restart rather than through
+  # programs.elephant.provider.menus: elephant scans menus once at startup, and
+  # only an onChange (ordered after linkGeneration) guarantees the file exists
+  # when it rescans - the race documented on wallpapers.lua in wallpaper.nix.
+  xdg.configFile."elephant/menus/capture.lua" = {
+    text = captureMenu;
+    onChange = "${pkgs.systemd}/bin/systemctl --user try-restart elephant.service";
+  };
+
   # Deliberately not WantedBy anything: armed by hand until its idle cost has
   # been measured (an always-running encoder plus a 30 s RAM buffer).
   systemd.user.services.gsr-replay = {
@@ -159,6 +248,8 @@ lib.mkMerge [
     "ALT, Print, Start or stop screen recording, exec, record-toggle"
     "$mod SHIFT, Print, Arm or disarm instant replay, exec, replay-toggle"
     "$mod, Print, Save instant replay - last 30 s, exec, replay-save"
+    # the front door to all of the above, Windows' snipping-tool chord
+    "$mod SHIFT, S, Capture menu, exec, walker -m menus:capture --theme dani-confirm --nohints --nosearch"
   ];
 
 })

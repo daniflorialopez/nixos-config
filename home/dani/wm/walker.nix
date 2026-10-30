@@ -249,7 +249,7 @@ let
        look", and eleven bare icons keep it calm. With two answers the
        question is "which one is armed", and a second button with no resting
        surface reads as missing rather than calm. */
-    .item-box.menus-power {
+    .item-box.menus-power, .item-box.menus-capture {
       margin: 6px;
       padding: 20px 14px 16px 14px;
       border-radius: 16px;
@@ -260,12 +260,12 @@ let
         border-color 140ms ease;
     }
 
-    child:hover .item-box.menus-power {
+    child:hover .item-box.menus-power, child:hover .item-box.menus-capture {
       background: ${theme.cssRgba "accent" "0.09"};
       border-color: ${theme.cssRgba "accent" "0.18"};
     }
 
-    child:selected .item-box.menus-power {
+    child:selected .item-box.menus-power, child:selected .item-box.menus-capture {
       background: @accent_bg_color;
       border-color: @accent_line_color;
     }
@@ -276,17 +276,17 @@ let
        on hover/selection. At rest every card is the same quiet slate; the
        sunset appears only on the one answer that is about to act, which is
        exactly what the design system reserves orange for. Lock stays blue. */
-    child:hover .item-box.menus-power.destructive {
+    child:hover .item-box.menus-power.destructive, child:hover .item-box.menus-capture.destructive {
       background: ${theme.cssRgba "attention" "0.08"};
       border-color: ${theme.cssRgba "attention" "0.20"};
     }
 
-    child:selected .item-box.menus-power.destructive {
+    child:selected .item-box.menus-power.destructive, child:selected .item-box.menus-capture.destructive {
       background: ${theme.cssRgba "attention" "0.14"};
       border-color: ${theme.cssRgba "attention" "0.32"};
     }
 
-    child:selected .item-box.menus-power.destructive .item-image {
+    child:selected .item-box.menus-power.destructive .item-image, child:selected .item-box.menus-capture.destructive .item-image {
       color: ${theme.hex.attention};
     }
 
@@ -296,7 +296,7 @@ let
        ships actions/system-log-out.svg only up to 24px, so at a card-sized
        request GTK falls through to the 32px apps/ variant, which is a
        full-colour green glyph: the success role, on the destructive answer. */
-    .menus-power .item-image {
+    .menus-power .item-image, .menus-capture .item-image {
       -gtk-icon-size: 30px;
       /* the shared .item-image rule adds a right margin for list rows, which
          would knock the icon off-centre in a card */
@@ -306,15 +306,15 @@ let
       transition: color 140ms ease;
     }
 
-    .menus-power .item-text {
+    .menus-power .item-text, .menus-capture .item-text {
       color: @subtext_color;
       transition: color 140ms ease;
     }
 
-    child:hover .item-box.menus-power .item-image,
-    child:selected .item-box.menus-power .item-image,
-    child:hover .item-box.menus-power .item-text,
-    child:selected .item-box.menus-power .item-text {
+    child:hover .item-box.menus-power .item-image, child:hover .item-box.menus-capture .item-image,
+    child:selected .item-box.menus-power .item-image, child:selected .item-box.menus-capture .item-image,
+    child:hover .item-box.menus-power .item-text, child:hover .item-box.menus-capture .item-text,
+    child:selected .item-box.menus-power .item-text, child:selected .item-box.menus-capture .item-text {
       color: @theme_fg_color;
     }
   '';
@@ -1179,6 +1179,8 @@ in
         "menus:scratchpads" = boardCols;
         # the power menu: cards, three to a row
         "menus:power" = confirmCols;
+        # the Capture menu ($mod SHIFT+S, wm/recording.nix): same card grid
+        "menus:capture" = confirmCols;
         # the wallpaper contact sheet. Must match max_columns/min_columns in
         # dani-wall's layout.xml: this is applied at runtime and wins, so if the
         # two disagree the window width stops matching the grid.
@@ -1267,6 +1269,7 @@ in
         layouts = {
           "layout" = confirmLayout;
           "item_menus-power_grid" = confirmItem;
+          "item_menus-capture_grid" = confirmItem;
         };
       };
 
