@@ -319,7 +319,7 @@ let
           if (dsp == "movefocus" || dsp == "cyclenext") return "Focus"
           if (dsp ~ /^(movewindow|resizeactive|killactive|fullscreen|togglefloating|pseudo|togglesplit|togglespecialworkspace)/) return "Windows"
           if (dsp == "exec") {
-            if (a ~ /wpctl|playerctl|output-volume/) return "Media"
+            if (a ~ /wpctl|playerctl|output-volume|record-toggle|replay-/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
             if (a ~ /-m windows|scratchpad/) return "Windows"
             if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:power/) return "System"
@@ -404,6 +404,7 @@ in
     ./cursor.nix
     ./swayosd.nix
     ./mouseless.nix
+    ./recording.nix
   ];
 
   # Both of these are Aquamarine's NVIDIA multi-GPU workarounds, straight off

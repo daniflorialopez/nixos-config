@@ -271,6 +271,29 @@ Config highlights:
 Full keybind list: press `$mod+/` on a running machine, or read the `bindd`
 block. See also [design-system.md](design-system.md) for the color rationale.
 
+### recording.nix — screen recording and instant replay
+
+gpu-screen-recorder (NVENC on legionix), active only on hosts that import
+`modules/nixos/screen-recording.nix` (the setcap capture helper; without it the
+recorder would ask for a password).
+
+- **`ALT+Print`** — start/stop recording the focused monitor (Wayland has no
+  per-window capture here) with desktop audio → `~/Videos/Recordings`.
+- **`$mod SHIFT+Print`** — arm/disarm instant replay: `gsr-replay.service`
+  keeps the last 30 s in RAM. **`$mod+Print`** saves it → `~/Videos/Replays`.
+  Armed by hand only: measured 2026-10-30 on legionix, an armed buffer pins
+  the RTX 3070 at 1560 MHz and costs ~+22 W continuously (idle ~16 W → ~38 W,
+  NVENC ~32 %), plus ~¼ of a CPU core and ~60 MiB. `-fm content` (encode only
+  changed frames) measured the same, so it is not a fix.
+- A toast announces every saved file; the waybar `custom/recording` leaf shows
+  an orange `● REC` while recording and a dim marker while replay is armed.
+- **`$mod SHIFT+S`** (Windows' snipping-tool chord) opens the **Capture menu**,
+  six cards in the power-menu style: Region · Monitor · Window / Record ·
+  Replay · Save replay. A Lua elephant menu (`elephant/menus/capture.lua`) that
+  re-reads `capture-state` on every open, so the cards say "Stop rec" /
+  "Replay off" while those are live. Screenshot cards wait 0.35 s for the menu
+  to unmap before capturing.
+
 ### hyprland-services.nix — session services
 
 User systemd services bound to the graphical session:

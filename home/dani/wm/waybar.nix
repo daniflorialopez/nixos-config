@@ -18,6 +18,8 @@
 #   - custom/backup:    invisible unless ~/BACKUP-FAILED.txt has content,
 #                       then a red pill. Click opens the log, right-click
 #                       acknowledges (truncates) it.
+#   - custom/recording: invisible when idle; orange ● REC while recording,
+#                       a dim marker while instant replay is armed.
 #   - custom/health:    invisible unless a system/user unit has failed or the
 #                       last successful backup is over 72 h old; amber.
 #   - custom/tailscale: invisible while up; dim icon when down (backups
@@ -398,6 +400,7 @@ in
         # easy mouse target on the rare occasion it appears, and putting it
         # ahead of mpris keeps every other icon where it already was
         "custom/mouseless"
+        "custom/recording"
         "mpris"
         "custom/dnd"
         "custom/backup"
@@ -684,6 +687,7 @@ in
       #mpris,
       #custom-dnd,
       #custom-health,
+      #custom-recording,
       #custom-gpu,
       #custom-tailscale,
       #custom-efootball,
@@ -705,6 +709,9 @@ in
       /* warning, not critical: something needs a look, nothing is on fire -
          the blinking critical pill stays reserved for failed backups */
       #custom-health.warn { color: @warning; }
+      /* the screen is being captured: attention, not alarm */
+      #custom-recording.recording { color: @attention; font-weight: 700; }
+      #custom-recording.replay { color: @muted; }
       #custom-tailscale.up { color: @muted; }
       #custom-tailscale.down { color: @critical; }
       #custom-efootball.on { color: @accent; }
