@@ -281,7 +281,10 @@ recorder would ask for a password).
   per-window capture here) with desktop audio → `~/Videos/Recordings`.
 - **`$mod SHIFT+Print`** — arm/disarm instant replay: `gsr-replay.service`
   keeps the last 30 s in RAM. **`$mod+Print`** saves it → `~/Videos/Replays`.
-  Not started at login until its idle cost is measured (open-items).
+  Armed by hand only: measured 2026-10-30 on legionix, an armed buffer pins
+  the RTX 3070 at 1560 MHz and costs ~+22 W continuously (idle ~16 W → ~38 W,
+  NVENC ~32 %), plus ~¼ of a CPU core and ~60 MiB. `-fm content` (encode only
+  changed frames) measured the same, so it is not a fix.
 - A toast announces every saved file; the waybar `custom/recording` leaf shows
   an orange `● REC` while recording and a dim marker while replay is armed.
 - **`$mod SHIFT+S`** (Windows' snipping-tool chord) opens the **Capture menu**,

@@ -227,8 +227,8 @@ lib.mkMerge [
     onChange = "${pkgs.systemd}/bin/systemctl --user try-restart elephant.service";
   };
 
-  # Deliberately not WantedBy anything: armed by hand until its idle cost has
-  # been measured (an always-running encoder plus a 30 s RAM buffer).
+  # Deliberately not WantedBy anything: an armed buffer keeps the GPU clocked
+  # up, ~+22 W continuously on legionix (measured 2026-10-30, docs/home.md).
   systemd.user.services.gsr-replay = {
     Unit = {
       Description = "Instant replay buffer (gpu-screen-recorder)";
