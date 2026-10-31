@@ -2,7 +2,7 @@
 
 The one place that lists what is **not** done: paused work, parked branches,
 known gaps, and the investigation notes needed to pick each one up again.
-Last updated 2026-10-29. If you finish something here, delete it here in the
+Last updated 2026-10-31. If you finish something here, delete it here in the
 same commit.
 
 Context: on 2026-10-22 a gap study listed 17 things this machine lacked as a
@@ -119,6 +119,10 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
   no usable text console a failed resume means a hard power-off. Test once by
   hand (`systemctl suspend`, then wake it) and, if it comes back with a working
   display, add the card in `home/dani/wm/hyprland.nix`.
+- **Update 2026-10-31:** travelling, lid-close suspends now happen (4 deep
+  suspend/resume cycles on 10-29 and 10-31, all resumed), so the "never
+  tested" premise no longer holds - confirm the display came back each time
+  and the card can be added.
 
 ## 3c. Firmware (gap item 12) — what fwupd found, 2026-10-29
 
@@ -185,8 +189,8 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 | 13 | direnv + nix-direnv, repo devShell/formatter | **merged** (no formatter output on purpose: the repo is not uniformly formatted) |
 | 14 | Regional formats (dates, A4, metric) | **merged**; applies from the next login (check `date`, waybar calendar Monday-first) |
 | 15 | Printing and scanning | not started |
-| 16 | Calendar sync (gnome-calendar has no accounts) | not started |
-| 17 | Phone integration (KDE Connect) | not started, optional |
+| 16 | Calendar sync (gnome-calendar has no accounts) | **declined** 2026-10-31: Dani keeps no calendar and does not want a Google token on an unencrypted laptop. Branch `feat/calendar-sync` (67bd4ae) parked: declares gnome-calendar/EDS/GOA instead of inheriting them from cinnamon.nix (closure unchanged) - merge it if Cinnamon is ever dropped. If a calendar is wanted later: gnome-calendar's local "On This Computer" calendar, or a non-Google CalDAV |
+| 17 | Phone integration (KDE Connect) | **declined** 2026-10-31, not needed now |
 
 **Considered and excluded** (don't re-propose without new evidence):
 hibernate (zero suspends in the journal since 2026-04, machine lives docked);
