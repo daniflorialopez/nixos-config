@@ -2,7 +2,7 @@
 
 The one place that lists what is **not** done: paused work, parked branches,
 known gaps, and the investigation notes needed to pick each one up again.
-Last updated 2026-10-31. If you finish something here, delete it here in the
+Last updated 2026-11-12. If you finish something here, delete it here in the
 same commit.
 
 Context: on 2026-10-22 a gap study listed 17 things this machine lacked as a
@@ -138,6 +138,21 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
   enough efivarfs space, requested 30.7 kB and got 23.7 kB". Don't write
   certificates into it from Linux on a whim; if Secure Boot is ever adopted,
   apply these at home, on mains power, after Windows has had its turn.
+
+## 3d. Black screens at boot/login — investigated 2026-11-12
+
+- **Fixed on branch `fix/flatpak-offline-boot`, waiting for a test.**
+  `flatpak-remotes.service` went online on every boot, holding
+  graphical.target (and so uwsm, so a black screen after login) for ~25s
+  offline and over 2 min on weak Wi-Fi. To test: rebuild, then boot with Wi-Fi
+  off and log in straight away. Hyprland should appear within seconds, and
+  `systemd-analyze` userspace should be back to ~19s. Merge after that.
+- **USB device on hub port `3-2.1` sometimes doesn't respond**
+  (`usbhid … error -110`, boots of 1 Nov and 3 Nov): adds ~20s to boot before
+  the login screen. Hardware/dock side, not config. Unplugging/replugging the
+  dock is the first thing to try if it keeps happening.
+- **Unexplained:** 1 Nov 00:20, Reboot pressed on the login screen after ~3
+  min with nothing in the journal. Needs a description of what was on screen.
 
 ## 4. danix-hp
 
