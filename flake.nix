@@ -95,6 +95,15 @@
             home-manager.nixosModules.home-manager
 
             {
+              # The commit this generation was built from, readable later with
+              # `nixos-version --configuration-revision` (also per generation:
+              # /nix/var/nix/profiles/system-N-link/sw/bin/nixos-version).
+              # Built from uncommitted changes it is "<rev>-dirty": a hint, not
+              # something you can check out. Cost: the toplevel now changes on
+              # every commit, so "drvPath identical before/after" no-op checks
+              # must compare two builds of the same commit instead.
+              system.configurationRevision = self.rev or self.dirtyRev or null;
+
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
 
