@@ -92,8 +92,90 @@ let
       echo "==> OK: all hosts build, Hyprland configs parse, and flake check passed"
     '';
   };
+
+  # Tag every system generation with the commit it was built from:
+  # `<host>-gen-<N>` -> the commit recorded by system.configurationRevision
+  # (flake.nix). Answers "what was I running two switches ago?" from git, and
+  # `git diff legionix-gen-236 legionix-gen-238` is what changed between them.
+  #
+  # Tags stay local: plain `git push` does not send them.
+  #
+  # Idempotent - it walks every generation and only creates missing tags - so
+  # it is safe to fire as often as the path unit below likes. Skips, with a
+  # line in the journal: generations from before the revision was recorded,
+  # "-dirty" builds (no commit holds that exact tree), and commits this clone
+  # does not have. Never moves an existing tag.
+  tagGenerations = pkgs.writeShellApplication {
+    name = "tag-generations";
+    runtimeInputs = [ pkgs.git ];
+    text = ''
+      repo="''${1:-$HOME/nixos-config}"
+      host=${config.networking.hostName}
+      # Override only for testing against a fake profiles directory.
+      profiles="''${TAG_GENERATIONS_PROFILES:-/nix/var/nix/profiles}"
+      cd "$repo"
+
+      shopt -s nullglob
+      for link in "$profiles"/system-*-link; do
+        n="''${link##*/system-}"
+        n="''${n%-link}"
+        tag="$host-gen-$n"
+
+        # Exits 1 ("configuration revision is unknown") for older generations.
+        rev="$("$link/sw/bin/nixos-version" --configuration-revision 2>/dev/null)" || continue
+
+        case "$rev" in
+          *-dirty)
+            echo "$tag: built from uncommitted changes ($rev), not tagged"
+            continue
+            ;;
+        esac
+
+        if ! git cat-file -e "$rev^{commit}" 2>/dev/null; then
+          echo "$tag: commit $rev is not in $repo, not tagged"
+          continue
+        fi
+
+        if existing="$(git rev-parse -q --verify "refs/tags/$tag")"; then
+          [ "$existing" = "$rev" ] || echo "$tag: already points at $existing, not $rev - left alone" >&2
+          continue
+        fi
+
+        git tag "$tag" "$rev"
+        echo "$tag -> $rev"
+      done
+    '';
+  };
 in
 {
+  # Run tag-generations whenever a generation appears, as the user who owns the
+  # repo (git as root would leave root-owned files in .git).
+  #
+  # Watches the profiles DIRECTORY, not the `system` symlink: activation swaps
+  # that link with an atomic rename, and inotify on the link follows it to the
+  # old target, which never changes - tested, it does not fire. The directory
+  # sees the rename. It also fires on `nh clean` deleting old links; harmless,
+  # the script is idempotent.
+  #
+  # Defined for every user, but the condition limits it to one with the repo at
+  # ~/nixos-config (the sddm greeter has a user manager too). Also runs once per
+  # login, to catch switches made while logged out (e.g. over SSH).
+  systemd.user.paths.tag-generations = {
+    description = "Watch for new system generations to tag";
+    wantedBy = [ "default.target" ];
+    pathConfig.PathChanged = "/nix/var/nix/profiles";
+  };
+
+  systemd.user.services.tag-generations = {
+    description = "Tag system generations with their source commit";
+    wantedBy = [ "default.target" ];
+    unitConfig.ConditionPathIsDirectory = "%h/nixos-config/.git";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${tagGenerations}/bin/tag-generations";
+    };
+  };
+
   # Show the store closure diff on every `nixos-rebuild switch` — what
   # packages were added, removed, or changed version. `nh os switch` already
   # prints this; the activation hook covers plain `nixos-rebuild switch` too.
@@ -110,6 +192,7 @@ in
   };
 
   # nvd on PATH for manual diffs (e.g. `nvd diff /run/current-system <path>`);
-  # check-all for the pre-switch all-hosts build.
-  environment.systemPackages = [ pkgs.nvd checkAll ];
+  # check-all for the pre-switch all-hosts build; tag-generations to run the
+  # tagger by hand.
+  environment.systemPackages = [ pkgs.nvd checkAll tagGenerations ];
 }
