@@ -108,15 +108,9 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
 
 ## 3b. Power menu leftovers (gap item 9)
 
-- **No Suspend card, deliberately.** Nothing has suspended legionix since at
-  least 2026-04 and suspend was never tested on 26.05; on an NVIDIA laptop with
-  no usable text console a failed resume means a hard power-off. Test once by
-  hand (`systemctl suspend`, then wake it) and, if it comes back with a working
-  display, add the card in `home/dani/wm/hyprland.nix`.
-- **Update 2026-11-17: suspend confirmed working.** Lid-close deep suspend
-  resumed cleanly on 10-31 (x2) and 11-17, display back each time; Dani noticed
-  the resume is a bit laggy but usable. Adding the Suspend card is now just a
-  decision, not a risk.
+- **No Suspend card - declined 2026-11-17.** Suspend itself works (lid-close
+  resumes confirmed, slightly laggy), but Dani prefers the current menu layout
+  and suspends by closing the lid.
 
 ## 3c. Firmware (gap item 12) — what fwupd found, 2026-10-29
 
@@ -172,9 +166,9 @@ merged; graphical.target is now reached at ~5.6s, offline or not.
   a fast connection. That leaves roughly ten days before 26.05 stops getting
   updates: prepare the 26.11 bump's code beforehand so that day is a build
   and a test, not a project.
-- Until then, work only on things that need little download: section 3
-  (RT audio), 3b, 5b (boot look), gap item 10's GameMode hook, git tag per
-  generation.
+- Until then, work only on things that need little download: git tag per
+  generation (in progress), then section 3 (RT audio). Section 5b (boot look)
+  is to be re-reasoned with Dani before any change.
 
 ## 5b. Boot look (idea from 2026-11-01, not started)
 
@@ -220,7 +214,7 @@ What can be changed safely between power-on and login, and what cannot:
 | 7 | nix-ld | **merged** |
 | 8 | Self-sufficient session (keyring, agent, udisks2, gvfs, upower, udiskie, rtkit) | **merged**; RT audio open (section 3) |
 | 9 | Power menu, incl. reboot into Windows | **merged**; Suspend left out (section 3b) |
-| 10 | Screen capture: window/output/freeze, recording, instant replay | 10a screenshots **merged**; 10b recording/replay + Capture menu tested; armed replay measured at ~+22 W GPU continuously (docs/home.md), so it stays manual. Open option: arm/disarm it automatically from a GameMode start/end hook (would also be the first "gaming rules" hook) |
+| 10 | Screen capture: window/output/freeze, recording, instant replay | 10a screenshots **merged**; 10b recording/replay + Capture menu tested; armed replay measured at ~+22 W GPU continuously (docs/home.md), so it stays manual. Auto-arming from a GameMode hook was **declined** 2026-11-17 as unnecessary |
 | 11 | Launcher search: elephant `files` + `websearch` | **merged** |
 | 12 | Firmware updates (fwupd) | **merged**; findings in section 3c |
 | 13 | direnv + nix-direnv, repo devShell/formatter | **merged** (no formatter output on purpose: the repo is not uniformly formatted) |
