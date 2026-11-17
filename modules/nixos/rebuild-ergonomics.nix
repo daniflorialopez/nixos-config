@@ -100,6 +100,12 @@ let
   #
   # Tags stay local: plain `git push` does not send them.
   #
+  # Annotated, and dated when the generation was CREATED (its profile link's
+  # own mtime), not when the commit was written - those can be days apart, and
+  # "what was I running on 1 Nov?" needs the former:
+  #   git for-each-ref --sort=taggerdate refs/tags/legionix-gen-* \
+  #     --format='%(taggerdate:short) %(refname:short) %(subject)'
+  #
   # Idempotent - it walks every generation and only creates missing tags - so
   # it is safe to fire as often as the path unit below likes. Skips, with a
   # line in the journal: generations from before the revision was recorded,
@@ -107,7 +113,7 @@ let
   # does not have. Never moves an existing tag.
   tagGenerations = pkgs.writeShellApplication {
     name = "tag-generations";
-    runtimeInputs = [ pkgs.git ];
+    runtimeInputs = [ pkgs.git pkgs.coreutils ];
     text = ''
       repo="''${1:-$HOME/nixos-config}"
       host=${config.networking.hostName}
@@ -136,12 +142,17 @@ let
           continue
         fi
 
-        if existing="$(git rev-parse -q --verify "refs/tags/$tag")"; then
+        # ^{commit}: an annotated tag resolves to the tag object, not the commit.
+        if existing="$(git rev-parse -q --verify "refs/tags/$tag^{commit}")"; then
           [ "$existing" = "$rev" ] || echo "$tag: already points at $existing, not $rev - left alone" >&2
           continue
         fi
 
-        git tag "$tag" "$rev"
+        # stat, not `date -r`: the link's own mtime, without following it into
+        # the store, where every mtime is 1970.
+        created="$(stat -c %Y "$link")"
+        GIT_COMMITTER_DATE="@$created" git tag -a "$tag" "$rev" \
+          -m "$host generation $n, created $(date -d "@$created" '+%F %R')"
         echo "$tag -> $rev"
       done
     '';
