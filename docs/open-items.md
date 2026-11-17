@@ -166,6 +166,34 @@ merged; graphical.target is now reached at ~5.6s, offline or not.
   and rehearse the bump with `check-all`.
 - Gap item 6 (update cadence) is the planned way to stop falling behind:
   nixpkgs is locked at 2026-09-16.
+- **Schedule (decided 2026-11-17):** Dani is away on mobile data / WG Wi-Fi
+  until **2026-12-20**. Everything here and in section 1 (LUKS), section 2
+  (resolved-dns), gap items 3/4/6 and danix-hp waits until then, at home with
+  a fast connection. That leaves roughly ten days before 26.05 stops getting
+  updates: prepare the 26.11 bump's code beforehand so that day is a build
+  and a test, not a project.
+- Until then, work only on things that need little download: section 3
+  (RT audio), 3b, 5b (boot look), gap item 10's GameMode hook, git tag per
+  generation.
+
+## 5b. Boot look (idea from 2026-11-01, not started)
+
+What can be changed safely between power-on and login, and what cannot:
+
+- **Leave alone:** the LEGION firmware logo (only by reflashing firmware), the
+  bootloader (systemd-boot is the recovery path - previous generations - and
+  shares the ESP with Windows Boot Manager), and the Windows boot logo
+  (HackBGRT-style tools replace EFI files on that shared ESP).
+- **Option 1 - hide the boot menu** (`timeout = 0`): firmware logo straight
+  into the splash. Space during boot brings the menu back; the power menu
+  already has "reboot into Windows". Test that Space is actually caught on
+  this firmware before relying on it.
+- **Option 2 - Tokyo Night Plymouth theme**, replacing `bgrt` (which reuses
+  the firmware logo, so it is already seamless). Best done after LUKS, since
+  Plymouth then draws the passphrase prompt on every boot.
+- Separate commits, `nixos-rebuild boot`, and never both at once: a broken
+  splash is undone from the very menu option 1 hides.
+- Windows lock/sign-in picture: set in Windows Settings, outside this repo.
 
 ## 6. VM rehearsal notes (danixos-vm)
 
@@ -207,4 +235,5 @@ out-of-memory protection (zero OOM kills since 2026-04); firewall hardening
 (only key-only sshd and Tailscale are exposed); Secure Boot (off, but the threat
 model is theft — revisit after LUKS); Syncthing (other tailnet machines offline,
 notes already sync via git + Obsidian Sync); captive-portal handling (no
-evidence of a problem).
+evidence of a problem); pausing restic backup/check timers on mobile data
+(declined 2026-11-17: WG internet due shortly, five weeks left away).
