@@ -72,12 +72,6 @@ failures, the 2026-10-21 backup error). Test plan: switch, then
   neither read nor spoof them. Turning it off would trade that for captive-portal
   convenience. Captive portals meanwhile: `tailscale down`, log in,
   `tailscale up`.
-- **Windows clock — your step, in Windows.** Windows keeps local time in the
-  hardware clock, so NixOS boots 2 hours ahead after a Windows session (4 of 9
-  boots checked; once NTP took 20 minutes). In an administrator Command Prompt:
-  `reg add "HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v RealTimeIsUniversal /t REG_DWORD /d 1 /f`
-  then sync the clock once. Verify on the next NixOS boot after Windows
-  (`journalctl -k -b | grep "setting system clock"` should match real UTC).
 
 ## 3. PipeWire real-time scheduling (follow-up from gap item 8)
 
@@ -119,10 +113,10 @@ or set `RLIMIT_RTPRIO` for the user session so module-rt needs neither.
   no usable text console a failed resume means a hard power-off. Test once by
   hand (`systemctl suspend`, then wake it) and, if it comes back with a working
   display, add the card in `home/dani/wm/hyprland.nix`.
-- **Update 2026-10-31:** travelling, lid-close suspends now happen (4 deep
-  suspend/resume cycles on 10-29 and 10-31, all resumed), so the "never
-  tested" premise no longer holds - confirm the display came back each time
-  and the card can be added.
+- **Update 2026-11-17: suspend confirmed working.** Lid-close deep suspend
+  resumed cleanly on 10-31 (x2) and 11-17, display back each time; Dani noticed
+  the resume is a bit laggy but usable. Adding the Suspend card is now just a
+  decision, not a risk.
 
 ## 3c. Firmware (gap item 12) — what fwupd found, 2026-10-29
 
@@ -149,7 +143,10 @@ merged; graphical.target is now reached at ~5.6s, offline or not.
   the login screen. Hardware/dock side, not config. Unplugging/replugging the
   dock is the first thing to try if it keeps happening.
 - **Unexplained:** 1 Nov 00:20, Reboot pressed on the login screen after ~3
-  min with nothing in the journal. Needs a description of what was on screen.
+  min with nothing in the journal. Dani recalls (not certain) a black screen
+  where the greeter should have been; SDDM and X reported a normal start. Only
+  worth chasing if a black greeter happens again - then note which display
+  was black (laptop panel vs external).
 
 ## 4. danix-hp
 
@@ -199,7 +196,7 @@ merged; graphical.target is now reached at ~5.6s, offline or not.
 | 11 | Launcher search: elephant `files` + `websearch` | **merged** |
 | 12 | Firmware updates (fwupd) | **merged**; findings in section 3c |
 | 13 | direnv + nix-direnv, repo devShell/formatter | **merged** (no formatter output on purpose: the repo is not uniformly formatted) |
-| 14 | Regional formats (dates, A4, metric) | **merged**; applies from the next login (check `date`, waybar calendar Monday-first) |
+| 14 | Regional formats (dates, A4, metric) | **merged**; verified 2026-11-17 |
 | 15 | Printing and scanning | not started |
 | 16 | Calendar sync (gnome-calendar has no accounts) | **declined** 2026-10-31: Dani keeps no calendar and does not want a Google token on an unencrypted laptop. Branch `feat/calendar-sync` (67bd4ae) parked: declares gnome-calendar/EDS/GOA instead of inheriting them from cinnamon.nix (closure unchanged) - merge it if Cinnamon is ever dropped. If a calendar is wanted later: gnome-calendar's local "On This Computer" calendar, or a non-Google CalDAV |
 | 17 | Phone integration (KDE Connect) | **declined** 2026-10-31, not needed now |
