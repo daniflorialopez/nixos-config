@@ -166,8 +166,8 @@ merged; graphical.target is now reached at ~5.6s, offline or not.
   a fast connection. That leaves roughly ten days before 26.05 stops getting
   updates: prepare the 26.11 bump's code beforehand so that day is a build
   and a test, not a project.
-- Until then, work only on things that need little download: git tag per
-  generation (in progress), then section 3 (RT audio). Section 5b (boot look)
+- Until then, work only on things that need little download: section 3 (RT
+  audio). (Git tag per generation: done and merged 2026-11-17.) Section 5b (boot look)
   is to be re-reasoned with Dani before any change.
 
 ## 5b. Boot look (idea from 2026-11-01, not started)
