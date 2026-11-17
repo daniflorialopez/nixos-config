@@ -73,10 +73,36 @@ failures, the 2026-10-21 backup error). Test plan: switch, then
   convenience. Captive portals meanwhile: `tailscale down`, log in,
   `tailscale up`.
 
-## 3. PipeWire real-time scheduling (follow-up from gap item 8)
+## 3. PipeWire real-time scheduling (follow-up from gap item 8) — wait for 26.11
 
-`security.rtkit.enable` is on but **does not yet give PipeWire real-time
-priority**; `data-loop.0` stays `SCHED_OTHER`. No regression: same as before.
+**Decided 2026-11-17: wait for the 26.11 bump, then re-check.** No audible
+problem (no crackles); this is about fragility, not sound.
+
+What the 2026-11-17 read-only check found (supersedes the "never RT" below):
+
+- `pipewire` and `wireplumber` **do** get RT: their `data-loop.0` is
+  `SCHED_RR` priority 20, granted by rtkit directly (rtkit journal:
+  "Successfully made thread … RT at priority 20").
+- `pipewire-pulse` does **not**: its `data-loop.0` stays `SCHED_OTHER`. It asks
+  through xdg-desktop-portal 1.20.4, which still fails with
+  `Realtime error: Could not get pidns for pid …: Could not fstatat ns/pid: Not a directory`.
+- Which route a process takes depends on start order at login: module-rt
+  uses the portal only if it is already on the bus, otherwise asks rtkit.
+  This boot: pipewire + wireplumber 23.15 s, portal 23.22 s, pipewire-pulse
+  23.30 s - a ~70 ms race. The 2026-10-25 failure was pipewire restarted by
+  hand while the portal was up, i.e. the same race lost.
+- Effect: apps speaking PulseAudio (Firefox, Steam, Proton games) pass
+  through one non-RT hop; the final mix is RT. Inaudible on a 14-core CPU
+  unless it is saturated.
+
+**On 26.11 (from 2026-12-20):** re-run the check -
+`ps -L -o tid,cls,rtprio,ni,comm -p (pgrep -x pipewire-pulse)` (fish) and
+`journalctl --user -b -u xdg-desktop-portal | grep -i realtime`. If the portal
+error is gone and all three `data-loop.0` threads show `RR`, close this item.
+If not, the fixes considered were: (1) RLIMIT_RTPRIO for the user session so
+module-rt sets RT itself, bypassing rtkit and the portal - first verify the
+limit reaches user@.service; (2) order pipewire-pulse before the portal -
+cheap but keeps the dependency on start order.
 
 What was established (2026-10-25):
 
@@ -166,8 +192,8 @@ merged; graphical.target is now reached at ~5.6s, offline or not.
   a fast connection. That leaves roughly ten days before 26.05 stops getting
   updates: prepare the 26.11 bump's code beforehand so that day is a build
   and a test, not a project.
-- Until then, work only on things that need little download: section 3 (RT
-  audio). (Git tag per generation: done and merged 2026-11-17.) Section 5b (boot look)
+- Until then, work only on things that need little download. (Git tag per
+  generation: done 2026-11-17. Section 3, RT audio: checked, waits for 26.11.) Section 5b (boot look)
   is to be re-reasoned with Dani before any change.
 
 ## 5b. Boot look (idea from 2026-11-01, not started)
