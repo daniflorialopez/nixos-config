@@ -111,9 +111,15 @@ let
   # line in the journal: generations from before the revision was recorded,
   # "-dirty" builds (no commit holds that exact tree), and commits this clone
   # does not have. Never moves an existing tag.
+  #
+  # The last two also get a desktop notification, because a journal line is
+  # never read and the point of the tags is to not discover the gap later.
+  # Only for the newest generation (an old one is not news) and only once per
+  # generation (the last warned number is kept in ~/.local/state), so logins
+  # and `nh clean` re-runs stay quiet.
   tagGenerations = pkgs.writeShellApplication {
     name = "tag-generations";
-    runtimeInputs = [ pkgs.git pkgs.coreutils ];
+    runtimeInputs = [ pkgs.git pkgs.coreutils pkgs.libnotify ];
     text = ''
       repo="''${1:-$HOME/nixos-config}"
       host=${config.networking.hostName}
@@ -121,8 +127,29 @@ let
       profiles="''${TAG_GENERATIONS_PROFILES:-/nix/var/nix/profiles}"
       cd "$repo"
 
+      state="''${XDG_STATE_HOME:-$HOME/.local/state}/tag-generations"
+      mkdir -p "$state"
+      last_warned="$(cat "$state/last-warned" 2>/dev/null || echo 0)"
+
       shopt -s nullglob
-      for link in "$profiles"/system-*-link; do
+      links=("$profiles"/system-*-link)
+
+      newest=0
+      for link in "''${links[@]}"; do
+        n="''${link##*/system-}"
+        n="''${n%-link}"
+        [ "$n" -gt "$newest" ] && newest="$n"
+      done
+
+      # warn <generation> <body>
+      warn() {
+        [ "$1" -eq "$newest" ] && [ "$1" -gt "$last_warned" ] || return 0
+        # A missing notification daemon must not stop the tagging.
+        notify-send --app-name=Generations "Generation $1 is not traceable" "$2" || true
+        echo "$1" > "$state/last-warned"
+      }
+
+      for link in "''${links[@]}"; do
         n="''${link##*/system-}"
         n="''${n%-link}"
         tag="$host-gen-$n"
@@ -133,12 +160,14 @@ let
         case "$rev" in
           *-dirty)
             echo "$tag: built from uncommitted changes ($rev), not tagged"
+            warn "$n" "Built from uncommitted changes on top of ''${rev:0:7}. Commit them and rebuild if this generation should get a tag."
             continue
             ;;
         esac
 
         if ! git cat-file -e "$rev^{commit}" 2>/dev/null; then
           echo "$tag: commit $rev is not in $repo, not tagged"
+          warn "$n" "It records commit ''${rev:0:7}, which $repo does not have (built from another clone?)."
           continue
         fi
 
