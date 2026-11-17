@@ -9,8 +9,8 @@
 #   error: ... requires the runtime org.gnome.Platform/x86_64/50 which was not found
 #
 # which is exactly how this gap got noticed. So re-register them on every boot.
-# `--if-not-exists` short-circuits on the name, making it a ~0.5s no-op that
-# does not touch the network once the remote is already there.
+# A remote that is already registered is skipped by a local lookup, so on an
+# installed machine this never touches the network.
 let
   user = "dani";
 
@@ -25,7 +25,7 @@ let
 
   flatpak-remotes-init = pkgs.writeShellApplication {
     name = "flatpak-remotes-init";
-    runtimeInputs = [ pkgs.flatpak pkgs.coreutils ];
+    runtimeInputs = [ pkgs.flatpak pkgs.coreutils pkgs.gnugrep ];
     text = ''
       # Try every remote rather than aborting on the first failure: they are
       # independent, and giving up early would leave a half-registered set that
@@ -38,8 +38,23 @@ let
       # though the network comes up moments later. Ordering after
       # nss-lookup.target (see the unit below) plus a short retry turns that from
       # a guaranteed failure into a non-event.
+
+      # Look the names up locally first. `--if-not-exists` does NOT avoid the
+      # network: remote-add fetches the .flatpakrepo before it checks the name.
+      # Offline, that held multi-user.target - and so graphical.target, which
+      # uwsm waits on before starting Hyprland - for ~25s on every boot, and for
+      # ~2min on a weak network where each DNS lookup times out. The user saw it
+      # as a black screen after logging in.
+      #
+      # Captured once rather than piped into `grep -q`: under pipefail an early
+      # grep exit can SIGPIPE flatpak and turn a match into a failure.
+      registered=$(flatpak remotes --user --columns=name || true)
+
       add() {
         local name="$1" url="$2"
+        if grep -qxF "$name" <<<"$registered"; then
+          return 0
+        fi
         # `_` rather than a named counter: writeShellApplication runs shellcheck
         # and fails the build on SC2034 for an unused loop variable.
         for _ in 1 2 3 4 5; do
