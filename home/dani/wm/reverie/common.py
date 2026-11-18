@@ -235,19 +235,6 @@ def focused_gdk_monitor():
     return None
 
 
-def on_mains():
-    """True on AC power, and on machines with no battery at all."""
-    import glob
-    for path in glob.glob("/sys/class/power_supply/*/online"):
-        try:
-            with open(path) as f:
-                if f.read().strip() == "1":
-                    return True
-        except OSError:
-            pass
-    return not glob.glob("/sys/class/power_supply/BAT*")
-
-
 def install_css():
     css = Gtk.CssProvider()
     css.load_from_data(

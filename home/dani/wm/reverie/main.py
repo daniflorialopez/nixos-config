@@ -21,7 +21,6 @@ import common  # noqa: E402  (first: it pins the GI versions)
 from gi.repository import Gio, GLib, GLibUnix, Gtk  # noqa: E402
 
 from cards import Cards  # noqa: E402
-from dream import Dream  # noqa: E402
 from fx import Fx  # noqa: E402
 from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
@@ -33,7 +32,7 @@ STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.loc
                      "theme", "reverie.json")
 
 USAGE = ("hud show|hide|pin|glass on|off · cards|ripples on|off · spotlight on|off|toggle · "
-         "pulse [sound|fade] on|off · zen on|off|toggle · dream [auto on|off] · undo · "
+         "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
          "font caskaydia|inter · "
          "status · quit")
 
@@ -49,8 +48,6 @@ class Reverie(Gtk.Application):
         self.ready = False
         self.zen = False
         self.zen_cards = False       # what `cards` was before zen switched it on
-        self.dream_auto = False
-        self.dream_by_idle = False
 
     def do_activate(self):
         if self.ready:
@@ -61,7 +58,6 @@ class Reverie(Gtk.Application):
         self.ledger = Ledger()
         self.pulse = Pulse(self)
         self.hud = Hud(self)
-        self.dream = Dream(self)
         self.cards = Cards(self)
         self.fx = Fx(self, self.pulse)
         self.hud.pulse = self.pulse
@@ -89,7 +85,6 @@ class Reverie(Gtk.Application):
             self.fx.command("ripples", ["on"])
         self.hud.glass = state.get("glass", True)
         common.set_font(state.get("font", "caskaydia"))
-        self.dream_auto = bool(state.get("dream_auto"))
         # Zen survives a daemon restart: the bar is still stopped, so the
         # daemon has to remember that it is the one who stopped it.
         self.zen = bool(state.get("zen"))
@@ -103,7 +98,6 @@ class Reverie(Gtk.Application):
             "ripples": self.fx.ripples_on,
             "glass": self.hud.glass,
             "font": common.FONT["name"],
-            "dream_auto": self.dream_auto,
             "zen": self.zen,
             "zen_cards": self.zen_cards,
             # spotlight is a mode you enter, not a preference: never restored.
@@ -204,35 +198,15 @@ class Reverie(Gtk.Application):
             want = not self.zen if (not rest or rest[0] == "toggle") else rest[0] == "on"
             self.set_zen(want)
             reply = f"zen {onoff(self.zen)}"
-        elif head == "dream":
-            if rest and rest[0] == "auto":
-                if len(rest) > 1:
-                    self.dream_auto = (not self.dream_auto) if rest[1] == "toggle" \
-                        else rest[1] == "on"
-                reply = f"dream auto {onoff(self.dream_auto)}"
-            else:
-                self.dream.toggle()
-                return "ok"
-        elif head == "away":
-            # From hypridle. The ledger stops counting; the dream may start.
-            self.ledger.set_away(True)
-            # Never on battery: the dream is an animation, and an empty chair
-            # is the worst possible moment to spend the charge on one.
-            if self.dream_auto and not self.dream.shown and common.on_mains():
-                self.dream.show()
-                self.dream_by_idle = True
-            return "ok"
-        elif head == "back":
-            self.ledger.set_away(False)
-            if self.dream_by_idle:
-                self.dream.hide()
-            self.dream_by_idle = False
+        elif head in ("away", "back"):
+            # From hypridle: the ledger stops counting while nobody is here.
+            self.ledger.set_away(head == "away")
             return "ok"
         elif head == "status":
             return " · ".join([
                 self.pulse.command(["status"]), self.cards.command([]),
                 self.fx.command("ripples", []), self.fx.command("spotlight", []),
-                f"zen {onoff(self.zen)}", f"dream auto {onoff(self.dream_auto)}",
+                f"zen {onoff(self.zen)}",
                 self.hud.command(["glass"]), f"font {common.FONT['name']}",
             ])
         elif head == "quit":

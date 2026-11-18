@@ -28,14 +28,10 @@
 #              ignored and come straight back on focus.
 #   undo       $mod SHIFT+T reopens the window you just closed, on its
 #              workspace and (if it floated) in its place.
-#   dream      (menu) a flow field of light drifts over the dimmed
-#              desktop until a key is pressed. `dream auto on` starts it when
-#              hypridle says you have gone.
 #
 #   reverie hud show|hide|pin|glass on|off     reverie zen on|off|toggle
 #   reverie cards|ripples on|off               reverie spotlight on|off|toggle
-#   reverie pulse [sound|fade] on|off          reverie dream [auto on|off]
-#   reverie undo · status · quit
+#   reverie pulse [sound|fade] on|off          reverie undo · status · quit
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
 #                    binds for this session only (`reverie untry` removes them)
@@ -91,7 +87,7 @@ let
   #   2. letters, not punctuation: they need no keycode workaround for the
   #      us/es layouts and sit on the Corne's base layer;
   #   3. a chord only for what needs one. Hold-to-glance needs a key; reopening
-  #      a window is reflex. Modes (zen, spotlight, dream, the toggles) are
+  #      a window is reflex. Modes (zen, spotlight, the toggles) are
   #      chosen, not hit, so they live in one menu.
   #
   #   $mod+G         Glance — the HUD while held. A slip from $mod+H costs a
@@ -124,8 +120,6 @@ let
     { label = "Fade idle windows"; state = "fade"; action = "pulse fade toggle"; }
     { label = "Glass lenses"; state = "glass"; action = "hud glass toggle"; }
     { label = "Font"; value = "font"; action = "font toggle"; }
-    { label = "Dream when idle"; state = "dream auto"; action = "dream auto toggle"; }
-    { label = "Dream"; hint = "now"; action = "dream"; }
     { label = "Demo"; hint = "30 s"; action = "@demo"; }
   ];
   menuLines = lib.concatMapStringsSep "\n" (
@@ -151,7 +145,6 @@ let
     "blur true, match:namespace reverie-card"
     "ignore_alpha 0, match:namespace reverie-card"
     "no_anim true, match:namespace reverie-card"
-    "no_anim true, match:namespace reverie-dream"
     "no_anim true, match:namespace reverie-fx"
   ];
 
@@ -223,7 +216,7 @@ let
           echo "  hold SUPER+G      glance: the HUD while held"
           echo "  SUPER+SHIFT+G     pin it (then 1-9 / click a window)"
           echo "  SUPER+SHIFT+T     reopen the last closed window"
-          echo "  SUPER+R           menu: spotlight, zen, cards, sound, dream, demo"
+          echo "  SUPER+R           menu: spotlight, zen, cards, sound, demo"
           echo "  $self untry       put it all back"
           ;;
 
@@ -269,13 +262,13 @@ let
           }
           trap restore EXIT INT TERM
 
-          echo "1/4  the HUD — clock, focus arc, glass gauges, workspace map"
+          echo "1/3  the HUD — clock, focus arc, glass gauges, workspace map"
           send hud show >/dev/null
           sleep 5
           send hud hide >/dev/null
           sleep 1
 
-          echo "2/4  title cards and sound — three workspaces, three notes"
+          echo "2/3  title cards and sound — three workspaces, three notes"
           send cards on >/dev/null
           send pulse sound on >/dev/null
           cur="$(hyprctl activeworkspace -j | jq -r .id)"
@@ -285,16 +278,11 @@ let
             sleep 1.3
           done
 
-          echo "3/4  spotlight — the light follows focus"
+          echo "3/3  spotlight — the light follows focus"
           send spotlight on >/dev/null
           sleep 4
           send spotlight off >/dev/null
           sleep 1
-
-          echo "4/4  dream — any key ends it"
-          send dream >/dev/null
-          sleep 7
-          if hyprctl layers | grep -q reverie-dream; then send dream >/dev/null; fi
           restore
           echo "done — everything is back as it was"
           ;;
@@ -314,7 +302,7 @@ in
   systemd.user = {
     services.reverie = {
       Unit = {
-        Description = "reverie: HUD, title cards, spotlight, pulse, dream";
+        Description = "reverie: HUD, title cards, spotlight, pulse";
         PartOf = [ target ];
         After = [ target ];
         ConditionEnvironment = "WAYLAND_DISPLAY";
@@ -330,8 +318,8 @@ in
 
   # Presence. hypridle already runs (wm/hyprlock.nix) with no listeners; this
   # adds one that only TELLS the daemon you have gone and come back. It locks
-  # nothing and dims nothing. The focus ledger stops counting while you are
-  # away, and `dream auto on` uses the same signal.
+  # nothing and dims nothing: the focus ledger stops counting while you are
+  # away, so an empty chair is not booked as an hour in the terminal.
   services.hypridle.settings.listener = [
     {
       timeout = 180;
