@@ -116,9 +116,7 @@ class Spring:
 # ------------------------------------------------------------------- text
 
 
-def text(cr, s, x, y, size, role="fg", alpha=1.0, family="CaskaydiaMono Nerd Font",
-         weight=400, align="left", spacing=0):
-    """Draw `s` with its top-left (or top-centre / top-right) at x, y."""
+def _layout(cr, s, size, family, weight, spacing):
     layout = PangoCairo.create_layout(cr)
     desc = Pango.FontDescription()
     desc.set_family(family)
@@ -130,6 +128,18 @@ def text(cr, s, x, y, size, role="fg", alpha=1.0, family="CaskaydiaMono Nerd Fon
         attrs.insert(Pango.attr_letter_spacing_new(int(spacing * Pango.SCALE)))
         layout.set_attributes(attrs)
     layout.set_text(s, -1)
+    return layout
+
+
+def measure(cr, s, size, family="CaskaydiaMono Nerd Font", weight=400, spacing=0):
+    """Pixel size `text` would occupy, without drawing it."""
+    return _layout(cr, s, size, family, weight, spacing).get_pixel_size()
+
+
+def text(cr, s, x, y, size, role="fg", alpha=1.0, family="CaskaydiaMono Nerd Font",
+         weight=400, align="left", spacing=0):
+    """Draw `s` with its top-left (or top-centre / top-right) at x, y."""
+    layout = _layout(cr, s, size, family, weight, spacing)
     w, h = layout.get_pixel_size()
     if align == "center":
         x -= w / 2
@@ -138,6 +148,7 @@ def text(cr, s, x, y, size, role="fg", alpha=1.0, family="CaskaydiaMono Nerd Fon
     rgba(cr, role, alpha)
     cr.move_to(x, y)
     PangoCairo.show_layout(cr, layout)
+    cr.new_path()            # leave no current point behind for the next arc
     return w, h
 
 
@@ -183,6 +194,19 @@ def focused_gdk_monitor():
         if mon.get_connector() == name:
             return mon
     return None
+
+
+def on_mains():
+    """True on AC power, and on machines with no battery at all."""
+    import glob
+    for path in glob.glob("/sys/class/power_supply/*/online"):
+        try:
+            with open(path) as f:
+                if f.read().strip() == "1":
+                    return True
+        except OSError:
+            pass
+    return not glob.glob("/sys/class/power_supply/BAT*")
 
 
 def install_css():
