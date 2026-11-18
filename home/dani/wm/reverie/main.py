@@ -34,6 +34,7 @@ STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.loc
 
 USAGE = ("hud show|hide|pin|glass on|off · cards|ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · dream [auto on|off] · undo · "
+         "font caskaydia|inter · "
          "status · quit")
 
 
@@ -65,6 +66,7 @@ class Reverie(Gtk.Application):
         self.fx = Fx(self, self.pulse)
         self.hud.pulse = self.pulse
         self.hud.ledger = self.ledger
+        self.cards.bar = self.hud.bar
         self.pulse.listeners += [self.ledger.on_event, self.cards.on_event, self.fx.on_event]
         self.restore()
         self.listen()
@@ -86,6 +88,7 @@ class Reverie(Gtk.Application):
         if state.get("ripples"):
             self.fx.command("ripples", ["on"])
         self.hud.glass = state.get("glass", True)
+        common.set_font(state.get("font", "caskaydia"))
         self.dream_auto = bool(state.get("dream_auto"))
         # Zen survives a daemon restart: the bar is still stopped, so the
         # daemon has to remember that it is the one who stopped it.
@@ -99,6 +102,7 @@ class Reverie(Gtk.Application):
             "cards": self.cards.enabled,
             "ripples": self.fx.ripples_on,
             "glass": self.hud.glass,
+            "font": common.FONT["name"],
             "dream_auto": self.dream_auto,
             "zen": self.zen,
             "zen_cards": self.zen_cards,
@@ -186,6 +190,16 @@ class Reverie(Gtk.Application):
             reply = self.fx.command(head, rest)
         elif head == "undo":
             return self.pulse.undo()
+        elif head == "font":
+            # The voice of every surface; kept switchable so the two can be
+            # compared on the real screen rather than argued about.
+            if rest:
+                names = list(common.FONTS)
+                want = rest[0]
+                if want == "toggle":
+                    want = names[(names.index(common.FONT["name"]) + 1) % len(names)]
+                common.set_font(want)
+            reply = f"font {common.FONT['name']}"
         elif head == "zen":
             want = not self.zen if (not rest or rest[0] == "toggle") else rest[0] == "on"
             self.set_zen(want)
@@ -219,7 +233,7 @@ class Reverie(Gtk.Application):
                 self.pulse.command(["status"]), self.cards.command([]),
                 self.fx.command("ripples", []), self.fx.command("spotlight", []),
                 f"zen {onoff(self.zen)}", f"dream auto {onoff(self.dream_auto)}",
-                self.hud.command(["glass"]),
+                self.hud.command(["glass"]), f"font {common.FONT['name']}",
             ])
         elif head == "quit":
             GLib.idle_add(self.shutdown)

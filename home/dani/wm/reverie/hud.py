@@ -30,15 +30,19 @@ import time
 
 import cairo
 
-from common import (EFFECT, PAL, SPATIAL, Spring, focused_gdk_monitor, hypr, layer_window,
-                    measure, rgba, rounded, text)
+from barinfo import BarInfo
+from common import (EFFECT, FONT, ICON_FAMILY, PAL, SPATIAL, Spring, focused_gdk_monitor, hypr,
+                    label, layer_window, measure, rgba, rounded, text)
 from ledger import human
 
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
 
-UI = "Inter Variable"
 TAU = math.tau
+# The bar's island radius (theme/metrics.nix islandRadius), handed over by the
+# wrapper so a chip here and a pill on the bar stay the same shape.
+ISLAND_RADIUS = float(os.environ.get("REVERIE_ISLAND_RADIUS", "12"))
 STAGGER = 0.045              # seconds between one gauge starting and the next
+SOFT = 8                     # downscale factor of the frosted copy of the backdrop
 RANKS = ("accent", "fg", "hint", "slate")     # focus-history colours, most-used first
 
 
@@ -57,7 +61,7 @@ class Stats:
         self._cpu_prev = self._cpu_times()
         self.values = {"cpu": 0.0, "mem": 0.0, "gpu": None, "vram": None,
                        "bat": None, "temp": None}
-        self.info = {"playing": "", "gen": "", "net": ""}
+        self.info = {"gen": ""}
         self.charging = False
         self._busy = False
 
@@ -118,25 +122,17 @@ class Stats:
                     self.values["vram"] = used / tot
                 except (ValueError, IndexError):
                     pass
-            if shutil.which("playerctl"):
-                self.info["playing"] = self._run(
-                    "playerctl", "metadata", "--format", "{{artist}} — {{title}}").strip(" —")
             try:
                 link = os.readlink("/nix/var/nix/profiles/system")
                 self.info["gen"] = link.replace("system-", "").replace("-link", "")
             except OSError:
                 pass
-            if shutil.which("nmcli"):
-                out = self._run("nmcli", "-t", "-f", "NAME,TYPE", "connection", "show", "--active")
-                names = [ln.split(":")[0] for ln in out.splitlines()
-                         if ln and not ln.endswith(("loopback", "tun", "bridge"))]
-                self.info["net"] = names[0] if names else "offline"
         finally:
             self._busy = False
 
 
-GAUGES = [("cpu", "CPU"), ("mem", "MEM"), ("gpu", "GPU"), ("vram", "VRAM"),
-          ("temp", "TEMP"), ("bat", "BAT")]
+GAUGES = [("cpu", "cpu"), ("mem", "mem"), ("gpu", "gpu"), ("vram", "vram"),
+          ("temp", "temp"), ("bat", "bat")]
 
 
 class Hud:
@@ -163,6 +159,7 @@ class Hud:
         self.sticky = False
         self.glass = True
         self.backdrop = None
+        self.backdrop_soft = None
         self.token = 0
         self.shown_at = 0.0
         self.asked_at = 0.0
@@ -175,7 +172,14 @@ class Hud:
         self.snapshot = {"monitors": [], "clients": [], "active": None}
         self.pulse = None                    # set by main: focus ages
         self.ledger = None                   # set by main: today's focus blocks
+        self.bar = BarInfo()                 # everything waybar shows
+        self.bar.listeners.append(self._bar_landed)
+        self.bar_age = 0
         GLib.idle_add(self._warm)
+
+    def _bar_landed(self):
+        if self.shown:
+            self._ensure_tick()              # one frame with the new readings
 
     def _warm(self):
         """Pay the one-time costs at start-up instead of on the first keypress.
@@ -187,6 +191,7 @@ class Hud:
         then as quick as every later one.
         """
         scratch = cairo.ImageSurface(cairo.FORMAT_ARGB32, 320, 180)
+        self.bar.refresh()                   # so the first show already has it
         self.refresh()
         self.draw(None, cairo.Context(scratch), 320, 180)
         if not self.shown:
@@ -228,7 +233,8 @@ class Hud:
         if self.glass and mon is not None and shutil.which("grim"):
             self._capture(mon.get_connector(), self.token)
         else:
-            self._present(self.token, self.backdrop if fading else None)
+            self._present(self.token, self.backdrop if fading else None,
+                          self.backdrop_soft if fading else None)
 
     def _capture(self, output, token):
         """One frame of the output over a pipe, decoded off the main loop.
@@ -255,14 +261,32 @@ class Hud:
                         buf, cairo.FORMAT_RGB24, w, h, w * 4)
             except (OSError, ValueError, subprocess.SubprocessError, cairo.Error, MemoryError):
                 surf = None
-            GLib.idle_add(self._present, token, surf)
+            GLib.idle_add(self._present, token, surf, self.soften(surf))
         threading.Thread(target=work, daemon=True).start()
 
-    def _present(self, token, backdrop):
+    @staticmethod
+    def soften(surf):
+        """The same picture at an eighth of the size. Painted back up it is a
+        blur for free — the frosted body of the glass; `surf` stays sharp for
+        the rim, where the bend should be legible."""
+        if surf is None:
+            return None
+        w, h = surf.get_width() // SOFT, surf.get_height() // SOFT
+        small = cairo.ImageSurface(cairo.FORMAT_RGB24, max(1, w), max(1, h))
+        ctx = cairo.Context(small)
+        ctx.scale(1 / SOFT, 1 / SOFT)
+        ctx.set_source_surface(surf, 0, 0)
+        ctx.paint()
+        return small
+
+    def _present(self, token, backdrop, soft=None):
         if token != self.token or not self.shown:
             return False                     # let go before the capture came back
         self.backdrop = backdrop
+        self.backdrop_soft = soft if backdrop is not None else None
         self.entered = False
+        self.bar.refresh()                   # shows the cached readings meanwhile
+        self.bar_age = 0
         self.refresh()
         self.shown_at = time.monotonic()
         self.alpha.target = 1.0
@@ -350,6 +374,10 @@ class Hud:
             self.timer_id = 0
             return False
         self.refresh()
+        self.bar_age += 1
+        if self.bar_age >= 5:                # pinned: the bar's modules every ~10 s
+            self.bar_age = 0
+            self.bar.refresh()
         self._ensure_tick()                  # the clock, and any gauge that moved
         return True
 
@@ -413,6 +441,7 @@ class Hud:
         if not self.shown and self.alpha.x < 0.01:
             self.win.set_visible(False)
             self.backdrop = None             # ~14 MB; do not keep it while hidden
+            self.backdrop_soft = None
             self.tick_id = 0
             return False
         settled = self.alpha.resting and self.rise.resting and \
@@ -425,14 +454,16 @@ class Hud:
         return True
 
     # -- glass ------------------------------------------------------------
-    def _paint_backdrop(self, cr, cx, cy, zoom, width, alpha):
-        """Paint the captured desktop magnified by `zoom` about (cx, cy)."""
-        s = width / self.backdrop.get_width()
+    def _paint_backdrop(self, cr, cx, cy, zoom, width, alpha, soft=False):
+        """Paint the captured desktop magnified by `zoom` about (cx, cy);
+        `soft` uses the frosted copy."""
+        source = self.backdrop_soft if soft and self.backdrop_soft is not None else self.backdrop
+        s = width / source.get_width()
         cr.save()
         cr.translate(cx, cy)
         cr.scale(zoom * s, zoom * s)
         cr.translate(-cx / s, -cy / s)
-        cr.set_source_surface(self.backdrop, 0, 0)
+        cr.set_source_surface(source, 0, 0)
         cr.get_source().set_filter(cairo.FILTER_BILINEAR)
         cr.paint_with_alpha(alpha)
         cr.restore()
@@ -447,14 +478,18 @@ class Hud:
         cr.set_source(rim)
 
     def lens(self, cr, cx, cy, radius, width, u, a):
-        """A disc of clear glass: more magnification, and more bend, at the rim."""
+        """A disc of glass. Its body is frosted, so what is written on it
+        stays readable over anything; its rim is clear and bends the desktop
+        harder the closer to the edge — which is where real glass shows what
+        it is made of."""
         if self.backdrop is not None:
-            for frac, zoom in ((1.0, 1.60), (0.96, 1.36), (0.90, 1.22), (0.80, 1.13)):
+            for frac, zoom, soft in ((1.0, 1.60, False), (0.955, 1.36, False),
+                                     (0.90, 1.22, False), (0.84, 1.12, True)):
                 cr.save()
                 cr.new_path()
                 cr.arc(cx, cy, radius * frac, 0, TAU)
                 cr.clip()
-                self._paint_backdrop(cr, cx, cy, zoom, width, a)
+                self._paint_backdrop(cr, cx, cy, zoom, width, a, soft)
                 cr.restore()
         # Smoked toward the centre, clear toward the rim: the number stays
         # readable over whatever is behind it, and the bend is left visible
@@ -462,9 +497,9 @@ class Hud:
         r, g, b = PAL["bgDeep"]
         smoke = cairo.RadialGradient(cx, cy, 0, cx, cy, radius)
         if self.backdrop is not None:
-            smoke.add_color_stop_rgba(0.0, r, g, b, 0.82 * a)
-            smoke.add_color_stop_rgba(0.60, r, g, b, 0.70 * a)
-            smoke.add_color_stop_rgba(1.0, r, g, b, 0.30 * a)
+            smoke.add_color_stop_rgba(0.0, r, g, b, 0.66 * a)
+            smoke.add_color_stop_rgba(0.80, r, g, b, 0.60 * a)
+            smoke.add_color_stop_rgba(1.0, r, g, b, 0.28 * a)
         else:
             smoke.add_color_stop_rgba(0.0, r, g, b, 0.30 * a)
             smoke.add_color_stop_rgba(1.0, r, g, b, 0.30 * a)
@@ -483,11 +518,11 @@ class Hud:
         cx, cy = x + w / 2, y + h / 2
         if self.backdrop is not None:
             inset = 7 * u
-            for grow, zoom in ((0.0, 1.30), (inset, 1.07)):
+            for grow, zoom, soft in ((0.0, 1.30, False), (inset, 1.07, True)):
                 cr.save()
                 rounded(cr, x + grow, y + grow, w - 2 * grow, h - 2 * grow, max(1.0, r - grow))
                 cr.clip()
-                self._paint_backdrop(cr, cx, cy, zoom, width, a)
+                self._paint_backdrop(cr, cx, cy, zoom, width, a, soft)
                 cr.restore()
         rounded(cr, x, y, w, h, r)
         rgba(cr, "bgDeep", (0.52 if live else 0.66) * a)
@@ -509,12 +544,14 @@ class Hud:
 
         lift = (1.0 - rise) * 46 * u       # everything travels up into place
         self.draw_clock(cr, w / 2, 250 * u + lift, u, a)
-        self.draw_gauges(cr, w, w / 2, 630 * u + lift * 1.6, u, a)
+        self.draw_gauges(cr, w, w / 2, 590 * u + lift * 1.6, u, a)
+        self.draw_bar(cr, w, 752 * u + lift * 2.0, u, a)
         self.draw_map(cr, w, h, u, a, lift * 2.4)
         self.draw_corners(cr, w, h, u, a)
         if self.sticky:
-            text(cr, "1–9  JUMP      CLICK  A WINDOW      ANY KEY  CLOSE", w / 2, h - 58 * u,
-                 13 * u, "hint", a, family=UI, weight=600, align="center", spacing=3 * u)
+            text(cr, label("1-9 jump   ·   click a window   ·   any key closes"), w / 2,
+                 h - 58 * u, 13 * u, "hint", a, weight=FONT["strong"], align="center",
+                 spacing=FONT["track"] * u)
 
     def draw_clock(self, cr, cx, cy, u, a):
         now = time.localtime()
@@ -571,10 +608,16 @@ class Hud:
             cr.arc(sx, sy, rad * u, 0, TAU)
             cr.fill()
 
-        text(cr, time.strftime("%H:%M", now), cx, cy - 150 * u, 210 * u, "fg", a,
-             family=UI, weight=200, align="center", spacing=-4 * u)
-        text(cr, time.strftime("%A %-d %B", now).upper(), cx, cy + 96 * u, 22 * u, "muted", a,
-             family=UI, weight=500, align="center", spacing=5 * u)
+        # Set like the lock screen (wm/hyprlock.nix): the time in `fg`, the
+        # date under it in `subtle`. Centred on the same line whatever the
+        # voice, so switching fonts does not shift the composition.
+        clock = time.strftime("%H:%M", now)
+        size = FONT["clock_size"] * u
+        _, th = measure(cr, clock, size, weight=FONT["clock_weight"])
+        text(cr, clock, cx, cy - 23 * u - th / 2, size, "fg", a, weight=FONT["clock_weight"],
+             align="center", spacing=FONT["clock_track"] * u)
+        text(cr, label(time.strftime("%A %-d %B", now)), cx, cy + 96 * u, 22 * u, "subtle", a,
+             weight=FONT["regular"], align="center", spacing=FONT["track"] * 1.6 * u)
 
         # Legend for the focus band: the four applications that had the most
         # of today, each with the colour its strokes are drawn in.
@@ -582,24 +625,24 @@ class Hud:
                  for i, (cls, sec) in enumerate(totals[:len(RANKS)]) if sec >= 60]
         if items:
             size, dot, gap, sep = 15 * u, 5 * u, 10 * u, 34 * u
-            widths = [measure(cr, label, size, family=UI, weight=500)[0] for _, label in items]
+            widths = [measure(cr, lbl, size, weight=FONT["regular"])[0] for _, lbl in items]
             total = sum(widths) + len(items) * (2 * dot + gap) + (len(items) - 1) * sep
             x = cx - total / 2
             y = cy + 150 * u
-            for (role, label), tw in zip(items, widths):
+            for (role, lbl), tw in zip(items, widths):
                 rgba(cr, role, a)
                 cr.new_path()
                 cr.arc(x + dot, y + size * 0.62, dot, 0, TAU)
                 cr.fill()
-                text(cr, label, x + 2 * dot + gap, y, size, "subtle", a, family=UI, weight=500)
+                text(cr, lbl, x + 2 * dot + gap, y, size, "muted", a, weight=FONT["regular"])
                 x += 2 * dot + gap + tw + sep
 
     def draw_gauges(self, cr, width, cx, cy, u, a):
-        present = [(k, label) for k, label in GAUGES if self.stats.values[k] is not None]
+        present = [(k, name) for k, name in GAUGES if self.stats.values[k] is not None]
         gap = 200 * u
         x = cx - gap * (len(present) - 1) / 2
         r = 56 * u
-        for key, label in present:
+        for key, name in present:
             raw = self.stats.values[key]
             v = max(0.0, min(1.08, self.gauge[key].x))
             self.lens(cr, x, cy, r + 24 * u, width, u, a)
@@ -619,9 +662,11 @@ class Hud:
                 cr.arc(x, cy, r, 0.75 * math.pi, 0.75 * math.pi + 1.5 * math.pi * min(v, 1.0))
                 cr.stroke()
             val = f"{raw:.0f}°" if key == "temp" else f"{raw * 100:.0f}"
-            text(cr, val, x, cy - 22 * u, 34 * u, "fg", a, family=UI, weight=400, align="center")
-            text(cr, label, x, cy + r + 38 * u, 14 * u, "muted", a, family=UI, weight=600,
-                 align="center", spacing=3 * u)
+            vsize = 32 * u
+            _, vh = measure(cr, val, vsize, weight=FONT["regular"])
+            text(cr, val, x, cy - vh / 2, vsize, "fg", a, weight=FONT["regular"], align="center")
+            text(cr, label(name), x, cy + r + 36 * u, 14 * u, "muted", a,
+                 weight=FONT["strong"], align="center", spacing=FONT["track"] * u)
             x += gap
 
     def draw_map(self, cr, w, h, u, a, lift):
@@ -686,10 +731,10 @@ class Hud:
                     # the extra latency, and nothing else on screen says so.
                     name = (c.get("class") or "?").lower() + ("  ·x11" if c.get("xwayland") else "")
                     text(cr, name, cx0 + 8 * u, cy0 + 6 * u, 12 * u,
-                         "fg" if focused else "subtle", a, family=UI, weight=500)
+                         "fg" if focused else "subtle", a, weight=FONT["regular"])
                     cr.restore()
             text(cr, str(wid), x + card_w / 2, y + card_h + 12 * u, 20 * u,
-                 "fg" if live else "muted", a, family=UI, weight=300, align="center")
+                 "fg" if live else "muted", a, weight=FONT["thin"], align="center")
             x += card_w + gap
 
     def draw_corners(self, cr, w, h, u, a):
@@ -697,15 +742,62 @@ class Hud:
         host = os.uname().nodename
         up = float(_read("/proc/uptime", "0").split()[0])
         upt = f"{int(up // 3600)}h {int(up % 3600 // 60):02d}m"
-        text(cr, host.upper(), m, m, 15 * u, "fg", a, family=UI, weight=600, spacing=4 * u)
+        text(cr, label(host), m, m, 15 * u, "fg", a, weight=FONT["strong"],
+             spacing=FONT["track"] * 1.3 * u)
         gen = self.stats.info["gen"]
         line = f"generation {gen}   ·   up {upt}   ·   {os.uname().release}" if gen else f"up {upt}"
-        text(cr, line, m, m + 26 * u, 15 * u, "muted", a, family=UI, weight=400)
+        text(cr, line, m, m + 26 * u, 15 * u, "muted", a, weight=FONT["regular"])
+        # hyprland/window: what the bar prints next to the workspaces.
+        if self.bar.title:
+            text(cr, self.bar.title, w / 2, h - 446 * u, 15 * u, "muted", a,
+                 family=ICON_FAMILY, weight=400, align="center")
 
-        net = self.stats.info["net"]
-        if net:
-            text(cr, net, w - m, m, 15 * u, "fg", a, family=UI, weight=600, align="right")
-        playing = self.stats.info["playing"]
-        if playing:
-            text(cr, playing[:70], w - m, m + 26 * u, 15 * u, "muted", a, family=UI,
-                 weight=400, align="right")
+    # -- the bar, unfolded --------------------------------------------------
+    def island(self, cr, x, y, w, h, u, a):
+        """The bar's own material: 0.85 bg, a 10% fg hairline, the island radius."""
+        rounded(cr, x, y, w, h, ISLAND_RADIUS * u)
+        rgba(cr, "bg", 0.85 * a)
+        cr.fill_preserve()
+        cr.set_line_width(1.0 * u)
+        rgba(cr, "fg", 0.10 * a)
+        cr.stroke()
+
+    def draw_bar(self, cr, w, y, u, a):
+        """Every module the bar is showing, as a chip: its glyph in the bar's
+        own colour for its state, and — because here there is room — the
+        sentence the bar keeps in a tooltip."""
+        items = self.bar.items
+        if not items:
+            return
+        pad, gap, between = 16 * u, 12 * u, 11 * u
+        size, dsize, ch = 17 * u, 15 * u, 44 * u
+        chips = []
+        for it in items:
+            tw, th = measure(cr, it["text"], size, family=ICON_FAMILY)
+            dw, dh = measure(cr, it["detail"], dsize) if it["detail"] else (0, 0)
+            chips.append((it, tw, th, dw, dh, pad * 2 + tw + (between + dw if dw else 0)))
+        # Flow into centred rows of about equal width: work out how many rows
+        # the chips need, then fill each to its share. Greedy wrapping alone
+        # leaves the last chip alone on a row of its own.
+        total = sum(c[5] for c in chips) + gap * (len(chips) - 1)
+        count = max(1, math.ceil(total / (w * 0.80)))
+        share = total / count
+        rows, acc = [[]], 0.0
+        for chip in chips:
+            if rows[-1] and len(rows) < count and acc + chip[5] / 2 > share:
+                rows.append([])
+                acc = 0.0
+            rows[-1].append(chip)
+            acc += chip[5] + gap
+        for r, row in enumerate(rows):
+            x = (w - sum(c[5] for c in row) - gap * (len(row) - 1)) / 2
+            ry = y + r * (ch + gap)
+            for it, tw, th, dw, dh, cw in row:
+                self.island(cr, x, ry, cw, ch, u, a)
+                role = it["role"] if it["role"] in PAL else "subtle"
+                text(cr, it["text"], x + pad, ry + (ch - th) / 2, size, role, a,
+                     family=ICON_FAMILY)
+                if dw:
+                    text(cr, it["detail"], x + pad + tw + between, ry + (ch - dh) / 2, dsize,
+                         "muted", a, weight=FONT["regular"])
+                x += cw + gap

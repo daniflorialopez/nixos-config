@@ -46,6 +46,45 @@ def mix(a, b, t):
     return tuple(ca[i] + (cb[i] - ca[i]) * t for i in range(3))
 
 
+# ------------------------------------------------------------- typography
+# One voice for every surface. The default is the desktop's own: the bar,
+# walker, mako and the lock screen are all CaskaydiaMono, and wm/hyprlock.nix
+# is the reference for how a large clock is set in it (regular colour `fg`,
+# date in `subtle`, mixed case). `inter` is kept as the alternative that the
+# first version shipped with, so the two can be compared live:
+# `reverie font caskaydia|inter`.
+#
+# No semibold in Caskaydia: its flat-topped capitals read as cropped once the
+# strokes get heavy, so emphasis there is colour, never weight.
+FONTS = {
+    "caskaydia": {
+        "family": "CaskaydiaMono Nerd Font", "regular": 400, "strong": 400, "thin": 300,
+        "clock_size": 150, "clock_weight": 300, "clock_track": 0.0,
+        "upper": False, "track": 0.0, "numeral_weight": 200,
+    },
+    "inter": {
+        "family": "Inter Variable", "regular": 400, "strong": 600, "thin": 300,
+        "clock_size": 210, "clock_weight": 200, "clock_track": -4.0,
+        "upper": True, "track": 3.0, "numeral_weight": 200,
+    },
+}
+FONT = {"name": "caskaydia", **FONTS["caskaydia"]}
+# Glyphs (the bar's Nerd Font icons) always come from here, whatever the voice.
+ICON_FAMILY = "CaskaydiaMono Nerd Font"
+
+
+def set_font(name):
+    if name in FONTS:
+        FONT.clear()
+        FONT.update({"name": name, **FONTS[name]})
+    return FONT["name"]
+
+
+def label(s):
+    """Small captions: upper-case and tracked in Inter, as typed in Caskaydia."""
+    return s.upper() if FONT["upper"] else s
+
+
 # ----------------------------------------------------------- Hyprland IPC
 
 
@@ -131,15 +170,15 @@ def _layout(cr, s, size, family, weight, spacing):
     return layout
 
 
-def measure(cr, s, size, family="CaskaydiaMono Nerd Font", weight=400, spacing=0):
+def measure(cr, s, size, family=None, weight=400, spacing=0):
     """Pixel size `text` would occupy, without drawing it."""
-    return _layout(cr, s, size, family, weight, spacing).get_pixel_size()
+    return _layout(cr, s, size, family or FONT["family"], weight, spacing).get_pixel_size()
 
 
-def text(cr, s, x, y, size, role="fg", alpha=1.0, family="CaskaydiaMono Nerd Font",
+def text(cr, s, x, y, size, role="fg", alpha=1.0, family=None,
          weight=400, align="left", spacing=0):
     """Draw `s` with its top-left (or top-centre / top-right) at x, y."""
-    layout = _layout(cr, s, size, family, weight, spacing)
+    layout = _layout(cr, s, size, family or FONT["family"], weight, spacing)
     w, h = layout.get_pixel_size()
     if align == "center":
         x -= w / 2

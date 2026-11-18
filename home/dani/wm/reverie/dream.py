@@ -26,7 +26,8 @@ import time
 
 import cairo
 
-from common import EFFECT, PAL, Spring, focused_gdk_monitor, layer_window, rgba, text
+from common import (EFFECT, FONT, PAL, Spring, focused_gdk_monitor, label, layer_window, rgba,
+                    text)
 
 from gi.repository import Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
 
@@ -186,6 +187,6 @@ class Dream:
 
         u = h / 1440.0
         text(cr, time.strftime("%H:%M"), w - 70 * u, h - 150 * u, 84 * u, "fg", 0.85 * a,
-             family="Inter Variable", weight=200, align="right")
-        text(cr, "any key wakes it", w - 72 * u, h - 52 * u, 14 * u, "hint", a,
-             family="Inter Variable", weight=500, align="right", spacing=3 * u)
+             weight=FONT["clock_weight"], align="right")
+        text(cr, label("any key wakes it"), w - 72 * u, h - 52 * u, 14 * u, "hint", a,
+             weight=FONT["strong"], align="right", spacing=FONT["track"] * u)

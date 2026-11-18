@@ -1,4 +1,4 @@
-{ config, lib, pkgs, theme, ... }:
+{ config, lib, pkgs, theme, metrics, ... }:
 
 # REVERIE — a second shell drawn by hand. EXPERIMENTAL, branch rice/reverie.
 #
@@ -126,6 +126,7 @@ let
     { label = "Sound"; state = "sound"; action = "pulse sound toggle"; }
     { label = "Fade idle windows"; state = "fade"; action = "pulse fade toggle"; }
     { label = "Glass lenses"; state = "glass"; action = "hud glass toggle"; }
+    { label = "Font"; value = "font"; action = "font toggle"; }
     { label = "Dream when idle"; state = "dream auto"; action = "dream auto toggle"; }
     { label = "Dream"; hint = "now"; action = "dream"; }
     { label = "Strata wallpaper"; hint = "show"; action = "@strata"; }
@@ -136,6 +137,8 @@ let
     r:
     if r ? state then
       ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} "$(is ${lib.escapeShellArg r.state})"''
+    else if r ? value then
+      ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} "$(val ${lib.escapeShellArg r.value})"''
     else
       ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} ${lib.escapeShellArg r.hint}''
   ) menuRows;
@@ -148,6 +151,10 @@ let
     "blur true, match:namespace reverie-hud"
     "ignore_alpha 0, match:namespace reverie-hud"
     "no_anim true, match:namespace reverie-hud"
+    # The title card is an island too: blurred like the bar, and only where
+    # it is drawn (everything around it is fully transparent).
+    "blur true, match:namespace reverie-card"
+    "ignore_alpha 0, match:namespace reverie-card"
     "no_anim true, match:namespace reverie-card"
     "no_anim true, match:namespace reverie-dream"
     "no_anim true, match:namespace reverie-fx"
@@ -176,6 +183,10 @@ let
     text = ''
       export GI_TYPELIB_PATH="${typelibs}''${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
       export REVERIE_PALETTE="${palette}"
+      # The HUD's chips are islands in the sense theme/metrics.nix defines
+      # (0.85 bg, a 10% fg hairline, a floating rounded box), so they take the
+      # island radius from there rather than restating 12.
+      export REVERIE_ISLAND_RADIUS="${toString metrics.islandRadius}"
       sock="''${XDG_RUNTIME_DIR:-/tmp}/reverie.sock"
       self="$(readlink -f "$0")"
 
@@ -245,6 +256,7 @@ let
           # index of the chosen row. walker comes from the session PATH.
           st="$(send status)"
           is() { if grep -q "$1 on" <<<"$st"; then echo on; else echo off; fi; }
+          val() { sed -n "s/.*$1 \([a-z]*\).*/\1/p" <<<"$st"; }
           actions=(${menuActions})
           idx="$(
             {
