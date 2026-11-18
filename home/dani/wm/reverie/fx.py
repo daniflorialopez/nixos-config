@@ -24,6 +24,10 @@ with a hole in it:
     first version did;
   - that edge is drawn with real gradients (four strips and four corners),
     not stacked rings, so there are no visible steps in it;
+  - the dimness is one flat layer and each pool is CUT out of it, so pools
+    can overlap: the menu deck asks to stay lit while it is open (it is what
+    you are looking at when you switch the spotlight on), and its pool and
+    the window's simply merge;
   - every monitor dims, not only the one with focus.
 
 And what makes it feel attached to the window rather than following it
@@ -50,7 +54,7 @@ import time
 
 import cairo
 
-from common import EFFECT, PAL, Spring, hypr, layer_window, rgba, rounded
+from common import EFFECT, Spring, hypr, layer_window, rgba, rounded
 
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
 
@@ -133,6 +137,7 @@ class Fx:
         self.alpha = Spring(0.0, EFFECT)
         self.box = [Chase() for _ in range(4)]                # global x, y, w, h
         self.have_box = False
+        self.lit = None              # (x, y, w, h, radius), global: also kept bright
         self.ripples = []            # (cx, cy, radius, t0, opening), global
         self.rounding = 16.0
         self.feather = 12.0
@@ -208,6 +213,13 @@ class Fx:
         self.moving = bool(self.ripples) or not (
             self.alpha.resting and all(s.resting for s in self.box))
 
+    def set_lit(self, rect):
+        """A second pool: something that is not the focused window but must
+        not be dimmed (the menu deck). None removes it."""
+        self.lit = rect
+        if self.spot or self.alpha.x > 0.01:
+            self.wake()                  # one frame with the new shape
+
     # -- events -----------------------------------------------------------
     def on_event(self, event, data):
         if self.spot and event in FOCUS_EVENTS:
@@ -281,34 +293,33 @@ class Fx:
         return True
 
     # -- drawing ----------------------------------------------------------
-    def draw_pool(self, cr, x, y, w, h, vw, vh, a):
-        """Dimness everywhere except a soft-edged, window-shaped pool."""
-        f, r = self.feather, self.rounding
-        dim = DIM * a
-        cr_, cg, cb = PAL["bgDeep"]
-
-        # 1. Flat dimness outside the pool's outer bounding box.
-        cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+    @staticmethod
+    def cut(cr, x, y, w, h, r, f):
+        """Remove the dimness inside a rounded rectangle, and fade it back in
+        over `f` pixels outside. Only the source's alpha matters to DEST_OUT,
+        so the colour set here is never seen."""
+        cr.save()
+        cr.set_operator(cairo.OPERATOR_DEST_OUT)
+        cr.set_source_rgba(0, 0, 0, 1)
         cr.new_path()
-        cr.rectangle(0, 0, vw, vh)
-        cr.rectangle(x - f, y - f, w + 2 * f, h + 2 * f)
-        cr.set_source_rgba(cr_, cg, cb, dim)
+        rounded(cr, x, y, w, h, r)
         cr.fill()
-        cr.set_fill_rule(cairo.FILL_RULE_WINDING)
 
-        # 2. The soft edge. A smoothstep falloff, sampled into gradient stops:
-        #    0 at the window's edge, full dimness one gap further out.
+        # The soft edge: a smoothstep, sampled into gradient stops — nothing
+        # left at the window's edge, everything left one gap further out.
         def stops(grad):
             for i in range(7):
                 t = i / 6
-                grad.add_color_stop_rgba(t, cr_, cg, cb, dim * t * t * (3 - 2 * t))
+                grad.add_color_stop_rgba(t, 0, 0, 0, 1 - t * t * (3 - 2 * t))
             return grad
 
+        # Each strip reaches one pixel into the pool, where the gradient pads
+        # with "remove everything": no seam while the pool is between pixels.
         strips = (
-            (x + r, y - f, w - 2 * r, f, (0, y, 0, y - f)),                 # top
-            (x + r, y + h, w - 2 * r, f, (0, y + h, 0, y + h + f)),         # bottom
-            (x - f, y + r, f, h - 2 * r, (x, 0, x - f, 0)),                 # left
-            (x + w, y + r, f, h - 2 * r, (x + w, 0, x + w + f, 0)),         # right
+            (x + r, y - f, w - 2 * r, f + 1, (0, y, 0, y - f)),                 # top
+            (x + r, y + h - 1, w - 2 * r, f + 1, (0, y + h, 0, y + h + f)),     # bottom
+            (x - f, y + r, f + 1, h - 2 * r, (x, 0, x - f, 0)),                 # left
+            (x + w - 1, y + r, f + 1, h - 2 * r, (x + w, 0, x + w + f, 0)),     # right
         )
         for sx, sy, sw, sh, line in strips:
             if sw <= 0 or sh <= 0:
@@ -316,9 +327,9 @@ class Fx:
             cr.set_source(stops(cairo.LinearGradient(*line)))
             cr.rectangle(sx, sy, sw, sh)
             cr.fill()
-        # Corners: a radial falloff from the corner's own arc. Beyond the
-        # outer radius the gradient pads with full dimness, which is exactly
-        # what the square outside the arc needs.
+        # Corners: a radial falloff from the corner's own arc. Inside the arc
+        # the gradient pads with "remove everything", beyond the outer radius
+        # with "remove nothing", which is what each part of the square needs.
         corners = (
             (x - f, y - f, x + r, y + r),
             (x + w - r, y - f, x + w - r, y + r),
@@ -329,25 +340,41 @@ class Fx:
             cr.set_source(stops(cairo.RadialGradient(ccx, ccy, r, ccx, ccy, r + f)))
             cr.rectangle(qx, qy, r + f, r + f)
             cr.fill()
-
-        # 3. A hairline of light on the pool's rim: the edge catches it.
-        rounded(cr, x - 0.5, y - 0.5, w + 1, h + 1, r + 0.5)
-        cr.set_line_width(1.0)
-        rgba(cr, "fg", 0.14 * a)
-        cr.stroke()
+        cr.restore()
 
     def draw(self, view, cr, w, h):
         ox, oy = view.origin
         a = max(0.0, min(1.0, self.alpha.x))
         if a > 0.004:
-            x, y, bw, bh = (s.x for s in self.box)
-            x, y = x - ox, y - oy
-            on_this = self.have_box and x < w and y < h and x + bw > 0 and y + bh > 0
-            if on_this:
-                self.draw_pool(cr, x, y, bw, bh, w, h, a)
-            else:
-                rgba(cr, "bgDeep", DIM * a)   # another monitor: simply dimmed
-                cr.paint()
+            rgba(cr, "bgDeep", DIM * a)       # everything dim ...
+            cr.paint()
+            pools = []
+            if self.have_box:
+                x, y, bw, bh = (s.x for s in self.box)
+                pools.append((x - ox, y - oy, bw, bh, self.rounding, True))
+            if self.lit is not None:
+                lx, ly, lw, lh, lr = self.lit
+                pools.append((lx - ox, ly - oy, lw, lh, lr, False))
+            for x, y, bw, bh, r, window in pools:   # ... except where it is not
+                if x >= w or y >= h or x + bw <= 0 or y + bh <= 0:
+                    continue                  # that pool is on another monitor
+                self.cut(cr, x, y, bw, bh, r, self.feather)
+                if window:
+                    # A hairline of light on the pool's rim: the edge catches
+                    # it. Not across the deck, though, if the two overlap.
+                    cr.save()
+                    if self.lit is not None:
+                        lx, ly, lw, lh, lr = self.lit
+                        cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+                        cr.rectangle(0, 0, w, h)
+                        rounded(cr, lx - ox, ly - oy, lw, lh, lr)
+                        cr.clip()
+                    cr.new_path()
+                    rounded(cr, x - 0.5, y - 0.5, bw + 1, bh + 1, r + 0.5)
+                    cr.set_line_width(1.0)
+                    rgba(cr, "fg", 0.14 * a)
+                    cr.stroke()
+                    cr.restore()
 
         now = time.monotonic()
         for gx, gy, radius, t0, opening in self.ripples:

@@ -231,17 +231,21 @@ def layer_window(app, namespace, keyboard=False, layer=None):
     return win
 
 
-def focused_gdk_monitor():
-    """The Gdk monitor Hyprland says has focus, or None."""
-    mons = hypr("j/monitors") or []
-    name = next((m["name"] for m in mons if m.get("focused")), None)
-    display = Gdk.Display.get_default()
-    monitors = display.get_monitors()
+def focused_output():
+    """The monitor Hyprland says has focus, as (Gdk monitor or None, Hyprland's
+    own description of it — where it sits in the layout, among other things)."""
+    info = next((m for m in hypr("j/monitors") or [] if m.get("focused")), {})
+    monitors = Gdk.Display.get_default().get_monitors()
     for i in range(monitors.get_n_items()):
         mon = monitors.get_item(i)
-        if mon.get_connector() == name:
-            return mon
-    return None
+        if mon.get_connector() == info.get("name"):
+            return mon, info
+    return None, info
+
+
+def focused_gdk_monitor():
+    """The Gdk monitor Hyprland says has focus, or None."""
+    return focused_output()[0]
 
 
 def install_css():

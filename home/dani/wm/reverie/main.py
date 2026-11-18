@@ -24,6 +24,7 @@ from cards import STYLES, Cards  # noqa: E402
 from fx import Fx  # noqa: E402
 from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
+from menu import Menu  # noqa: E402
 from pulse import Pulse  # noqa: E402
 
 # Tier 2 under ADR-005: runtime choices live in ~/.local/state/theme/, never in
@@ -34,7 +35,7 @@ STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.loc
 USAGE = ("hud show|hide|pin · cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
-         "font caskaydia|inter · "
+         "font caskaydia|inter · menu [show|hide] · "
          "status · quit")
 
 
@@ -61,6 +62,7 @@ class Reverie(Gtk.Application):
         self.hud = Hud(self)
         self.cards = Cards(self)
         self.fx = Fx(self, self.pulse)
+        self.menu = Menu(self)
         self.hud.pulse = self.pulse
         self.hud.ledger = self.ledger
         self.cards.bar = self.hud.bar
@@ -128,6 +130,14 @@ class Reverie(Gtk.Application):
         self.quit()
         return False
 
+    def flags(self):
+        """Every switch and choice, for the menu to draw."""
+        return {
+            "spotlight": self.fx.spot, "zen": self.zen, "cards": self.cards.enabled,
+            "ripples": self.fx.ripples_on, "sound": self.pulse.sound, "fade": self.pulse.fade,
+            "font": common.FONT["name"], "style": self.cards.style,
+        }
+
     # -- zen: kill the bar --------------------------------------------------
     def set_zen(self, want):
         """No bar at all. The HUD is one key-hold away and title cards announce
@@ -185,7 +195,12 @@ class Reverie(Gtk.Application):
             return USAGE
         head, rest = words[0], words[1:]
         if head == "hud":
+            self.menu.hide()             # one panel with the keyboard at a time
             reply = self.hud.command(rest)
+        elif head == "menu":
+            if not self.menu.shown:
+                self.hud.hide()
+            return self.menu.command(rest)
         elif head == "pulse":
             reply = self.pulse.command(rest)
         elif head == "cards":

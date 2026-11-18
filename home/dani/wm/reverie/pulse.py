@@ -162,6 +162,14 @@ class Pulse:
         for c in hypr("j/clients") or []:
             self.remember(c)
 
+    def last_closed(self):
+        """What `undo` would bring back, in words — for the menu's tile."""
+        for w in reversed(self.closed):
+            if w["argv"]:
+                name = w["class"] or w["argv"][0].rsplit("/", 1)[-1]
+                return f"{name.lower()} · workspace {w['workspace']}"
+        return ""
+
     def undo(self):
         """Reopen the most recently closed window where and how it was."""
         while self.closed:

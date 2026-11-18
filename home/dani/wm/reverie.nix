@@ -16,8 +16,10 @@
 #              windows, on the desktop itself thrown out of focus. Let go and
 #              it is gone. $mod SHIFT+G pins it, and then the map takes clicks
 #              and the number keys jump. This is "kill the bar" —
-#   zen        — and zen (in the $mod+R menu) actually does it: waybar stops, cards
+#   zen        — and zen (in the menu) actually does it: waybar stops, cards
 #              announce workspace changes instead, the HUD is a key-hold away.
+#   menu       $mod+R: a deck of tiles along the bottom, one per switch, lit
+#              when on. It stays open while you flip them (reverie/menu.py).
 #   cards      a film title card on every workspace switch: the number,
 #              large, arriving from the direction you moved. Three looks
 #              (bare, island, banner), switchable live.
@@ -32,7 +34,7 @@
 #
 #   reverie hud show|hide|pin                  reverie zen on|off|toggle
 #   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle
-#   reverie ripples on|off
+#   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
@@ -111,29 +113,6 @@ let
     { mods = "$mod"; key = "G"; desc = "Glance (release)"; cmd = "hud hide"; }
   ];
 
-  # The Reverie menu: label, the status word that says whether it is on (or a
-  # fixed hint), and what picking the row does.
-  menuRows = [
-    { label = "Spotlight"; state = "spotlight"; action = "spotlight toggle"; }
-    { label = "Zen - no bar"; state = "zen"; action = "zen toggle"; }
-    { label = "Title cards"; state = "cards"; action = "cards toggle"; }
-    { label = "Ripples"; state = "ripples"; action = "ripples toggle"; }
-    { label = "Sound"; state = "sound"; action = "pulse sound toggle"; }
-    { label = "Fade idle windows"; state = "fade"; action = "pulse fade toggle"; }
-    { label = "Font"; value = "font"; action = "font toggle"; }
-    { label = "Demo"; hint = "30 s"; action = "@demo"; }
-  ];
-  menuLines = lib.concatMapStringsSep "\n" (
-    r:
-    if r ? state then
-      ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} "$(is ${lib.escapeShellArg r.state})"''
-    else if r ? value then
-      ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} "$(val ${lib.escapeShellArg r.value})"''
-    else
-      ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} ${lib.escapeShellArg r.hint}''
-  ) menuRows;
-  menuActions = lib.concatMapStringsSep " " (r: lib.escapeShellArg r.action) menuRows;
-
   layerRules = [
     # The HUD paints its own backdrop (a blurred capture); the compositor's
     # blur under it only matters for the fraction of a second it is fading
@@ -149,6 +128,10 @@ let
     "no_anim true, match:namespace reverie-card"
     # The bare title card: no blur on purpose (see reverie/cards.py).
     "no_anim true, match:namespace reverie-title"
+    # The menu deck: an island again.
+    "blur true, match:namespace reverie-menu"
+    "ignore_alpha 0, match:namespace reverie-menu"
+    "no_anim true, match:namespace reverie-menu"
     "no_anim true, match:namespace reverie-fx"
   ];
 
@@ -201,6 +184,8 @@ let
           # the day. Measured on legionix (NVIDIA): resident memory 323 MB ->
           # ~100 MB idle, and every animated mode got cheaper, not dearer.
           export GSK_RENDERER="''${GSK_RENDERER:-cairo}"
+          # So the menu's Demo tile can start `reverie demo` without a PATH.
+          export REVERIE_BIN="$self"
           exec python3 ${src}/main.py
           ;;
 
@@ -220,37 +205,13 @@ let
           echo "  hold SUPER+G      glance: the HUD while held"
           echo "  SUPER+SHIFT+G     pin it (then 1-9 / click a window)"
           echo "  SUPER+SHIFT+T     reopen the last closed window"
-          echo "  SUPER+R           menu: spotlight, zen, cards, sound, demo"
+          echo "  SUPER+R           the menu: every switch, and it stays open"
           echo "  $self untry       put it all back"
           ;;
 
         untry)
           ${untryLines}
           send quit || true
-          ;;
-
-        menu)
-          # walker's dmenu, the way the keybinds palette uses it: -i prints the
-          # index of the chosen row. walker comes from the session PATH.
-          st="$(send status)"
-          is() { if grep -q "$1 on" <<<"$st"; then echo on; else echo off; fi; }
-          val() { sed -n "s/.*$1 \([a-z]*\).*/\1/p" <<<"$st"; }
-          actions=(${menuActions})
-          idx="$(
-            {
-              ${menuLines}
-            } | walker -d -i -p 'Reverie' --theme dani-soft
-          )" || exit 0
-          case "$idx" in *[!0-9]* | "") exit 0 ;; esac
-          action="''${actions[$idx]:-}"
-          case "$action" in
-            "") ;;
-            @demo) "$self" demo ;;
-            *)
-              read -ra words <<<"$action"
-              send "''${words[@]}" >/dev/null
-              ;;
-          esac
           ;;
 
         demo)
