@@ -320,7 +320,7 @@ class Hud:
             self.toggle()
         elif what == "glass":
             if len(words) > 1:
-                self.glass = words[1] == "on"
+                self.glass = (not self.glass) if words[1] == "toggle" else words[1] == "on"
             return f"glass {'on' if self.glass else 'off'}"
         else:
             return f"unknown: hud {what}"

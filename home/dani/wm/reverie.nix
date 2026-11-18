@@ -10,25 +10,25 @@
 # One small Python daemon (./reverie, GTK4 + gtk4-layer-shell + cairo) owns
 # all of it. Everything is off or invisible until asked for:
 #
-#   HUD        hold $mod+` and the monitor becomes an instrument panel: clock,
+#   HUD        hold $mod+G and the monitor becomes an instrument panel: clock,
 #              a day arc carrying today's focus history, gauges that are real
 #              glass lenses (they bend a snapshot of the desktop behind them),
 #              and every workspace as a scale map of its windows. Let go and
-#              it is gone. $mod SHIFT+` pins it, and then the map takes clicks
+#              it is gone. $mod SHIFT+G pins it, and then the map takes clicks
 #              and the number keys jump. This is "kill the bar" —
-#   zen        — and $mod CTRL+` actually does it: waybar stops, title cards
+#   zen        — and zen (in the $mod+R menu) actually does it: waybar stops, cards
 #              announce workspace changes instead, the HUD is a key-hold away.
 #   cards      a film title card on every workspace switch: the number,
 #              large, arriving from the direction you moved.
-#   spotlight  $mod CTRL+S: the desktop dims and the focused window sits in a
+#   spotlight  (menu) the desktop dims and the focused window sits in a
 #              pool of light that TRAVELS to wherever focus goes next.
 #   ripples    a ring outward where a window opens, inward where one closes.
 #   pulse      sound: the workspaces are a pentatonic scale, so moving through
 #              them plays a phrase. fade: windows dim the longer they are
 #              ignored and come straight back on focus.
-#   undo       $mod CTRL+Z reopens the window you just closed, on its
+#   undo       $mod SHIFT+T reopens the window you just closed, on its
 #              workspace and (if it floated) in its place.
-#   dream      $mod CTRL+D: a flow field of light drifts over the dimmed
+#   dream      (menu) a flow field of light drifts over the dimmed
 #              desktop until a key is pressed. `dream auto on` starts it when
 #              hypridle says you have gone.
 #   strata     `reverie strata` renders a wallpaper from the last seven days
@@ -73,22 +73,73 @@ let
 
   src = ./reverie;
 
-  # One list, two consumers: the declared Hyprland config below, and
+  # Keys. One list, two consumers: the declared Hyprland config below, and
   # `reverie try`, which registers the same binds at runtime so the branch can
   # be lived in before anything is rebuilt.
+  #
+  # The first attempt at these collided with the existing scheme without
+  # duplicating a single chord, which is why "is the exact chord free?" was
+  # the wrong check. In wm/hyprland.nix a key is a FAMILY: $mod, $mod SHIFT
+  # and $mod CTRL of one key are siblings (three Firefox profiles on B,
+  # dismiss / dismiss-all / restore on the ' key). $mod CTRL+S, +D and +Z
+  # therefore squatted in the Scratchpads/Capture, colour-picker and
+  # keyboard-layout families; ` sat between Lock ($mod+Escape) and workspace
+  # 1; and zen — a lasting change — was one modifier-slip from the
+  # $mod CTRL+H/J/K/L resize keys.
+  #
+  # The rules now, checked against the live table (`hyprctl binds -j`,
+  # 2026-11-18, 97 binds):
+  #   1. only keys whose WHOLE family is unused — G, T and R have no $mod,
+  #      $mod SHIFT, $mod CTRL or $mod ALT bind anywhere;
+  #   2. letters, not punctuation: they need no keycode workaround for the
+  #      us/es layouts and sit on the Corne's base layer;
+  #   3. a chord only for what needs one. Hold-to-glance needs a key; reopening
+  #      a window is reflex. Modes (zen, spotlight, dream, the toggles) are
+  #      chosen, not hit, so they live in one menu.
+  #
+  #   $mod+G         Glance — the HUD while held. A slip from $mod+H costs a
+  #                  peek that ends when the key comes up.
+  #   $mod SHIFT+G   the same panel, pinned as a switcher
+  #   $mod SHIFT+T   reopen the closed window: $mod+W closes like a browser
+  #                  tab, so its inverse is the browser's inverse
+  #   $mod+R         the Reverie menu: every mode and toggle, with its state
   binds = [
-    { mods = "$mod"; key = "grave"; desc = "Reverie HUD (hold)"; cmd = "hud show"; }
-    { mods = "$mod SHIFT"; key = "grave"; desc = "Reverie HUD (pin)"; cmd = "hud pin"; }
-    { mods = "$mod CTRL"; key = "grave"; desc = "Reverie zen: no bar"; cmd = "zen toggle"; }
-    { mods = "$mod CTRL"; key = "S"; desc = "Reverie spotlight"; cmd = "spotlight toggle"; }
-    { mods = "$mod CTRL"; key = "Z"; desc = "Reopen the last closed window"; cmd = "undo"; }
-    { mods = "$mod CTRL"; key = "D"; desc = "Reverie dream"; cmd = "dream"; }
+    { mods = "$mod"; key = "G"; desc = "Glance - HUD while held"; cmd = "hud show"; }
+    { mods = "$mod SHIFT"; key = "G"; desc = "Glance - pin the HUD as a switcher"; cmd = "hud pin"; }
+    { mods = "$mod SHIFT"; key = "T"; desc = "Reopen the last closed window"; cmd = "undo"; }
+    { mods = "$mod"; key = "R"; desc = "Reverie menu"; cmd = "menu"; }
   ];
-  # Release half of hold-to-show. If the modifier comes up before the key,
+  # Release half of hold-to-glance. If the modifier comes up before the key,
   # this never fires; the HUD lets itself out after 10 s (reverie/hud.py).
+  # The keybinds palette skips release binds, so this adds no row there.
   releases = [
-    { mods = "$mod"; key = "grave"; desc = "Reverie HUD (release)"; cmd = "hud hide"; }
+    { mods = "$mod"; key = "G"; desc = "Glance (release)"; cmd = "hud hide"; }
   ];
+
+  # The Reverie menu: label, the status word that says whether it is on (or a
+  # fixed hint), and what picking the row does.
+  menuRows = [
+    { label = "Spotlight"; state = "spotlight"; action = "spotlight toggle"; }
+    { label = "Zen - no bar"; state = "zen"; action = "zen toggle"; }
+    { label = "Title cards"; state = "cards"; action = "cards toggle"; }
+    { label = "Ripples"; state = "ripples"; action = "ripples toggle"; }
+    { label = "Sound"; state = "sound"; action = "pulse sound toggle"; }
+    { label = "Fade idle windows"; state = "fade"; action = "pulse fade toggle"; }
+    { label = "Glass lenses"; state = "glass"; action = "hud glass toggle"; }
+    { label = "Dream when idle"; state = "dream auto"; action = "dream auto toggle"; }
+    { label = "Dream"; hint = "now"; action = "dream"; }
+    { label = "Strata wallpaper"; hint = "show"; action = "@strata"; }
+    { label = "Own wallpaper"; hint = "restore"; action = "@wall"; }
+    { label = "Demo"; hint = "30 s"; action = "@demo"; }
+  ];
+  menuLines = lib.concatMapStringsSep "\n" (
+    r:
+    if r ? state then
+      ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} "$(is ${lib.escapeShellArg r.state})"''
+    else
+      ''printf '%-26s%s\n' ${lib.escapeShellArg r.label} ${lib.escapeShellArg r.hint}''
+  ) menuRows;
+  menuActions = lib.concatMapStringsSep " " (r: lib.escapeShellArg r.action) menuRows;
 
   layerRules = [
     # The HUD is glass like the rest of the chrome; the others draw their own
@@ -177,16 +228,41 @@ let
           fi
           ${tryLines}
           echo "reverie is live for this session:"
-          echo "  hold SUPER+\`         the HUD            SUPER+SHIFT+\`  pin it (then 1-9 / click)"
-          echo "  SUPER+CTRL+\`         zen (no bar)       SUPER+CTRL+S   spotlight"
-          echo "  SUPER+CTRL+Z         reopen last window SUPER+CTRL+D   dream"
-          echo "  $self demo            a guided minute of everything"
-          echo "  $self untry           put it all back"
+          echo "  hold SUPER+G      glance: the HUD while held"
+          echo "  SUPER+SHIFT+G     pin it (then 1-9 / click a window)"
+          echo "  SUPER+SHIFT+T     reopen the last closed window"
+          echo "  SUPER+R           menu: spotlight, zen, cards, sound, dream, strata, demo"
+          echo "  $self untry       put it all back"
           ;;
 
         untry)
           ${untryLines}
           send quit || true
+          ;;
+
+        menu)
+          # walker's dmenu, the way the keybinds palette uses it: -i prints the
+          # index of the chosen row. walker comes from the session PATH.
+          st="$(send status)"
+          is() { if grep -q "$1 on" <<<"$st"; then echo on; else echo off; fi; }
+          actions=(${menuActions})
+          idx="$(
+            {
+              ${menuLines}
+            } | walker -d -i -p 'Reverie' --theme dani-soft
+          )" || exit 0
+          case "$idx" in *[!0-9]* | "") exit 0 ;; esac
+          action="''${actions[$idx]:-}"
+          case "$action" in
+            "") ;;
+            @strata) "$self" strata >/dev/null ;;
+            @wall) wall-apply ;;
+            @demo) "$self" demo ;;
+            *)
+              read -ra words <<<"$action"
+              send "''${words[@]}" >/dev/null
+              ;;
+          esac
           ;;
 
         demo)

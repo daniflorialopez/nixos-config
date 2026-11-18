@@ -288,6 +288,10 @@ let
       tsv="$(hyprctl binds -j | jq -r '
         .[]
         | select(.mouse | not)
+        # A release bind is the second half of a hold gesture (the reverie
+        # HUD), not an action: listing it would be a row that does nothing
+        # useful when picked.
+        | select(.release | not)
         | [(.modmask | tostring), .key, (.keycode | tostring), .description, .dispatcher, .arg]
         | @tsv
       ')"
@@ -321,8 +325,8 @@ let
           if (dsp == "exec") {
             if (a ~ /wpctl|playerctl|output-volume|record-toggle|replay-/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
-            if (a ~ /-m windows|scratchpad/) return "Windows"
-            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:power/) return "System"
+            if (a ~ /-m windows|scratchpad|reverie undo/) return "Windows"
+            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:power|reverie/) return "System"
             return "Apps"
           }
           return "Other"

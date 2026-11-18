@@ -193,7 +193,8 @@ class Reverie(Gtk.Application):
         elif head == "dream":
             if rest and rest[0] == "auto":
                 if len(rest) > 1:
-                    self.dream_auto = rest[1] == "on"
+                    self.dream_auto = (not self.dream_auto) if rest[1] == "toggle" \
+                        else rest[1] == "on"
                 reply = f"dream auto {onoff(self.dream_auto)}"
             else:
                 self.dream.toggle()

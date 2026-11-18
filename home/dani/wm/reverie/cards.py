@@ -113,6 +113,6 @@ class Cards:
              weight=500, align="center", spacing=5 * u)
 
     def command(self, words):
-        if words and words[0] in ("on", "off"):
-            self.enabled = words[0] == "on"
+        if words and words[0] in ("on", "off", "toggle"):
+            self.enabled = (not self.enabled) if words[0] == "toggle" else words[0] == "on"
         return f"cards {'on' if self.enabled else 'off'}"

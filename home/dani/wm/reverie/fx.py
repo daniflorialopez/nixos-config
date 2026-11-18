@@ -216,5 +216,5 @@ class Fx:
                         self.tick_id = self.area.add_tick_callback(self.tick)
             return f"spotlight {'on' if self.spot else 'off'}"
         if words:
-            self.ripples_on = state
+            self.ripples_on = (not self.ripples_on) if words[0] == "toggle" else state
         return f"ripples {'on' if self.ripples_on else 'off'}"

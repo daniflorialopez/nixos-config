@@ -275,6 +275,8 @@ class Pulse:
             return (f"sound {'on' if self.sound else 'off'} · fade {'on' if self.fade else 'off'}"
                     + (f" ({dimmed} dimmed)" if self.fade else ""))
         state = len(words) > 1 and words[1] == "on"
+        if len(words) > 1 and words[1] == "toggle" and what in ("sound", "fade"):
+            state = not (self.sound if what == "sound" else self.fade)
         if what in ("sound", "both"):
             if state and not self.sounds:
                 self.sounds = build_sounds()
