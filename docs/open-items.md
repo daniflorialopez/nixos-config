@@ -346,7 +346,6 @@ window-shaped spotlight pool, keys on unused families plus a menu.
   - `undo` re-runs the closed window's command line: terminals come back
     without their session, sandboxed/Flatpak apps may not come back at all,
     and a one-shot command would be run again;
-  - `reverie try` twice in a row registers every bind twice; `untry` first;
   - `hyprland.nix` has one statix warning (useless parentheses, line 718)
     that is also on master;
   - the hypridle listener (180 s) is new idle behaviour for this machine: it

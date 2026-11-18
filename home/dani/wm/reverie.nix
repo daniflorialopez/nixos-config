@@ -215,6 +215,11 @@ let
               sleep 0.1
             done
           fi
+          # Unbind first: hyprctl adds a bind every time it is told to, and
+          # two copies of a toggle cancel each other out. This makes `try`
+          # safe to run again (after a Hyprland reload dropped the binds, or
+          # just to be sure).
+          ${untryLines}
           ${tryLines}
           echo "reverie is live for this session:"
           echo "  SUPER+G           the HUD, pinned (then 1…0 / click a window)"
