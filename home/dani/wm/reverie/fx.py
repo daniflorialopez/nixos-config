@@ -360,6 +360,15 @@ class Fx:
         for edge in self.edges:
             edge.step(dt)
         self.swell.step(dt)
+        if self.alpha.target == 0.0 and self.alpha.x < 0.004:
+            # Nothing is dimmed any more, so nothing still in motion can be
+            # seen. Stop here instead of animating an invisible pool to rest
+            # (it used to hold the overlay mapped for another half second).
+            self.alpha.x = self.alpha.v = 0.0
+            for edge in self.edges:
+                edge.jump(edge.target)
+            self.swell.jump(0.0)
+            self.glint = None
         if self.glint is not None and now > self.glint[0] + GLINT_S:
             self.glint = None
         self.ripples = [r for r in self.ripples if now - r[3] < RIPPLE_S]
