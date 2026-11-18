@@ -405,6 +405,7 @@ in
     ./swayosd.nix
     ./mouseless.nix
     ./recording.nix
+    ./reverie.nix
   ];
 
   # Both of these are Aquamarine's NVIDIA multi-GPU workarounds, straight off
