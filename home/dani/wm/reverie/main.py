@@ -85,10 +85,14 @@ class Reverie(Gtk.Application):
             self.fx.command("ripples", ["on"])
         self.hud.glass = state.get("glass", True)
         common.set_font(state.get("font", "caskaydia"))
-        # Zen survives a daemon restart: the bar is still stopped, so the
-        # daemon has to remember that it is the one who stopped it.
-        self.zen = bool(state.get("zen"))
-        self.zen_cards = bool(state.get("zen_cards"))
+        # Zen is a preference, so it survives a restart. Whether the bar is
+        # really stopped is not something this file can know — a clean
+        # shutdown brings it back, a crash leaves it down — so say it again.
+        if state.get("zen"):
+            self.zen = True
+            self.zen_cards = bool(state.get("zen_cards"))
+            self.cards.enabled = True
+            self.bar_running(False)
 
     def save(self):
         state = {
@@ -114,7 +118,7 @@ class Reverie(Gtk.Application):
         self.pulse.restore()
         self.ledger.set_away(True)       # closes and saves the open block
         if self.zen:
-            self.set_zen(False)
+            self.bar_running(True)       # the preference stays; the bar must not stay gone
         try:
             os.unlink(common.SOCK)
         except OSError:
@@ -134,8 +138,12 @@ class Reverie(Gtk.Application):
             self.cards.enabled = True
         else:
             self.cards.enabled = self.zen_cards
+        self.bar_running(not want)
+
+    @staticmethod
+    def bar_running(want):
         try:
-            subprocess.Popen(["systemctl", "--user", "stop" if want else "start",
+            subprocess.Popen(["systemctl", "--user", "start" if want else "stop",
                               "waybar.service"],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except OSError:
