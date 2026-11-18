@@ -31,14 +31,11 @@
 #   dream      (menu) a flow field of light drifts over the dimmed
 #              desktop until a key is pressed. `dream auto on` starts it when
 #              hypridle says you have gone.
-#   strata     `reverie strata` renders a wallpaper from the last seven days
-#              of git history — a ridge per day, as tall as the day was busy,
-#              a star per commit — under a sky that follows the clock.
 #
 #   reverie hud show|hide|pin|glass on|off     reverie zen on|off|toggle
 #   reverie cards|ripples on|off               reverie spotlight on|off|toggle
 #   reverie pulse [sound|fade] on|off          reverie dream [auto on|off]
-#   reverie undo · status · quit               reverie strata [--no-apply]
+#   reverie undo · status · quit
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
 #                    binds for this session only (`reverie untry` removes them)
@@ -129,8 +126,6 @@ let
     { label = "Font"; value = "font"; action = "font toggle"; }
     { label = "Dream when idle"; state = "dream auto"; action = "dream auto toggle"; }
     { label = "Dream"; hint = "now"; action = "dream"; }
-    { label = "Strata wallpaper"; hint = "show"; action = "@strata"; }
-    { label = "Own wallpaper"; hint = "restore"; action = "@wall"; }
     { label = "Demo"; hint = "30 s"; action = "@demo"; }
   ];
   menuLines = lib.concatMapStringsSep "\n" (
@@ -175,11 +170,11 @@ let
 
   reverie = pkgs.writeShellApplication {
     name = "reverie";
-    # hyprctl, pw-play, playerctl, nvidia-smi, nmcli, awww and systemctl come
+    # hyprctl, pw-play, playerctl, nvidia-smi, nmcli and systemctl come
     # from the session PATH on purpose: each is optional at runtime (the
     # daemon checks) and naming them here would pin builds this host may not
     # use. grim is named because the glass HUD is built on it.
-    runtimeInputs = [ python pkgs.socat pkgs.git pkgs.coreutils pkgs.grim pkgs.jq pkgs.util-linux ];
+    runtimeInputs = [ python pkgs.socat pkgs.coreutils pkgs.grim pkgs.jq pkgs.util-linux ];
     text = ''
       export GI_TYPELIB_PATH="${typelibs}''${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
       export REVERIE_PALETTE="${palette}"
@@ -212,20 +207,6 @@ let
           exec python3 ${src}/main.py
           ;;
 
-        strata)
-          out="''${XDG_CACHE_HOME:-$HOME/.cache}/reverie/strata.png"
-          mkdir -p "$(dirname "$out")"
-          python3 ${src}/strata.py "$out.tmp.png" >/dev/null
-          mv "$out.tmp.png" "$out"
-          if [ "''${2:-}" != "--no-apply" ]; then
-            # Shown, not recorded: ~/.local/state/wallpaper/current is left
-            # alone, so `wall-apply` (or the next login) restores your pick.
-            awww img "$out" --transition-type grow --transition-pos 0.78,0.72 \
-              --transition-duration 1.4
-          fi
-          echo "$out"
-          ;;
-
         try)
           # Live in the branch without rebuilding: this session only. A
           # Hyprland reload or a logout forgets the binds; `untry` removes
@@ -242,7 +223,7 @@ let
           echo "  hold SUPER+G      glance: the HUD while held"
           echo "  SUPER+SHIFT+G     pin it (then 1-9 / click a window)"
           echo "  SUPER+SHIFT+T     reopen the last closed window"
-          echo "  SUPER+R           menu: spotlight, zen, cards, sound, dream, strata, demo"
+          echo "  SUPER+R           menu: spotlight, zen, cards, sound, dream, demo"
           echo "  $self untry       put it all back"
           ;;
 
@@ -267,8 +248,6 @@ let
           action="''${actions[$idx]:-}"
           case "$action" in
             "") ;;
-            @strata) "$self" strata >/dev/null ;;
-            @wall) wall-apply ;;
             @demo) "$self" demo ;;
             *)
               read -ra words <<<"$action"
@@ -287,17 +266,16 @@ let
             if ! was sound; then send pulse sound off >/dev/null || true; fi
             if ! was cards; then send cards off >/dev/null || true; fi
             if ! was ripples; then send ripples off >/dev/null || true; fi
-            if command -v wall-apply >/dev/null; then wall-apply >/dev/null 2>&1 || true; fi
           }
           trap restore EXIT INT TERM
 
-          echo "1/5  the HUD — clock, focus arc, glass gauges, workspace map"
+          echo "1/4  the HUD — clock, focus arc, glass gauges, workspace map"
           send hud show >/dev/null
           sleep 5
           send hud hide >/dev/null
           sleep 1
 
-          echo "2/5  title cards and sound — three workspaces, three notes"
+          echo "2/4  title cards and sound — three workspaces, three notes"
           send cards on >/dev/null
           send pulse sound on >/dev/null
           cur="$(hyprctl activeworkspace -j | jq -r .id)"
@@ -307,17 +285,13 @@ let
             sleep 1.3
           done
 
-          echo "3/5  spotlight — the light follows focus"
+          echo "3/4  spotlight — the light follows focus"
           send spotlight on >/dev/null
           sleep 4
           send spotlight off >/dev/null
           sleep 1
 
-          echo "4/5  strata — this week's commits as a mountain range"
-          "$self" strata >/dev/null
-          sleep 6
-
-          echo "5/5  dream — any key ends it"
+          echo "4/4  dream — any key ends it"
           send dream >/dev/null
           sleep 7
           if hyprctl layers | grep -q reverie-dream; then send dream >/dev/null; fi
@@ -351,23 +325,6 @@ in
         RestartSec = 2;
       };
       Install.WantedBy = [ target ];
-    };
-
-    # Opt-in: `systemctl --user start reverie-strata.timer`. Deliberately has
-    # no WantedBy — a rebuild must not start replacing the wallpaper by itself.
-    services.reverie-strata = {
-      Unit.Description = "reverie: re-render the strata wallpaper";
-      Service = {
-        Type = "oneshot";
-        ExecStart = "${lib.getExe reverie} strata";
-      };
-    };
-    timers.reverie-strata = {
-      Unit.Description = "reverie: keep the strata sky in step with the clock";
-      Timer = {
-        OnActiveSec = 0;
-        OnUnitActiveSec = "20min";
-      };
     };
   };
 
