@@ -193,6 +193,8 @@ class View:
         self.tick_id = 0
         self.skipped = False
         self.was_busy = False
+        self.seen = -1                   # the last Fx.changes this canvas has painted
+        self.drawn = None                # (opacity, pool, lit?) as last painted; see Fx.draw
         self.laid_for = None             # the glint the strips are currently laid out for
 
     def run(self):
@@ -245,8 +247,19 @@ class View:
                     strip.queue_draw()
             if busy:
                 self.area.queue_draw()
-        if self.was_busy and not busy:
-            self.area.queue_draw()       # the resting frame, whatever was skipped
+        # Two frames the cap must never cost: the one a change asks for, and
+        # the one that shows where everything came to rest.
+        #
+        # The first was missing. A change that is not an animation — the pool
+        # JUMPING to its new window on a workspace switch, the menu asking to
+        # stay lit — leaves nothing "busy", so nothing was drawn: the state
+        # was right and the picture was the old one. On screen that was the
+        # previous window's pool carried onto the next workspace, or, when
+        # the previous window had filled the screen, no spotlight at all,
+        # until some later focus change happened to animate.
+        if self.seen != fx.changes or (self.was_busy and not busy):
+            self.area.queue_draw()
+        self.seen = fx.changes
         self.was_busy = busy
         if fx.moving:
             return True
@@ -290,6 +303,7 @@ class Fx:
         self.border = 2.0
         self.tau = 0.05              # seconds; see read_layout
         self.moving = False
+        self.changes = 0             # counts wake(): each one is owed a frame by every canvas
         self.still = True            # the pool and the dimness are where they should be
         self.kicked_at = 0.0         # when the pool was last sent somewhere
         self.frames = 0              # frames drawn since everything was last at rest
@@ -348,7 +362,9 @@ class Fx:
             self.tau = max(0.02, min(0.09, float(chosen.get("speed", 3.0)) * 0.1 / 6.0))
 
     def wake(self):
-        """Map every overlay and run the frame clocks until things settle."""
+        """Something changed: map every overlay, give each a frame, and keep
+        the frame clocks running until things settle."""
+        self.changes += 1
         if not self.moving:
             self.sync_views()
             self.last = time.monotonic()     # so the first frame steps by real elapsed time
@@ -433,6 +449,8 @@ class Fx:
                     edge.jump(edge.target)
                 self.swell.jump(0.0)
                 self.glint = (now + self.slide_s * 0.6, self.cut_from, 0.0) if begun else None
+                if self.have_box:
+                    self.wake()
         if self.spot and event in FOCUS_EVENTS:
             # Now — the event is the news — and once more shortly after, for
             # geometry the layout had not finished deciding (a new window).
@@ -725,6 +743,10 @@ class Fx:
     def draw(self, view, cr, w, h):
         ox, oy = view.origin
         a = max(0.0, min(1.0, self.alpha.x))
+        # What this canvas now shows, for `spotlight where`: the state can be
+        # right while the picture is stale, and only the picture is on screen.
+        view.drawn = (round(a, 2), tuple(round(e.x) for e in self.edges)
+                      if self.have_box and a > 0.004 else None, self.lit is not None)
         if a > 0.004:
             rgba(cr, "bgDeep", DIM * a)       # everything dim ...
             cr.paint()
@@ -776,6 +798,14 @@ class Fx:
     def command(self, what, words):
         state = bool(words) and words[0] == "on"
         if what == "spotlight":
+            if words and words[0] == "where":
+                # For tests: where the pool is meant to be, and what each
+                # monitor's canvas last drew (opacity, pool) if it is mapped.
+                aimed = tuple(round(e.target) for e in self.edges) if self.have_box else None
+                drawn = {name: v.drawn if v.win.get_visible() else "unmapped"
+                         for name, v in self.views.items()}
+                return (f"aimed={aimed} dim={self.alpha.target:.0f} window={self.addr} "
+                        f"lit={self.lit} drawn={drawn}")
             if words and words[0] == "toggle":
                 state = not self.spot
             if words:
