@@ -213,15 +213,26 @@ def rounded(cr, x, y, w, h, r):
 # ----------------------------------------------------------- layer window
 
 
-def layer_window(app, namespace, keyboard=False, layer=None):
-    """A transparent full-monitor overlay surface."""
+def layer_window(app, namespace, keyboard=False, layer=None, full=True):
+    """A transparent overlay surface: the whole monitor, or (full=False) only
+    as big as its content and centred on the monitor.
+
+    Size is not a detail. Every frame of a surface is a buffer the compositor
+    has to take in, and at 1440p a full-monitor one is 15 MB: two of them
+    animating during a workspace switch were enough to drop Hyprland to about
+    40 frames a second for the length of the slide. Anything that only
+    occupies part of the screen should only BE part of the screen.
+    """
     win = Gtk.Window(application=app)
     Gtk4LayerShell.init_for_window(win)
     Gtk4LayerShell.set_namespace(win, namespace)
     Gtk4LayerShell.set_layer(win, layer or Gtk4LayerShell.Layer.OVERLAY)
-    for edge in (Gtk4LayerShell.Edge.TOP, Gtk4LayerShell.Edge.BOTTOM,
-                 Gtk4LayerShell.Edge.LEFT, Gtk4LayerShell.Edge.RIGHT):
-        Gtk4LayerShell.set_anchor(win, edge, True)
+    if full:
+        for edge in (Gtk4LayerShell.Edge.TOP, Gtk4LayerShell.Edge.BOTTOM,
+                     Gtk4LayerShell.Edge.LEFT, Gtk4LayerShell.Edge.RIGHT):
+            Gtk4LayerShell.set_anchor(win, edge, True)
+    # -1 in both cases: ignore the bar's reserved strip, so "centred" means
+    # centred on the monitor, exactly where a full-size surface would draw it.
     Gtk4LayerShell.set_exclusive_zone(win, -1)
     Gtk4LayerShell.set_keyboard_mode(
         win,

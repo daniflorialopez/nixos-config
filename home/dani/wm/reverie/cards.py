@@ -26,9 +26,15 @@ All three say the same three things. Where the others sit is drawn the way
 the bar draws it — active on an accent wash, occupied in `subtle`, empty in
 `muted`, from the same `persistent-workspaces` list — as pills on the two
 boxed looks and as dots on the bare one.
+
+The surface is only as large as the card (plus the room it slides through),
+centred on the monitor. It used to be the whole monitor, which changed nothing
+on screen and cost a 15 MB buffer per frame at the one moment the compositor
+is busiest — the workspace slide the card is announcing.
 """
 
 import math
+import os
 
 import cairo
 
@@ -38,6 +44,8 @@ from common import (EFFECT, FONT, PAL, SPATIAL, Spring, focused_gdk_monitor, hyp
 from gi.repository import GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
 
 HOLD_MS = 1000               # how long the card stays before it leaves
+SLIDE = 70                   # design units the card travels as it arrives
+BARE = (620, 420)            # half-axes of the bare look's pool of shade, design units
 STYLES = ("bare", "island", "banner")
 PILL_ROLE = {"active": "fg", "occupied": "subtle", "empty": "muted"}
 
@@ -60,12 +68,13 @@ class Cards:
         self.names = ""
         self.strip = []              # [(id, "active" | "occupied" | "empty")]
         self.prev = None
+        self.u = 1.0                 # px per design unit on the monitor the card is on
         self.tick_id = 0
         self.last = None
         self.hide_id = 0
 
     def _surface(self, app, namespace):
-        win = layer_window(app, namespace)
+        win = layer_window(app, namespace, full=False)
         area = Gtk.DrawingArea()
         area.set_draw_func(self.draw)
         win.set_child(area)
@@ -132,7 +141,11 @@ class Cards:
         mon = focused_gdk_monitor()
         if mon is not None:
             Gtk4LayerShell.set_monitor(win, mon)
-        self.slide.x = 70.0 * direction
+            self.u = mon.get_geometry().height / 1440.0
+        width, height = self.extent()
+        area.set_content_width(width)
+        area.set_content_height(height)
+        self.slide.x = float(SLIDE * direction)
         self.slide.v = 0.0
         self.slide.target = 0.0
         self.alpha.target = 1.0
@@ -155,6 +168,8 @@ class Cards:
 
     def tick(self, area, clock):
         now = clock.get_frame_time() / 1e6
+        if os.environ.get("REVERIE_DEBUG") and self.last is not None and now - self.last > 0.05:
+            print(f"cards: waited {(now - self.last) * 1000:.0f} ms for a frame", flush=True)
         dt = 0.016 if self.last is None else min(0.05, now - self.last)
         self.last = now
         self.alpha.step(dt)
@@ -171,11 +186,25 @@ class Cards:
         return True
 
     # -- drawing ----------------------------------------------------------
+    def extent(self):
+        """How big the surface has to be for the current card: the card, the
+        distance it slides either way, and a hair of margin. Even numbers, so
+        that centring it on the monitor lands on whole pixels."""
+        u = self.u
+        if self.style == "bare":
+            w, h = 2 * (BARE[0] + SLIDE) * u, 2 * BARE[1] * u
+        else:
+            scratch = cairo.Context(cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1))
+            w, h = self._island_size(scratch, u) if self.style == "island" \
+                else self._banner_size(scratch, u)
+            w += 2 * SLIDE * u
+        return 2 * math.ceil(w / 2 + 4), 2 * math.ceil(h / 2 + 4)
+
     def draw(self, _area, cr, w, h):
         a = max(0.0, min(1.0, self.alpha.x))
         if a <= 0.0:
             return
-        getattr(self, "draw_" + self.style)(cr, w, h, h / 1440.0, a)
+        getattr(self, "draw_" + self.style)(cr, w, h, self.u, a)
 
     @staticmethod
     def _island(cr, x, y, w, h, r, u, a):
@@ -222,7 +251,7 @@ class Cards:
         r, g, b = PAL["bgDeep"]
         cr.save()
         cr.translate(cx, cy)
-        cr.scale(620 * u, 420 * u)
+        cr.scale(BARE[0] * u, BARE[1] * u)
         pool = cairo.RadialGradient(0, 0, 0, 0, 0, 1)
         for i in range(13):
             t = i / 12
@@ -264,15 +293,20 @@ class Cards:
                 cr.stroke()
             x += gap
 
+    def _island_size(self, cr, u):
+        _, _, iw, ih = ink(cr, self.label, 150 * u, weight=FONT["numeral_weight"])
+        _, _, (tw, th) = self._names(cr, 16 * u, u)
+        pad = 44 * u
+        return (max(380 * u, iw + 2 * pad, tw + 2 * pad, self._strip_width(34 * u, 6 * u) + 2 * pad),
+                42 * u + ih + 28 * u + th + 26 * u + 28 * u + 32 * u)
+
     def draw_island(self, cr, w, h, u, a):
         weight, size = FONT["numeral_weight"], 150 * u
         ix, iy, iw, ih = ink(cr, self.label, size, weight=weight)
         names, spacing, (tw, th) = self._names(cr, 16 * u, u)
         pw, ph, gap = 34 * u, 28 * u, 6 * u
         sw = self._strip_width(pw, gap)
-        pad = 44 * u
-        cw = max(380 * u, iw + 2 * pad, tw + 2 * pad, sw + 2 * pad)
-        ch = 42 * u + ih + 28 * u + th + 26 * u + ph + 32 * u
+        cw, ch = self._island_size(cr, u)
         x = (w - cw) / 2 + self.slide.x * u
         y = (h - ch) / 2
         self._island(cr, x, y, cw, ch, 20 * u, u, a)
@@ -285,14 +319,20 @@ class Cards:
         ty += th + 26 * u
         self._pills(cr, cx - sw / 2, ty, u, a, pw, ph, gap, 15 * u)
 
+    def _banner_size(self, cr, u):
+        _, _, iw, _ = ink(cr, self.label, 96 * u, weight=FONT["numeral_weight"])
+        _, _, (tw, _) = self._names(cr, 17 * u, u)
+        return (42 * u + iw + 60 * u + max(tw, self._strip_width(30 * u, 5 * u)) + 42 * u,
+                128 * u)
+
     def draw_banner(self, cr, w, h, u, a):
         weight, size = FONT["numeral_weight"], 96 * u
         ix, iy, iw, ih = ink(cr, self.label, size, weight=weight)
         names, spacing, (tw, th) = self._names(cr, 17 * u, u)
         pw, ph, gap = 30 * u, 24 * u, 5 * u
         sw = self._strip_width(pw, gap)
-        pad, mid, ch = 42 * u, 30 * u, 128 * u
-        cw = pad + iw + 2 * mid + max(tw, sw) + pad
+        pad, mid = 42 * u, 30 * u
+        cw, ch = self._banner_size(cr, u)
         x = (w - cw) / 2 + self.slide.x * u
         y = (h - ch) / 2
         self._island(cr, x, y, cw, ch, 32 * u, u, a)

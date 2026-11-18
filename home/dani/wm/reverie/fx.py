@@ -86,6 +86,7 @@ LEAD_TAU = 0.028             # s — growing sides: 83% there in 50 ms, all of i
 TRAIL_OMEGA = 24.0           # rad/s — shrinking sides: half-way at 70 ms, 90% at 160
 FINISH_TAU = 0.022           # s — and the last few pixels briskly, so it ends, not fades
 ARRIVAL_S = 0.10             # s — how long the light's arrival gets every frame
+CUT_S = 0.40                 # s — after a workspace switch, the pool jumps (see on_event)
 IRIS_OMEGA = 15.0            # rad/s — closing in when the spotlight is switched on
 OPEN_TAU = 0.11              # s — opening back out when it is switched off
 SWELL_PX = 6.0               # how far the pool breathes out as it lands
@@ -278,6 +279,10 @@ class Fx:
         self.addr = None             # the window the pool belongs to
         self.swell = Edge()          # px the pool is breathed out by, right now
         self.glint = None            # (start time, dx, dy towards where the light came from)
+        self.cut_until = 0.0         # until then, a new target is jumped to, not travelled to
+        self.cut_from = 0.0          # -1 / +1: the side the new workspace slid in from
+        self.slide_s = 0.35          # how long the compositor's workspace slide takes
+        self.workspace = None
         self.lit = None              # (x, y, w, h, radius), global: also kept bright
         self.ripples = []            # (cx, cy, radius, t0, opening), global
         self.rounding = 16.0
@@ -288,6 +293,7 @@ class Fx:
         self.still = True            # the pool and the dimness are where they should be
         self.kicked_at = 0.0         # when the pool was last sent somewhere
         self.frames = 0              # frames drawn since everything was last at rest
+        self.worst = 0.0
         self.began = 0.0
         self.poll_id = 0
         self.beat = 0
@@ -331,6 +337,9 @@ class Fx:
         chosen = next((anims[n] for n in ("windowsMove", "windows", "global")
                        if anims.get(n, {}).get("overridden")), None)
         opt = hypr("j/getoption animations:enabled") or {}
+        slide = anims.get("workspaces", {})
+        if slide.get("overridden"):
+            self.slide_s = float(slide.get("speed", 3.5)) * 0.1 if slide.get("enabled") else 0.0
         if chosen is None:
             self.tau = 0.05
         elif not chosen.get("enabled") or opt.get("int") == 0:
@@ -343,7 +352,7 @@ class Fx:
         if not self.moving:
             self.sync_views()
             self.last = time.monotonic()     # so the first frame steps by real elapsed time
-            self.began, self.frames = self.last, 0
+            self.began, self.frames, self.worst = self.last, 0, 0.0
         self.moving = True
         for view in self.views.values():
             view.win.set_visible(True)
@@ -355,6 +364,7 @@ class Fx:
         if self.last is not None and dt < 0.002:
             return                       # another monitor's clock already did this frame
         self.last = now
+        self.worst = max(self.worst, dt)     # the longest wait for a frame, for the debug line
         dt = min(0.05, dt)
         self.alpha.step(dt)
         for edge in self.edges:
@@ -376,7 +386,8 @@ class Fx:
             all(e.resting for e in self.edges)
         self.moving = bool(self.ripples) or self.glint is not None or not self.still
         if not self.moving and os.environ.get("REVERIE_DEBUG"):
-            print(f"fx: {self.frames} frames over {(now - self.began) * 1000:.0f} ms", flush=True)
+            print(f"fx: {self.frames} frames over {(now - self.began) * 1000:.0f} ms, "
+                  f"longest wait for one {self.worst * 1000:.0f} ms", flush=True)
 
     @staticmethod
     def bounds_of(cx, cy):
@@ -396,6 +407,32 @@ class Fx:
 
     # -- events -----------------------------------------------------------
     def on_event(self, event, data):
+        if event == "workspacev2":
+            wid = data.split(",")[0]
+            if wid.lstrip("-").isdigit():
+                came = int(wid)
+                if self.workspace is not None and came != self.workspace:
+                    self.cut_from = 1.0 if came > self.workspace else -1.0
+                self.workspace = came
+            if self.spot:
+                # A workspace switch is a cut, not a pan. The compositor is
+                # sliding every window on the monitor; a pool sweeping across
+                # that says nothing and costs a whole-screen frame each step,
+                # right when the compositor has the least time for them
+                # (measured: the slide fell to ~40 frames a second). So the
+                # light is simply at its new place — the window slides into
+                # it — and only the glint, which is a few pixels, plays, once
+                # the window has arrived.
+                now = time.monotonic()
+                self.cut_until = now + CUT_S
+                # Hyprland may announce the newly focused window before the
+                # workspace. Then a handoff has just begun: it is this cut's,
+                # so its glint is kept and re-timed rather than dropped.
+                begun = self.glint is not None and now - self.kicked_at < 0.15
+                for edge in self.edges:
+                    edge.jump(edge.target)
+                self.swell.jump(0.0)
+                self.glint = (now + self.slide_s * 0.6, self.cut_from, 0.0) if begun else None
         if self.spot and event in FOCUS_EVENTS:
             # Now — the event is the news — and once more shortly after, for
             # geometry the layout had not finished deciding (a new window).
@@ -447,7 +484,14 @@ class Fx:
             return False                 # nothing changed: draw nothing
         cx, cy = (goal[0] + goal[2]) / 2, (goal[1] + goal[3]) / 2
         animated = self.tau > 0.0
-        if not self.have_box or self.alpha.x < 0.05:
+        now = time.monotonic()
+        if now < self.cut_until and (addr != self.addr or not self.have_box):
+            for edge, v in zip(self.edges, goal):
+                edge.jump(v)
+            if animated:
+                # From the side the workspace came in on, when it has landed.
+                self.glint = (self.cut_until - CUT_S + self.slide_s * 0.6, self.cut_from, 0.0)
+        elif not self.have_box or self.alpha.x < 0.05:
             # Lights down (switched on, or arriving from an empty workspace):
             # start with the whole monitor lit and close in on the window.
             start = self.bounds_of(cx, cy) if animated else None
