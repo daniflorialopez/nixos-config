@@ -319,6 +319,28 @@ window-shaped spotlight pool, keys on unused families plus a menu.
   no video needed, nothing locked); a **day set** (three or four photographs
   Dani picks, crossfaded by time of day; needs downloads).
 
+**Dani's fourth round (2026-11-19, just after midnight) and what changed:**
+- *"When transitioning from one workspace to other after having changed focus
+  some times, it lags for about half a second."* The switch itself was never
+  late (Hyprland announces it 12 ms after the key). Two full-monitor surfaces
+  of this daemon were animating during the slide — the title card and the
+  spotlight's sweep — each frame of each a 15 MB buffer; the daemon fell to
+  ~40 frames a second for half a second and Hyprland presented 11-15 frames
+  late per switch. Fixed: the card's surface is only as large as the card
+  (same pixels, compared), and the spotlight treats a workspace switch as a
+  cut (the pool is simply at the new window; only the glint plays). Same
+  probe afterwards: 0-2 late frames, as with every effect off. **Dani has
+  not yet confirmed it feels right.**
+- *"I like the idea of improving the HUD with an improved workspace map ... as
+  well as improving the HUD in general."* Done as a first pass: the workspace
+  map is the hero (large cards in the middle, windows named by application
+  and title, the selected card larger and lifted, left/right/enter to move
+  and go), clock and gauges made small around it. **Not yet judged.**
+- **Open, Dani's call:** real thumbnails on the workspace cards instead of
+  drawn windows. Cost: the daemon would hold a screenshot of each workspace
+  in memory and take one on every arrival (and the spotlight's dimming would
+  be in them unless undone).
+
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
   deadnix clean on `reverie.nix`; no literal colours outside the palette.
@@ -338,6 +360,14 @@ window-shaped spotlight pool, keys on unused families plus a menu.
   probe binds, five orders). Only "G first" can be caught by a release bind;
   the repeating bind's heartbeat covers the rest, and is remembered across
   restarts.
+- Compositor frame pacing through a workspace switch, counted by an
+  independent 4x4 px probe surface (scratchpad `probe.py`) over the same
+  sequence each time: previous build 11-15 late frames switching back to a
+  tiled workspace, this build 0-2, every effect off 0-3.
+- The new HUD with real keys: pin, left/right keep it open and move the
+  selection, enter goes and closes, Super+G closes a pinned panel and it
+  stays closed (it used to reopen), the glance still works. A frame of it
+  draws in 5-6 ms (was 23) with text layouts cached.
 - **Seen on the real compositor:** the HUD's new backdrop; the menu deck with
   the spotlight on (the deck stays lit, the pools merge); the bare title
   card; the spotlight handoff grabbed twice mid-flight, matching the
@@ -365,6 +395,9 @@ window-shaped spotlight pool, keys on unused families plus a menu.
   glint strips on a second monitor, and HUD/cards following focus across
   monitors have never run with two. **The focus arc has one day of data.**
 - **Known limits, by design or not fixed:**
+  - the HUD and the menu are still full-monitor surfaces (they need to be:
+    one is a backdrop, the other catches clicks beside the deck); they do not
+    animate during a workspace switch, which is when that mattered;
   - a focus change with the spotlight on costs about a third of a core in
     each of the daemon and the compositor for half a second. All the Python
     in it is 30 ms; the rest is GTK's software renderer carrying the whole
@@ -392,8 +425,9 @@ window-shaped spotlight pool, keys on unused families plus a menu.
 - **Candidates for the daily rice**, by Dani's three reviews: the bare title
   card ("delicious", frozen), the menu ("I like the menu a lot"), `undo`
   ("genius"), the HUD (carrying the bar: "love"; look: "better, without
-  being visually stunning"), the spotlight (styling liked; motion on its
-  third version, unjudged). Not yet commented on: zen, ripples, sound, fade.
+  being visually stunning", since rebuilt round the workspace map and
+  unjudged), the spotlight (styling liked; motion on its third version,
+  unjudged). Not yet commented on: zen, ripples, sound, fade.
 
 **Parked from `rice/overdrive`** (Dani, 2026-11-18: store, implement later
 once more ideas have been collected — not now):
