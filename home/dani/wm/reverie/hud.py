@@ -24,7 +24,15 @@ modules, the workspace cards). Nothing pretends to be glass: the first two
 versions drew refracting lenses round the gauges and they read as an effect
 from another desktop.
 
-Pinned, the same panel is a switcher: the map takes clicks and number keys.
+The layout has one hero. Pinned — which is how it is mostly used — this is a
+switcher, so the workspaces take the middle of the screen: one card each with
+its windows drawn to scale and named (application, then title, because two
+browser windows are told apart by nothing else). The card the switcher is on
+is drawn larger and lifted off the panel; left and right move it, enter goes
+there, the number row jumps straight to a workspace, a click on a window
+focuses that window. Everything else is arranged round that and kept quiet:
+the time and the day's focus history above it, the machine's readings in a
+corner, what the bar would be showing below.
 
 Everything moves on springs (common.Spring), so letting go halfway through the
 entrance turns the motion around instead of snapping.
@@ -42,7 +50,7 @@ import cairo
 
 from barinfo import BarInfo
 from common import (EFFECT, FONT, ICON_FAMILY, PAL, SPATIAL, Spring, focused_gdk_monitor, hypr,
-                    label, layer_window, measure, rgba, rounded, text)
+                    ink, label, layer_window, measure, rgba, rounded, text)
 from ledger import human
 
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
@@ -52,6 +60,9 @@ TAU = math.tau
 # wrapper so a chip here and a pill on the bar stay the same shape.
 ISLAND_RADIUS = float(os.environ.get("REVERIE_ISLAND_RADIUS", "12"))
 STAGGER = 0.045              # seconds between one gauge starting and the next
+HERO = 1.24                  # how much larger the selected workspace's card is drawn
+MODIFIERS = ("Super_L", "Super_R", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L",
+             "Alt_R", "Meta_L", "Meta_R", "ISO_Level3_Shift", "Caps_Lock", "Num_Lock")
 HALVINGS = 5                 # the capture is halved this often before going back up
 TINT = 0.56                  # how much bgDeep is laid over the blurred desktop
 VEIL = 0.90                  # the scrim that has to do the job alone if there is no capture
@@ -232,6 +243,9 @@ class Hud:
         self.repeated = False                # this hold has been heard from more than once
         self.gave_up_at = 0.0                # when a hold was ended for want of a repeat
         self.repeat = (0.6, 0.04)            # the keyboard's repeat delay and interval, s
+        self.cursor = None                   # the workspace the switcher is on
+        self.ids = []                        # the workspaces on the map, in order
+        self.grow = {}                       # workspace -> Spring: 0 as the rest, 1 selected
         self.hits = []                       # (x, y, w, h, kind, value), back to front
         self.snapshot = {"monitors": [], "clients": [], "active": None}
         self.pulse = None                    # set by main: focus ages
@@ -294,6 +308,8 @@ class Hud:
             return
         self.shown = True
         self.sticky = sticky
+        self.cursor = None                   # start on the workspace you are on
+        self.grow = {}
         self.token += 1
         self.asked_at = time.monotonic()
         fading = self.win.get_visible()      # still on its way out
@@ -494,9 +510,24 @@ class Hud:
 
     # -- input (pinned only) ----------------------------------------------
     def on_key(self, _ctl, keyval, _code, _state):
-        if Gdk.KEY_0 <= keyval <= Gdk.KEY_9:
-            n = keyval - Gdk.KEY_0
-            hypr(f"dispatch workspace {10 if n == 0 else n}")
+        name = Gdk.keyval_name(keyval) or ""
+        if name in MODIFIERS:
+            # A modifier going down is the start of a chord, not a key: the
+            # chord that pins this panel has to be able to unpin it, and it
+            # cannot if its own Super has already closed the panel.
+            return False
+        if name.startswith("KP_"):
+            name = name[3:]
+        if len(name) == 1 and name.isdigit():
+            hypr(f"dispatch workspace {10 if name == '0' else name}")
+        elif name in ("Left", "h", "ISO_Left_Tab", "Right", "l", "Tab") and self.ids:
+            step = -1 if name in ("Left", "h", "ISO_Left_Tab") else 1
+            at = self.ids.index(self.cursor) if self.cursor in self.ids else 0
+            self.cursor = self.ids[(at + step) % len(self.ids)]
+            self._ensure_tick()              # the cards trade sizes
+            return True
+        elif name in ("Return", "Enter", "space") and self.cursor is not None:
+            hypr(f"dispatch workspace {self.cursor}")
         self.hide()
         return True
 
@@ -588,6 +619,9 @@ class Hud:
             else:
                 spring.target = self.goal[key]
             spring.step(dt)
+        for wid, spring in self.grow.items():
+            spring.target = 1.0 if wid == self.cursor else 0.0
+            spring.step(dt)
         # The panel may refresh at 165 Hz, and every frame here is a
         # full-screen software draw. Sixty is plenty for a spring.
         if now - self.drawn_at >= 1 / 61:
@@ -599,7 +633,8 @@ class Hud:
             self.tick_id = 0
             return False
         settled = self.alpha.resting and self.rise.resting and self.frosted.resting and \
-            self.veil.resting and all(s.resting for s in self.gauge.values())
+            self.veil.resting and all(s.resting for s in self.gauge.values()) and \
+            all(s.resting for s in self.grow.values())
         if self.shown and settled and not waiting:
             self.entered = True
             self.area.queue_draw()           # the resting frame, whatever the cap skipped
@@ -633,26 +668,26 @@ class Hud:
             cr.restore()
 
         lift = (1.0 - rise) * 46 * u       # everything travels up into place
-        self.draw_clock(cr, w / 2, 250 * u + lift, u, a)
-        self.draw_gauges(cr, w, w / 2, 590 * u + lift * 1.6, u, a)
-        self.draw_bar(cr, w, 752 * u + lift * 2.0, u, a)
-        self.draw_map(cr, w, h, u, a, lift * 2.4)
-        self.draw_corners(cr, w, h, u, a)
+        self.draw_corners(cr, u, a)                                   # the machine, top left
+        self.draw_clock(cr, w / 2, 92 * u + lift * 0.6, u, a)         # the time, top centre
+        self.draw_gauges(cr, w - 64 * u, 100 * u + lift * 0.6, u, a)  # its readings, top right
+        self.draw_map(cr, w, u, a, lift * 1.6)                        # the hero
+        self.draw_bar(cr, w, 1104 * u + lift * 2.2, u, a)             # what the bar would show
         if self.sticky:
             # 1…0 is how the keybinds palette writes the number row: 0 is ten.
-            text(cr, label("1…0 workspaces 1-10   ·   click a window   ·   any other key closes"),
-                 w / 2,
-                 h - 58 * u, 13 * u, "hint", a, weight=FONT["strong"], align="center",
+            text(cr, label("1…0 workspaces 1-10   ·   ← → enter   ·   click a window   ·   esc"),
+                 w / 2, h - 58 * u, 13 * u, "hint", a, weight=FONT["strong"], align="center",
                  spacing=FONT["track"] * u)
 
-    def draw_clock(self, cr, cx, cy, u, a):
+    def draw_clock(self, cr, cx, top, u, a):
+        """The time under the arc of the day; `top` is the arc's crown."""
         now = time.localtime()
         frac = (now.tm_hour * 3600 + now.tm_min * 60 + now.tm_sec) / 86400
-        oy = cy + 120 * u                   # centre of the day arc
+        r = 215 * u
+        oy = top + r                        # the arc's centre: where its feet stand
 
         # The day as an arc: midnight at both feet, noon at the crown. The sun
         # is the one warm thing on the panel.
-        r = 330 * u
         cr.set_line_cap(cairo.LINE_CAP_BUTT)
         cr.set_line_width(2 * u)
         rgba(cr, "gutter", 0.9 * a)
@@ -668,8 +703,8 @@ class Hud:
             rgba(cr, "hint", 0.8 * a)
             cr.set_line_width(1.5 * u)
             cr.new_path()
-            cr.move_to(cx + math.cos(ang) * (r + 8 * u), oy + math.sin(ang) * (r + 8 * u))
-            cr.line_to(cx + math.cos(ang) * (r + 18 * u), oy + math.sin(ang) * (r + 18 * u))
+            cr.move_to(cx + math.cos(ang) * (r + 6 * u), oy + math.sin(ang) * (r + 6 * u))
+            cr.line_to(cx + math.cos(ang) * (r + 13 * u), oy + math.sin(ang) * (r + 13 * u))
             cr.stroke()
 
         # Today's focus, drawn where it happened: a second band inside the
@@ -679,36 +714,43 @@ class Hud:
         rank = {cls: i for i, (cls, _) in enumerate(totals)}
         if self.ledger is not None:
             midnight = time.mktime(now[:3] + (0, 0, 0) + now[6:])
-            cr.set_line_width(6 * u)
+            cr.set_line_width(5 * u)
             for start, end, cls in self.ledger.snapshot():
                 a0 = math.pi + math.pi * max(0.0, (start - midnight) / 86400)
                 a1 = math.pi + math.pi * min(1.0, (end - midnight) / 86400)
-                if a1 - a0 < 0.0006:         # under ~a quarter pixel: skip
+                if a1 - a0 < 0.0009:         # under ~a quarter pixel: skip
                     continue
                 i = rank.get(cls, 99)
                 rgba(cr, RANKS[i] if i < len(RANKS) else "gutter", a)
                 cr.new_path()
-                cr.arc(cx, oy, r - 13 * u, a0, a1)
+                cr.arc(cx, oy, r - 10 * u, a0, a1)
                 cr.stroke()
 
         ang = math.pi + math.pi * frac
         sx, sy = cx + math.cos(ang) * r, oy + math.sin(ang) * r
         day = 0.25 < frac < 0.83
-        for rad, al in ((26, 0.10), (16, 0.22), (8, 1.0)):
+        for rad, al in ((19, 0.10), (12, 0.22), (6, 1.0)):
             rgba(cr, "attention" if day else "fg", al * a)
             cr.new_path()
             cr.arc(sx, sy, rad * u, 0, TAU)
             cr.fill()
 
         # Set like the lock screen (wm/hyprlock.nix): the time in `fg`, the
-        # date under it in `subtle`. Centred on the same line whatever the
-        # voice, so switching fonts does not shift the composition.
+        # date under it in `subtle`. Placed by the digits' own box so that it
+        # sits in the dome whatever the voice, and narrowed if the voice is
+        # too wide for it.
         clock = time.strftime("%H:%M", now)
-        size = FONT["clock_size"] * u
-        _, th = measure(cr, clock, size, weight=FONT["clock_weight"])
-        text(cr, clock, cx, cy - 23 * u - th / 2, size, "fg", a, weight=FONT["clock_weight"],
-             align="center", spacing=FONT["clock_track"] * u)
-        text(cr, label(time.strftime("%A %-d %B", now)), cx, cy + 96 * u, 22 * u, "subtle", a,
+        size = FONT["clock_size"] * 0.70 * u
+        room = 2 * math.sqrt(max(1.0, r * r - (118 * u) ** 2)) - 64 * u
+        ix, iy, iw, ih = ink(cr, clock, size, weight=FONT["clock_weight"],
+                             spacing=FONT["clock_track"] * u)
+        if iw > room:
+            size *= room / iw
+            ix, iy, iw, ih = ink(cr, clock, size, weight=FONT["clock_weight"],
+                                 spacing=FONT["clock_track"] * u)
+        text(cr, clock, cx - iw / 2 - ix, oy - 84 * u - ih / 2 - iy, size, "fg", a,
+             weight=FONT["clock_weight"], spacing=FONT["clock_track"] * u)
+        text(cr, label(time.strftime("%A %-d %B", now)), cx, oy + 18 * u, 20 * u, "subtle", a,
              weight=FONT["regular"], align="center", spacing=FONT["track"] * 1.6 * u)
 
         # Legend for the focus band: the four applications that had the most
@@ -716,11 +758,11 @@ class Hud:
         items = [(RANKS[i], f"{cls or 'desktop'}  {human(sec)}")
                  for i, (cls, sec) in enumerate(totals[:len(RANKS)]) if sec >= 60]
         if items:
-            size, dot, gap, sep = 15 * u, 5 * u, 10 * u, 34 * u
+            size, dot, gap, sep = 14 * u, 4.5 * u, 9 * u, 30 * u
             widths = [measure(cr, lbl, size, weight=FONT["regular"])[0] for _, lbl in items]
             total = sum(widths) + len(items) * (2 * dot + gap) + (len(items) - 1) * sep
             x = cx - total / 2
-            y = cy + 150 * u
+            y = oy + 60 * u
             for (role, lbl), tw in zip(items, widths):
                 rgba(cr, role, a)
                 cr.new_path()
@@ -729,11 +771,11 @@ class Hud:
                 text(cr, lbl, x + 2 * dot + gap, y, size, "muted", a, weight=FONT["regular"])
                 x += 2 * dot + gap + tw + sep
 
-    def draw_gauges(self, cr, width, cx, cy, u, a):
+    def draw_gauges(self, cr, right, cy, u, a):
+        """The machine's readings: small rings in the corner, right-aligned."""
         present = [(k, name) for k, name in GAUGES if self.stats.values[k] is not None]
-        gap = 200 * u
-        x = cx - gap * (len(present) - 1) / 2
-        r = 56 * u
+        gap, r = 80 * u, 23 * u
+        x = right - r - gap * (len(present) - 1)
         for key, name in present:
             raw = self.stats.values[key]
             v = max(0.0, min(1.08, self.gauge[key].x))
@@ -742,7 +784,7 @@ class Hud:
                   (key == "temp" and raw > 88) or \
                   (key == "bat" and raw < 0.15 and not self.stats.charging)
             cr.set_line_cap(cairo.LINE_CAP_ROUND)
-            cr.set_line_width(7 * u)
+            cr.set_line_width(4 * u)
             rgba(cr, "gutter", 0.9 * a)
             cr.new_path()
             cr.arc(x, cy, r, 0.75 * math.pi, 2.25 * math.pi)
@@ -753,15 +795,15 @@ class Hud:
                 cr.arc(x, cy, r, 0.75 * math.pi, 0.75 * math.pi + 1.5 * math.pi * min(v, 1.0))
                 cr.stroke()
             val = f"{raw:.0f}°" if key == "temp" else f"{raw * 100:.0f}"
-            vsize = 32 * u
-            _, vh = measure(cr, val, vsize, weight=FONT["regular"])
-            text(cr, val, x, cy - vh / 2, vsize, "fg", a, weight=FONT["regular"], align="center")
-            text(cr, label(name), x, cy + r + 36 * u, 14 * u, "muted", a,
+            ix, iy, iw, ih = ink(cr, val, 15 * u, weight=FONT["regular"])
+            text(cr, val, x - iw / 2 - ix, cy - ih / 2 - iy, 15 * u, "fg", a, weight=FONT["regular"])
+            text(cr, label(name), x, cy + r + 12 * u, 12 * u, "muted", a,
                  weight=FONT["strong"], align="center", spacing=FONT["track"] * u)
             x += gap
 
-    def draw_map(self, cr, w, h, u, a, lift):
-        """Every workspace that has windows, with those windows to scale."""
+    def draw_map(self, cr, w, u, a, lift):
+        """The hero: every workspace that has windows, as a card with those
+        windows to scale. The card the switcher is on is larger."""
         self.hits = []
         mons = {m["id"]: m for m in self.snapshot["monitors"]}
         by_ws = {}
@@ -771,69 +813,120 @@ class Hud:
                 continue
             by_ws.setdefault(ws["id"], []).append(c)
         active_ws = {m["activeWorkspace"]["id"] for m in mons.values()}
-        ids = sorted(set(by_ws) | active_ws)
+        here = next((m["activeWorkspace"]["id"] for m in mons.values() if m.get("focused")), None)
+        self.ids = ids = sorted(set(by_ws) | active_ws)
         if not ids:
             return
-        card_w = min(330 * u, (w - 200 * u) / len(ids) - 26 * u)
-        gap = 26 * u
-        total = len(ids) * card_w + (len(ids) - 1) * gap
-        x = (w - total) / 2
-        y = h - 400 * u + lift
+        if self.cursor not in ids:
+            self.cursor = here if here in ids else ids[0]
+        for wid in ids:
+            if wid not in self.grow:         # arrives at its size, does not grow into it
+                self.grow[wid] = Spring(1.0 if wid == self.cursor else 0.0, SPATIAL)
+
+        # One row, centred. Widths come from the springs, so when the
+        # selection moves the cards trade sizes and their neighbours make room.
+        n, gap = len(ids), 40 * u
+        base = min(540 * u, (w - 240 * u - gap * (n - 1)) / (n - 1 + HERO))
+        grown = {wid: max(0.0, min(1.15, self.grow[wid].x)) for wid in ids}
+        widths = {wid: base * (1.0 + (HERO - 1.0) * grown[wid]) for wid in ids}
+        x = (w - sum(widths.values()) - gap * (n - 1)) / 2
+        cy = 716 * u + lift
+        placed, tallest = [], 0.0
         for wid in ids:
             clients = by_ws.get(wid, [])
             mon = mons.get(clients[0]["monitor"]) if clients else next(
                 (m for m in mons.values() if m["activeWorkspace"]["id"] == wid), None)
-            if mon is None:
-                continue
-            mw, mh = mon["width"] / mon["scale"], mon["height"] / mon["scale"]
-            card_h = card_w * mh / mw
-            live = wid in active_ws
-            # An island, like the chips above: the one you are on is the
-            # bar's material at full strength, the others stand back.
-            rounded(cr, x, y, card_w, card_h, 14 * u)
-            rgba(cr, "bg", (0.85 if live else 0.50) * a)
-            cr.fill_preserve()
-            cr.set_line_width(1.0 * u)
-            rgba(cr, "fg", (0.24 if live else 0.10) * a)
-            cr.stroke()
-            self.hits.append((x, y, card_w, card_h, "workspace", wid))
-            s = card_w / mw
-            for c in clients:
-                cx0 = x + (c["at"][0] - mon["x"]) * s
-                cy0 = y + (c["at"][1] - mon["y"]) * s
-                cw, ch = c["size"][0] * s, c["size"][1] * s
-                focused = c["address"] == self.snapshot["active"]
-                self.hits.append((cx0, cy0, cw, ch, "window", c["address"]))
-                rounded(cr, cx0 + 1, cy0 + 1, cw - 2, ch - 2, 5 * u)
-                if focused:
-                    rgba(cr, "accent", 0.30 * a)
-                else:
-                    # Attention heat: a window you were in a moment ago is
-                    # lighter than one you have not touched for ten minutes.
-                    age = 600.0
-                    if self.pulse is not None and c["address"] in self.pulse.seen:
-                        age = time.monotonic() - self.pulse.seen[c["address"]]
-                    warmth = max(0.0, 1.0 - age / 600.0)
-                    rgba(cr, "overlay", (0.30 + 0.50 * warmth) * a)
-                cr.fill_preserve()
-                cr.set_line_width(1 * u)
-                rgba(cr, "accent" if focused else "slate", a)
-                cr.stroke()
-                if cw > 60 * u and ch > 26 * u:
-                    cr.save()
-                    cr.rectangle(cx0 + 4, cy0 + 2, cw - 8, ch - 4)
-                    cr.clip()
-                    # XWayland windows carry a mark: they are the ones paying
-                    # the extra latency, and nothing else on screen says so.
-                    name = (c.get("class") or "?").lower() + ("  ·x11" if c.get("xwayland") else "")
-                    text(cr, name, cx0 + 8 * u, cy0 + 6 * u, 12 * u,
-                         "fg" if focused else "subtle", a, weight=FONT["regular"])
-                    cr.restore()
-            text(cr, str(wid), x + card_w / 2, y + card_h + 12 * u, 20 * u,
-                 "fg" if live else "muted", a, weight=FONT["thin"], align="center")
-            x += card_w + gap
+            if mon is not None:
+                mw, mh = mon["width"] / mon["scale"], mon["height"] / mon["scale"]
+                ch = widths[wid] * mh / mw
+                placed.append((wid, x, cy - ch / 2, widths[wid], ch, mon, clients))
+                tallest = max(tallest, base * HERO * mh / mw)
+            x += widths[wid] + gap
 
-    def draw_corners(self, cr, w, h, u, a):
+        # hyprland/window: what the bar prints next to the workspaces.
+        if self.bar.title:
+            text(cr, self.bar.title, w / 2, cy - tallest / 2 - 54 * u, 15 * u, "muted", a,
+                 family=ICON_FAMILY, weight=400, align="center")
+        for wid, x, y, cw, ch, mon, clients in placed:
+            g = min(1.0, grown[wid])
+            self.draw_workspace(cr, wid, x, y, cw, ch, mon, clients, g, u, a)
+            # Its number, set like the title card's: thin, placed by the
+            # digit's own box. Where you are is `fg` with the accent dot.
+            size = (40 + 22 * g) * u
+            ix, iy, iw, _ih = ink(cr, str(wid), size, weight=FONT["numeral_weight"])
+            ny = cy + tallest / 2 + 28 * u
+            role = "fg" if wid == here else "subtle" if g > 0.5 else "muted"
+            text(cr, str(wid), x + cw / 2 - iw / 2 - ix, ny - iy, size, role, a,
+                 weight=FONT["numeral_weight"])
+            if wid == here:
+                rgba(cr, "accent", a)
+                cr.new_path()
+                cr.arc(x + cw / 2, ny + 66 * u, 3.5 * u, 0, TAU)
+                cr.fill()
+
+    def draw_workspace(self, cr, wid, x, y, cw, ch, mon, clients, g, u, a):
+        """One workspace: an island, its windows to scale on it. `g` is how
+        far it is the selected one (0..1): larger already, and lifted — a
+        darker, brighter-edged card with a shadow under it."""
+        rad = 14 * u
+        for spread, alpha in ((20, 0.06), (11, 0.09), (4, 0.13)):
+            if g > 0.02:
+                rounded(cr, x - spread * u, y - spread * u + 8 * u * g, cw + 2 * spread * u,
+                        ch + 2 * spread * u, rad + spread * u)
+                rgba(cr, "bgDeep", alpha * g * a)
+                cr.fill()
+        rounded(cr, x, y, cw, ch, rad)
+        rgba(cr, "bg", (0.50 + 0.38 * g) * a)
+        cr.fill_preserve()
+        cr.set_line_width((1.0 + 0.5 * g) * u)
+        rgba(cr, "fg", (0.10 + 0.24 * g) * a)
+        cr.stroke()
+        self.hits.append((x, y, cw, ch, "workspace", wid))
+
+        s = cw / (mon["width"] / mon["scale"])
+        ts = max(12.5 * u, min(15 * u, 60 * u * s))   # the names grow with the card
+        if not clients:
+            _, eh = measure(cr, label("empty"), 13 * u)
+            text(cr, label("empty"), x + cw / 2, y + (ch - eh) / 2, 13 * u, "hint", a,
+                 align="center", spacing=FONT["track"] * u)
+            return
+        cr.save()
+        rounded(cr, x, y, cw, ch, rad)
+        cr.clip()                           # a window hanging off the monitor stays on the card
+        for c in clients:
+            px = x + (c["at"][0] - mon["x"]) * s
+            py = y + (c["at"][1] - mon["y"]) * s
+            pw, ph = c["size"][0] * s, c["size"][1] * s
+            focused = c["address"] == self.snapshot["active"]
+            self.hits.append((px, py, pw, ph, "window", c["address"]))
+            rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
+            if focused:
+                rgba(cr, "accent", 0.26 * a)
+            else:
+                # Attention heat: a window you were in a moment ago is
+                # lighter than one you have not touched for ten minutes.
+                age = 600.0
+                if self.pulse is not None and c["address"] in self.pulse.seen:
+                    age = time.monotonic() - self.pulse.seen[c["address"]]
+                rgba(cr, "overlay", (0.30 + 0.50 * max(0.0, 1.0 - age / 600.0)) * a)
+            cr.fill_preserve()
+            cr.set_line_width(1 * u)
+            rgba(cr, "accent" if focused else "slate", a)
+            cr.stroke()
+            room = pw - 20 * u
+            if room > 44 * u and ph > ts * 1.5 + 12 * u:
+                # XWayland windows carry a mark: they are the ones paying
+                # the extra latency, and nothing else on screen says so.
+                name = (c.get("class") or "?").lower() + ("  ·x11" if c.get("xwayland") else "")
+                text(cr, name, px + 10 * u, py + 8 * u, ts, "fg" if focused else "subtle", a,
+                     weight=FONT["regular"], width=room)
+                title = (c.get("title") or "").strip()
+                if title and ph > ts * 3.0 + 12 * u:
+                    text(cr, title, px + 10 * u, py + 8 * u + ts * 1.5, ts - 1.0 * u, "muted", a,
+                         family=ICON_FAMILY, weight=400, width=room)
+        cr.restore()
+
+    def draw_corners(self, cr, u, a):
         m = 60 * u
         host = os.uname().nodename
         up = float(_read("/proc/uptime", "0").split()[0])
@@ -843,10 +936,6 @@ class Hud:
         gen = self.stats.info["gen"]
         line = f"generation {gen}   ·   up {upt}   ·   {os.uname().release}" if gen else f"up {upt}"
         text(cr, line, m, m + 26 * u, 15 * u, "muted", a, weight=FONT["regular"])
-        # hyprland/window: what the bar prints next to the workspaces.
-        if self.bar.title:
-            text(cr, self.bar.title, w / 2, h - 446 * u, 15 * u, "muted", a,
-                 family=ICON_FAMILY, weight=400, align="center")
 
     # -- the bar, unfolded --------------------------------------------------
     def island(self, cr, x, y, w, h, u, a):

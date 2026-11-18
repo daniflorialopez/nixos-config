@@ -155,7 +155,25 @@ class Spring:
 # ------------------------------------------------------------------- text
 
 
-def _layout(cr, s, size, family, weight, spacing):
+_LAYOUTS = {}                # (text, size, family, weight, spacing, width) -> PangoLayout
+
+
+def _layout(cr, s, size, family, weight, spacing, width=None):
+    """A laid-out line of text, remembered.
+
+    Building a PangoLayout — a font description, then shaping — is the slow
+    part of putting text on screen: about 0.15 ms each, and the HUD has well
+    over a hundred of them, so a frame of it was 23 ms with nothing on it
+    but type. Almost none of that text changes from one frame to the next
+    (an animation moves it or fades it; it does not reword it), so a layout
+    is kept and only told about the new cairo context.
+    """
+    key = (s, round(size, 2), family, weight, round(spacing, 2),
+           None if width is None else int(width))
+    layout = _LAYOUTS.get(key)
+    if layout is not None:
+        PangoCairo.update_layout(cr, layout)
+        return layout
     layout = PangoCairo.create_layout(cr)
     desc = Pango.FontDescription()
     desc.set_family(family)
@@ -166,7 +184,14 @@ def _layout(cr, s, size, family, weight, spacing):
         attrs = Pango.AttrList()
         attrs.insert(Pango.attr_letter_spacing_new(int(spacing * Pango.SCALE)))
         layout.set_attributes(attrs)
+    if width is not None:
+        # One line, cut with an ellipsis where it would run past `width` px.
+        layout.set_width(int(max(1.0, width) * Pango.SCALE))
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
     layout.set_text(s, -1)
+    if len(_LAYOUTS) > 800:      # sizes that animate leave a trail; do not keep it
+        _LAYOUTS.clear()
+    _LAYOUTS[key] = layout
     return layout
 
 
@@ -176,9 +201,10 @@ def measure(cr, s, size, family=None, weight=400, spacing=0):
 
 
 def text(cr, s, x, y, size, role="fg", alpha=1.0, family=None,
-         weight=400, align="left", spacing=0):
-    """Draw `s` with its top-left (or top-centre / top-right) at x, y."""
-    layout = _layout(cr, s, size, family or FONT["family"], weight, spacing)
+         weight=400, align="left", spacing=0, width=None):
+    """Draw `s` with its top-left (or top-centre / top-right) at x, y; with
+    `width`, on one line and ellipsised to fit."""
+    layout = _layout(cr, s, size, family or FONT["family"], weight, spacing, width)
     w, h = layout.get_pixel_size()
     if align == "center":
         x -= w / 2
