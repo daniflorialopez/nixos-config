@@ -256,7 +256,8 @@ undoes it.
 `$mod+G` the HUD, pinned as a switcher · hold `$mod SHIFT+G` glance, the HUD
 only while held · `$mod+U` undo close · `$mod+R` the menu. The binds use
 Hyprland's `event` dispatcher instead of exec: the daemon reads the words off
-the event socket, so nothing is forked per keypress.
+the event socket, so nothing is forked per keypress. Five binds in all: four
+presses (the glance one repeats, as a heartbeat) and one release.
 
 **Dani's first review (2026-11-18)** — HUD: likes concept and elements, not
 the style and font, wants everything waybar carries. Title cards: "simple but
@@ -292,51 +293,89 @@ window-shaped spotlight pool, keys on unused families plus a menu.
   the event instead of 30 ms later, runs on the frame clock, and polls
   geometry at 20 Hz while anything changes.
 
+**Dani's third review (2026-11-18, night) and what changed:**
+- *Menu* — "I like the menu a lot." Nothing changed.
+- *Title cards* — bare: "delicious right now ... they could be ruined and I
+  like them a lot as they are". **Frozen. Do not restyle the bare card.**
+  `island` and `banner` are still selectable and now unwanted; removing them
+  (and their menu tile) is a clean-up waiting for a word from Dani.
+- *HUD* — "better, without being visually stunning, and I don't know if we
+  should strive for that or what." **Open question, Dani's to decide.** My
+  recommendation, given in conversation: do not chase spectacle across the
+  panel — it is read, not watched, and the one decorative attempt (the
+  lenses) is what failed. If one push is wanted, give it a single hero: in
+  pinned mode that is the workspace map, since switching is what it is used
+  for.
+- *Spotlight* — "moves better, but ... the animation could be better and more
+  polished. Perhaps a bravest animation could help." Rebuilt as a handoff:
+  the light reaches the new window first (~70 ms), the darkness follows over
+  the old one (~330 ms), the pool breathes out as it lands and a glint runs
+  round the window's border from where the light came in. **Not yet seen by
+  Dani.**
+- *Strata, dream* — "should be both removed, we can find other ideas that are
+  more beautiful instead." They already were. Ideas offered in their place,
+  none started: **rest** (when idle, the windows fade away and the chosen
+  wallpaper is the screensaver, with the time set like the bare title card —
+  no video needed, nothing locked); a **day set** (three or four photographs
+  Dani picks, crossfaded by time of day; needs downloads).
+
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
   deadnix clean on `reverie.nix`; no literal colours outside the palette.
   `keybinds-menu` was built from the branch and run against the live binds
-  with a stub walker: undo is filed under Windows, the other three under
-  System, release binds are not listed.
-- Keys, through the same dispatcher the binds use (`hyprctl dispatch event`):
-  pin and unpin; a release event never closes a pinned panel; hold + release;
-  with the repeat heartbeat, beats stopping hides the panel 249 ms later, a
-  tap with no release at all hides it after 854 ms, and 2.5 s of beats never
-  cut it short. `untry` leaves no bind behind; `try` registers six.
+  with a stub walker: undo is filed under Windows, the others under System,
+  release binds are not listed.
+- **Real input.** `/dev/uinput` is writable by Dani's user, so a virtual
+  keyboard and mouse pressed and clicked everything through the kernel, keyd
+  and Hyprland (scratchpad `keys.py`): pin, and that its own release does not
+  close it; the glance with every order of letting go (G first: gone at once;
+  a 300 ms peek let go in a bad order: ~520 ms; after the first repeat:
+  ~225 ms; held two seconds: never cut short); the menu by arrows, hjkl, tab,
+  a digit, a click on a tile, a click beside the deck, the menu key again and
+  esc; the pinned HUD by a number key and by a click.
+- What that taught about Hyprland 0.55: once any other key of a chord is
+  released, release binds on the keys still held do not fire at all (five
+  probe binds, five orders). Only "G first" can be caught by a release bind;
+  the repeating bind's heartbeat covers the rest, and is remembered across
+  restarts.
+- **Seen on the real compositor:** the HUD's new backdrop; the menu deck with
+  the spotlight on (the deck stays lit, the pools merge); the bare title
+  card; the spotlight handoff grabbed twice mid-flight, matching the
+  offscreen frame-by-frame render; the spotlight closing in when switched on.
 - HUD: first frame 8-9 ms after the command (was 70-90: a blocking battery
-  read before mapping), blurred backdrop in at ~100 ms. Seen once on the real
-  compositor in its new form.
-- Menu: opened, navigated with every key, ripples flipped and flipped back,
-  font and card look cycled, closed with esc — all through `reverie menu key`,
-  with the state identical before and after. The active window stays the
-  active window while the deck has the keyboard, so the spotlight stays lit.
-- Spotlight motion, numerically: within ~55 px of an easeOutQuint window over
-  a 1000 px move; the old spring was 500 px behind at 61 ms.
-- Daemon with the spotlight on and nothing moving: 0.3 % of one core,
-  115 MB resident.
+  read before mapping), blurred backdrop in at ~100 ms.
+- Spotlight cost per focus change, measured over rounds of real focus changes
+  on three tiled terminals: 188 ms of CPU in the daemon and 189 ms in
+  Hyprland, over about half a second (first cut of the handoff: 265 + 340).
+  At rest with the spotlight on: 0.3-0.7 % of one core, ~115 MB resident.
 
 **Not done / not verified:**
 - **Nothing was rebuilt.** The systemd unit, the declared binds and the
   hypridle listener have never run; only `reverie try` has. Until a rebuild
   the ledger overcounts the focused window while you are away.
-- **Most of the second-review work has not been seen on the real screen by
-  anyone.** Dani locked the screen while it was being tested; from then on
-  only logic and offscreen renders (the draw code over a screenshot) could be
-  checked. That covers the menu deck, the three card looks, and the spotlight
-  in motion — in particular whether the compositor's blur under the deck and
-  the boxed cards looks right, and whether the spotlight now *feels*
-  responsive, which no number settles.
-- **No chord has been pressed by a test.** No input-injection tool is
-  installed. The binds are verified as registered and free, and their
-  commands as working, but: the hold bind's repeat (the heartbeat) is assumed
-  from Hyprland's `binde` semantics and has never been observed here — if it
-  does not repeat, the glance falls back to the release binds and a
-  ten-second limit, as before; and the pinned HUD's and the menu's mouse
-  paths are untested.
+- **Whether the handoff looks good is not something I can settle.** Stills
+  and timings say it does what it was designed to do; "polished" and "brave
+  enough" are Dani's to judge, in motion. The glint in particular is a thin
+  line and may be too quiet, or too much.
+- **`island` and `banner` card looks, and ripples, were not looked at on the
+  real compositor** (offscreen renders only, and the looks are unwanted now).
 - **Bar chips not seen in every state** (no media player, no tray app,
-  bluetooth off, nothing failing at test time). **Sound was not heard.**
-  **Single monitor only.** **The focus arc has one day of real data.**
+  bluetooth off, nothing failing at test time). **Sound was not heard by
+  me.** **Single monitor only**: the per-monitor spotlight overlays, the
+  glint strips on a second monitor, and HUD/cards following focus across
+  monitors have never run with two. **The focus arc has one day of data.**
 - **Known limits, by design or not fixed:**
+  - a focus change with the spotlight on costs about a third of a core in
+    each of the daemon and the compositor for half a second. All the Python
+    in it is 30 ms; the rest is GTK's software renderer carrying the whole
+    window's buffer forward every frame. The real fix is to stop having one
+    full-screen surface (per-tile render nodes, or letting the compositor
+    draw the glint as a border animation); not done;
+  - with `input:follow_mouse = 1` every window the pointer crosses is a focus
+    change, so sweeping the mouse across the screen plays a handoff per
+    window;
+  - a glance let go in a bad order before the keyboard's repeat delay
+    (600 ms) has passed stays up until that delay runs out;
   - the HUD's backdrop is a capture, so whatever moves behind the panel is
     frozen while it is up; the capture is taken a few ms after the panel
     starts fading in, which the blur hides;
@@ -350,11 +389,11 @@ window-shaped spotlight pool, keys on unused families plus a menu.
     that is also on master;
   - the hypridle listener (180 s) is new idle behaviour for this machine: it
     only notifies the daemon, it locks and dims nothing.
-- **Candidates for the daily rice**, by Dani's two reviews: `undo`
-  ("genius"), the menu (concept liked "a lot"), title cards (liked most;
-  look undecided), the HUD (carrying the bar: "love"), the spotlight (styling
-  liked; speed just reworked). Not yet commented on: zen, ripples, sound,
-  fade.
+- **Candidates for the daily rice**, by Dani's three reviews: the bare title
+  card ("delicious", frozen), the menu ("I like the menu a lot"), `undo`
+  ("genius"), the HUD (carrying the bar: "love"; look: "better, without
+  being visually stunning"), the spotlight (styling liked; motion on its
+  third version, unjudged). Not yet commented on: zen, ripples, sound, fade.
 
 **Parked from `rice/overdrive`** (Dani, 2026-11-18: store, implement later
 once more ideas have been collected — not now):
