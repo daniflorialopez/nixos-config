@@ -336,10 +336,20 @@ window-shaped spotlight pool, keys on unused families plus a menu.
   map is the hero (large cards in the middle, windows named by application
   and title, the selected card larger and lifted, left/right/enter to move
   and go), clock and gauges made small around it. **Not yet judged.**
-- **Open, Dani's call:** real thumbnails on the workspace cards instead of
-  drawn windows. Cost: the daemon would hold a screenshot of each workspace
-  in memory and take one on every arrival (and the spotlight's dimming would
-  be in them unless undone).
+- **NEXT, asked for by Dani for the afternoon of 2026-11-19 ("don't forget
+  the thumbnails for tomorrow"):** real thumbnails on the HUD's workspace
+  cards instead of drawn windows. Known going in: the daemon has to hold a
+  screenshot of each workspace in memory and take one on every arrival; the
+  capture is of the whole output, so the spotlight's dimming and any title
+  card on screen are in it unless waited out or undone; a thumbnail goes
+  stale when the workspace's windows change, so it needs a rule for falling
+  back to the drawn windows.
+- *Two spotlight bugs, reported right after:* the previous window's pool
+  carried onto the next workspace, and sometimes no spotlight at all after a
+  switch. One cause (the canvas was not redrawn when the pool jumped instead
+  of travelling), fixed and covered by checks that compare what was painted
+  with the focused window: 40 cases, all passing. **Not yet confirmed by
+  Dani.**
 
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
