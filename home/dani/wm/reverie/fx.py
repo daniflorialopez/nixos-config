@@ -4,10 +4,10 @@ Click-through overlays above the windows — one per monitor — used for two
 things.
 
 spotlight  The desktop dims and the focused window sits in a pool of light.
-           When focus moves, the pool does not jump: it *travels* there on a
-           spring and reshapes itself on the way, so your eye is carried to
-           the new window instead of having to find it. Focus as motion
-           rather than as a border colour.
+           When focus moves, the pool does not jump: it *travels* there and
+           reshapes itself on the way, so your eye is carried to the new
+           window instead of having to find it. Focus as motion rather than
+           as a border colour.
 
 ripples    A window opening sends a ring outward from where it appeared; a
            window closing draws one inward to where it was. Half a second,
@@ -26,6 +26,21 @@ with a hole in it:
     not stacked rings, so there are no visible steps in it;
   - every monitor dims, not only the one with focus.
 
+And what makes it feel attached to the window rather than following it
+around (the second version was "a bit too slow and a bit unresponsive"):
+
+  - it moves the way the windows do. Hyprland eases a window into a new
+    place with easeOutQuint: fastest on the first frame, then settling. A
+    spring starting from rest does the opposite — it spends its first frames
+    barely moving, and that hesitation is exactly what reads as lag. The
+    pool is an exponential follower instead, with its time constant taken
+    from the compositor's own `windows` animation, so when the layout moves
+    the focused window the pool's edge and the window's edge travel together;
+  - it starts on the event, not 30 ms after it;
+  - it is drawn on the monitor's frame clock (165 Hz here), not a 60 Hz timer;
+  - a resize or a drag raises no event at all, so the geometry is polled —
+    twenty times a second while anything is changing, four when nothing is.
+
 Coordinates are global (Hyprland's layout space) everywhere; each view
 subtracts its own monitor's origin when it draws.
 """
@@ -39,10 +54,34 @@ from common import EFFECT, PAL, Spring, hypr, layer_window, rgba, rounded
 
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
 
-GLIDE = (120.0, 19.0)        # travels with the faintest overshoot, settles fast
 RIPPLE_S = 0.6
 DIM = 0.50                   # how dark "everything else" gets
-FRAME_MS = 16
+POLL_MS = 50                 # geometry poll while something is changing
+IDLE_EVERY = 5               # ... and every this-many polls when nothing is
+BUSY_S = 1.5                 # how long after the last change "changing" lasts
+FOCUS_EVENTS = ("activewindowv2", "workspacev2", "fullscreen", "movewindowv2",
+                "changefloatingmode", "openwindow", "closewindow", "focusedmonv2")
+
+
+class Chase:
+    """An exponential follower: every instant it closes the same fraction of
+    what is left. Fastest at the start, no overshoot, and a new target
+    mid-flight simply bends the path — the shape of easeOutQuint without
+    needing to know when the motion began."""
+
+    def __init__(self):
+        self.x = 0.0
+        self.target = 0.0
+
+    def step(self, dt, tau):
+        if tau <= 0.0 or abs(self.target - self.x) < 0.3:
+            self.x = self.target         # land exactly: geometry is whole pixels
+        else:
+            self.x += (self.target - self.x) * (1.0 - math.exp(-dt / tau))
+
+    @property
+    def resting(self):
+        return self.x == self.target
 
 
 class View:
@@ -57,6 +96,24 @@ class View:
         self.area.set_draw_func(lambda _a, cr, w, h: fx.draw(self, cr, w, h))
         self.win.set_child(self.area)
         self.win.connect("map", self.on_map)
+        self.fx = fx
+        self.tick_id = 0
+
+    def run(self):
+        if not self.tick_id:
+            self.tick_id = self.area.add_tick_callback(self.tick)
+
+    def tick(self, _area, _clock):
+        self.fx.advance()                # the first view to tick steps for all of them
+        self.area.queue_draw()
+        if self.fx.moving:
+            return True
+        # At rest: stop drawing. A lit spotlight costs nothing while focus
+        # stays where it is.
+        self.tick_id = 0
+        if not self.fx.spot:
+            self.win.set_visible(False)
+        return False
 
     @staticmethod
     def on_map(win):
@@ -74,13 +131,16 @@ class Fx:
         self.spot = False
         self.ripples_on = False
         self.alpha = Spring(0.0, EFFECT)
-        self.box = [Spring(0.0, GLIDE) for _ in range(4)]     # global x, y, w, h
+        self.box = [Chase() for _ in range(4)]                # global x, y, w, h
         self.have_box = False
         self.ripples = []            # (cx, cy, radius, t0, opening), global
         self.rounding = 16.0
         self.feather = 12.0
-        self.timer_id = 0
+        self.tau = 0.05              # seconds; see read_layout
+        self.moving = False
         self.poll_id = 0
+        self.beat = 0
+        self.busy_until = 0.0
         self.last = None
 
     # -- views ------------------------------------------------------------
@@ -109,42 +169,53 @@ class Fx:
         parts = str(opt.get("custom", "")).split()
         if parts and parts[0].lstrip("-").isdigit():
             self.feather = float(max(6, int(parts[0])))
+        # How long the compositor takes to move a window. easeOutQuint over
+        # T is, to within a few percent, an exponential with tau = T / 6
+        # (it is 83% there at 0.3 T; so is 1 - e^-1.8). No animations: snap.
+        tree = hypr("j/animations") or []
+        anims = {a.get("name"): a for a in (tree[0] if tree else [])}
+        chosen = next((anims[n] for n in ("windowsMove", "windows", "global")
+                       if anims.get(n, {}).get("overridden")), None)
+        opt = hypr("j/getoption animations:enabled") or {}
+        if chosen is None:
+            self.tau = 0.05
+        elif not chosen.get("enabled") or opt.get("int") == 0:
+            self.tau = 0.0
+        else:
+            self.tau = max(0.02, min(0.09, float(chosen.get("speed", 3.0)) * 0.1 / 6.0))
 
     def wake(self):
-        self.sync_views()
+        """Map every overlay and run the frame clocks until things settle."""
+        if not self.moving:
+            self.sync_views()
+            self.last = time.monotonic()     # so the first frame steps by real elapsed time
+        self.moving = True
         for view in self.views.values():
             view.win.set_visible(True)
-        if not self.timer_id:
-            self.last = None
-            self.timer_id = GLib.timeout_add(FRAME_MS, self.tick)
+            view.run()
 
-    def tick(self):
+    def advance(self):
         now = time.monotonic()
-        dt = 0.016 if self.last is None else min(0.05, now - self.last)
+        dt = now - self.last if self.last is not None else 0.0
+        if self.last is not None and dt < 0.002:
+            return                       # another monitor's clock already did this frame
         self.last = now
+        dt = min(0.05, dt)
         self.alpha.step(dt)
         for s in self.box:
-            s.step(dt)
+            s.step(dt, self.tau)
         self.ripples = [r for r in self.ripples if now - r[3] < RIPPLE_S]
-        for view in self.views.values():
-            view.area.queue_draw()
-        moving = not (self.alpha.resting and all(s.resting for s in self.box))
-        if self.ripples or moving:
-            return True
-        # At rest: stop drawing. A lit spotlight costs nothing while focus
-        # stays where it is.
-        self.timer_id = 0
-        if not self.spot:
-            for view in self.views.values():
-                view.win.set_visible(False)
-        return False
+        self.moving = bool(self.ripples) or not (
+            self.alpha.resting and all(s.resting for s in self.box))
 
     # -- events -----------------------------------------------------------
     def on_event(self, event, data):
-        if self.spot and event in ("activewindowv2", "workspacev2", "fullscreen", "movewindowv2",
-                                   "changefloatingmode", "openwindow", "closewindow",
-                                   "focusedmonv2"):
-            GLib.timeout_add(30, self.retarget)
+        if self.spot and event in FOCUS_EVENTS:
+            # Now — the event is the news — and once more shortly after, for
+            # geometry the layout had not finished deciding (a new window).
+            self.retarget()
+            GLib.timeout_add(40, self.retarget)
+            self.busy_until = time.monotonic() + BUSY_S
         if not self.ripples_on:
             return
         if event == "openwindow":
@@ -168,6 +239,8 @@ class Fx:
 
     # -- spotlight --------------------------------------------------------
     def retarget(self):
+        """Aim the pool at the focused window (also a timeout callback, so
+        it always returns False)."""
         if not self.spot:
             return False
         win = hypr("j/activewindow") or {}
@@ -185,22 +258,26 @@ class Fx:
             # appear in place rather than fly in from wherever it last was.
             fresh = not self.have_box or self.alpha.x < 0.05
             for s, v in zip(self.box, geo):
-                s.target = v
+                s.target = float(v)
                 if fresh:
-                    s.x, s.v = v, 0.0
+                    s.x = float(v)
             self.have_box = True
             self.alpha.target = 1.0
-        if not self.timer_id:
-            self.last = None
-            self.timer_id = GLib.timeout_add(FRAME_MS, self.tick)
+        self.wake()
         return False
 
     def poll(self):
-        """Resizes and tiling reshuffles do not all raise an event."""
+        """A resize, a drag and most tiling reshuffles raise no event."""
         if not self.spot:
             self.poll_id = 0
             return False
-        self.retarget()
+        self.beat += 1
+        now = time.monotonic()
+        if now < self.busy_until or self.beat % IDLE_EVERY == 0:
+            before = [s.target for s in self.box]
+            self.retarget()
+            if before != [s.target for s in self.box]:
+                self.busy_until = now + BUSY_S
         return True
 
     # -- drawing ----------------------------------------------------------
@@ -300,12 +377,11 @@ class Fx:
                     self.wake()
                     self.retarget()
                     if not self.poll_id:
-                        self.poll_id = GLib.timeout_add(250, self.poll)
+                        self.poll_id = GLib.timeout_add(POLL_MS, self.poll)
                 else:
                     self.alpha.target = 0.0
-                    if not self.timer_id and self.views:
-                        self.last = None
-                        self.timer_id = GLib.timeout_add(FRAME_MS, self.tick)
+                    if self.views:
+                        self.wake()
             return f"spotlight {'on' if self.spot else 'off'}"
         if words:
             self.ripples_on = (not self.ripples_on) if words[0] == "toggle" else state
