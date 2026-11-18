@@ -10,12 +10,12 @@
 # One small Python daemon (./reverie, GTK4 + gtk4-layer-shell + cairo) owns
 # all of it. Everything is off or invisible until asked for:
 #
-#   HUD        hold $mod+G and the monitor becomes an instrument panel: clock,
-#              a day arc carrying today's focus history, gauges, everything
-#              the bar shows, and every workspace as a scale map of its
-#              windows, on the desktop itself thrown out of focus. Let go and
-#              it is gone. $mod SHIFT+G pins it, and then the map takes clicks
-#              and the number keys jump. This is "kill the bar" —
+#   HUD        $mod+G and the monitor becomes an instrument panel: clock, a
+#              day arc carrying today's focus history, gauges, everything the
+#              bar shows, and every workspace as a scale map of its windows,
+#              on the desktop itself thrown out of focus. Pinned like this
+#              the map takes clicks and the number keys jump; $mod SHIFT+G
+#              is the same panel only while held. This is "kill the bar" —
 #   zen        — and zen (in the menu) actually does it: waybar stops, cards
 #              announce workspace changes instead, the HUD is a key-hold away.
 #   menu       $mod+R: a deck of tiles along the bottom, one per switch, lit
@@ -29,10 +29,10 @@
 #   pulse      sound: the workspaces are a pentatonic scale, so moving through
 #              them plays a phrase. fade: windows dim the longer they are
 #              ignored and come straight back on focus.
-#   undo       $mod SHIFT+T reopens the window you just closed, on its
-#              workspace and (if it floated) in its place.
+#   undo       $mod+U reopens the window you just closed, on its workspace
+#              and (if it floated) in its place.
 #
-#   reverie hud show|hide|pin                  reverie zen on|off|toggle
+#   reverie hud show|hide|pin|hold|release     reverie zen on|off|toggle
 #   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle
 #   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
@@ -85,32 +85,46 @@ let
   # $mod CTRL+H/J/K/L resize keys.
   #
   # The rules now, checked against the live table (`hyprctl binds -j`,
-  # 2026-11-18, 97 binds):
-  #   1. only keys whose WHOLE family is unused — G, T and R have no $mod,
+  # 2026-11-18):
+  #   1. only keys whose WHOLE family is unused — G, U and R have no $mod,
   #      $mod SHIFT, $mod CTRL or $mod ALT bind anywhere;
   #   2. letters, not punctuation: they need no keycode workaround for the
   #      us/es layouts and sit on the Corne's base layer;
-  #   3. a chord only for what needs one. Hold-to-glance needs a key; reopening
-  #      a window is reflex. Modes (zen, spotlight, the toggles) are
-  #      chosen, not hit, so they live in one menu.
+  #   3. a chord only for what needs one. The HUD and reopening a window are
+  #      reflexes. Modes (zen, spotlight, the toggles) are chosen, not hit,
+  #      so they live in one menu.
   #
-  #   $mod+G         Glance — the HUD while held. A slip from $mod+H costs a
-  #                  peek that ends when the key comes up.
-  #   $mod SHIFT+G   the same panel, pinned as a switcher
-  #   $mod SHIFT+T   reopen the closed window: $mod+W closes like a browser
-  #                  tab, so its inverse is the browser's inverse
+  #   $mod+G         the HUD, pinned as a switcher. The plain chord, because
+  #                  pinning turned out to be the common case (second review).
+  #   $mod SHIFT+G   glance: the same panel only while held
+  #   $mod+U         Undo close: the window that was just closed comes back.
+  #                  It was $mod SHIFT+T, the browser's chord for the same
+  #                  thing, which Dani found "not the most mnemonic-friendly".
+  #                  $mod SHIFT+W would be the textbook inverse of $mod+W, but
+  #                  that is WhatsApp; U had no bind in any family.
   #   $mod+R         the Reverie menu: every mode and toggle, with its state
+  #
+  # None of these exec anything. `event` makes Hyprland say the words on its
+  # event socket, where the daemon is already listening (reverie/main.py):
+  # no fork per keypress, and presses and releases cannot overtake each other.
   binds = [
-    { mods = "$mod"; key = "G"; desc = "Glance - HUD while held"; cmd = "hud show"; }
-    { mods = "$mod SHIFT"; key = "G"; desc = "Glance - pin the HUD as a switcher"; cmd = "hud pin"; }
-    { mods = "$mod SHIFT"; key = "T"; desc = "Reopen the last closed window"; cmd = "undo"; }
+    { mods = "$mod"; key = "G"; desc = "Glance - pin the HUD as a switcher"; cmd = "hud pin"; }
+    { mods = "$mod"; key = "U"; desc = "Undo close - reopen the last closed window"; cmd = "undo"; }
     { mods = "$mod"; key = "R"; desc = "Reverie menu"; cmd = "menu"; }
   ];
-  # Release half of hold-to-glance. If the modifier comes up before the key,
-  # this never fires; the HUD lets itself out after 10 s (reverie/hud.py).
-  # The keybinds palette skips release binds, so this adds no row there.
+  # Hold-to-glance. The press repeats (binde) so the daemon can tell the chord
+  # is still down; why it needs to is in reverie/hud.py, `hold`.
+  holds = [
+    { mods = "$mod SHIFT"; key = "G"; desc = "Glance - the HUD only while held"; cmd = "hud hold"; }
+  ];
+  # ... and its release. Hyprland matches a release against the modifiers held
+  # at that moment, so there are two: G let go with both still down, and G let
+  # go after Shift came up. `hud release` only ends a HELD panel, so the
+  # second — which also fires whenever the pin chord is released — leaves a
+  # pinned one alone. The keybinds palette skips release binds.
   releases = [
-    { mods = "$mod"; key = "G"; desc = "Glance (release)"; cmd = "hud hide"; }
+    { mods = "$mod SHIFT"; key = "G"; desc = "Glance (release)"; cmd = "hud release"; }
+    { mods = "$mod"; key = "G"; desc = "Glance (release - Shift up first)"; cmd = "hud release"; }
   ];
 
   layerRules = [
@@ -135,18 +149,19 @@ let
     "no_anim true, match:namespace reverie-fx"
   ];
 
-  toBind = exe: b: "${b.mods}, ${b.key}, ${b.desc}, exec, ${exe} ${b.cmd}";
+  toBind = b: "${b.mods}, ${b.key}, ${b.desc}, event, reverie ${b.cmd}";
 
   # The runtime spelling: hyprctl does not expand the config's $mod.
   live = b: b // { mods = builtins.replaceStrings [ "$mod" ] [ "SUPER" ] b.mods; };
   tryLines = lib.concatStringsSep "\n" (
-    map (b: ''hyprctl keyword bindd "${toBind "$self" (live b)}" >/dev/null'') binds
-    ++ map (b: ''hyprctl keyword binddr "${toBind "$self" (live b)}" >/dev/null'') releases
+    map (b: ''hyprctl keyword bindd "${toBind (live b)}" >/dev/null'') binds
+    ++ map (b: ''hyprctl keyword bindde "${toBind (live b)}" >/dev/null'') holds
+    ++ map (b: ''hyprctl keyword binddr "${toBind (live b)}" >/dev/null'') releases
     ++ map (r: ''hyprctl keyword layerrule "${r}" >/dev/null'') layerRules
   );
   untryLines = lib.concatMapStringsSep "\n" (
     b: ''hyprctl keyword unbind "${(live b).mods}, ${b.key}" >/dev/null''
-  ) binds;
+  ) (binds ++ holds);
 
   reverie = pkgs.writeShellApplication {
     name = "reverie";
@@ -202,9 +217,9 @@ let
           fi
           ${tryLines}
           echo "reverie is live for this session:"
-          echo "  hold SUPER+G      glance: the HUD while held"
-          echo "  SUPER+SHIFT+G     pin it (then 1-9 / click a window)"
-          echo "  SUPER+SHIFT+T     reopen the last closed window"
+          echo "  SUPER+G           the HUD, pinned (then 1…0 / click a window)"
+          echo "  hold SUPER+SHIFT+G  glance: the HUD only while held"
+          echo "  SUPER+U           undo close: reopen the last closed window"
           echo "  SUPER+R           the menu: every switch, and it stays open"
           echo "  $self untry       put it all back"
           ;;
@@ -294,8 +309,9 @@ in
   ];
 
   wayland.windowManager.hyprland.settings = {
-    bindd = map (toBind "reverie") binds;
-    binddr = map (toBind "reverie") releases;
+    bindd = map toBind binds;
+    bindde = map toBind holds;
+    binddr = map toBind releases;
     layerrule = layerRules;
   };
 }

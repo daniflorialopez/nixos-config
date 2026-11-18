@@ -215,6 +215,10 @@ class Hud:
         self.tick_id = 0
         self.timer_id = 0
         self.hold_id = 0
+        self.first_frame = False
+        self.beat_at = 0.0                   # when the held chord last made itself heard
+        self.beats = False                   # ... and whether this machine repeats it at all
+        self.repeat = (0.6, 0.04)            # the keyboard's repeat delay and interval, s
         self.hits = []                       # (x, y, w, h, kind, value), back to front
         self.snapshot = {"monitors": [], "clients": [], "active": None}
         self.pulse = None                    # set by main: focus ages
@@ -238,6 +242,10 @@ class Hud:
         then as quick as every later one.
         """
         scratch = cairo.ImageSurface(cairo.FORMAT_ARGB32, 320, 180)
+        delay = (hypr("j/getoption input:repeat_delay") or {}).get("int")
+        rate = (hypr("j/getoption input:repeat_rate") or {}).get("int")
+        if delay and rate:
+            self.repeat = (delay / 1000, 1 / rate)
         self.bar.refresh()                   # so the first show already has it
         self.refresh()
         self.draw(None, cairo.Context(scratch), 320, 180)
@@ -257,9 +265,8 @@ class Hud:
             GLib.source_remove(self.hold_id)
             self.hold_id = 0
         if not sticky:
-            # Hold-to-show relies on the key RELEASE reaching Hyprland with the
-            # modifier still down. Let go of the modifier first and that bind
-            # never fires, so a held panel also lets itself out.
+            # A held panel must not be able to outstay the hand that holds it.
+            # This is the last line of that; `hold` usually knows much sooner.
             self.hold_id = GLib.timeout_add_seconds(10, self._expire)
         if self.shown:
             if sticky != self.sticky:
@@ -371,6 +378,43 @@ class Hud:
         self.hide()
         return False
 
+    def _expire_in(self, seconds):
+        if self.hold_id:
+            GLib.source_remove(self.hold_id)
+        self.hold_id = GLib.timeout_add(int(seconds * 1000), self._expire)
+
+    def hold(self):
+        """One beat of the held chord ($mod SHIFT+G).
+
+        Hold-to-glance ends on the key's release bind, and Hyprland only
+        matches a release while the same modifiers are still down. With three
+        keys in the chord that is a coin toss: let Super go a moment before G
+        and no release ever arrives. So the bind also REPEATS (binde): this is
+        called once for the press and then at the keyboard's repeat rate for
+        as long as the chord is down, and "the beats stopped" is a second way
+        to know it was let go, whatever came up first.
+
+        That only works if this machine really repeats the bind, which
+        cannot be tested from here (nothing can inject a key press). So it is
+        learned, not assumed: until two beats have arrived a repeat-interval
+        apart — no hand does that — the panel keeps the old ten-second
+        limit. Once they have, a press with no repeat inside the keyboard's
+        repeat delay means the key is already up, and after that every missed
+        beat does.
+        """
+        now = time.monotonic()
+        gap, self.beat_at = now - self.beat_at, now
+        delay, interval = self.repeat
+        if self.shown and not self.sticky:
+            if gap < interval * 3:
+                self.beats = True
+            if self.beats:
+                self._expire_in(interval * 3 + 0.15)
+        else:
+            self.show()
+            if self.beats:
+                self._expire_in(delay + 0.25)
+
     def hide(self):
         if self.hold_id:
             GLib.source_remove(self.hold_id)
@@ -389,6 +433,11 @@ class Hud:
         what = words[0] if words else "toggle"
         if what == "show":
             self.show()
+        elif what == "hold":
+            self.hold()
+        elif what == "release":
+            if self.shown and not self.sticky:   # ends a held panel, never a pinned one
+                self.hide()
         elif what == "hide":
             self.hide()
         elif what in ("toggle", "pin"):

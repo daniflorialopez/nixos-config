@@ -325,10 +325,16 @@ let
           if (dsp == "exec") {
             if (a ~ /wpctl|playerctl|output-volume|record-toggle|replay-/) return "Media"
             if (a ~ /clipboard/) return "Clipboard"
-            if (a ~ /-m windows|scratchpad|reverie undo/) return "Windows"
-            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:power|reverie/) return "System"
+            if (a ~ /-m windows|scratchpad/) return "Windows"
+            if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:power/) return "System"
             return "Apps"
           }
+          # The reverie binds say their command on the event socket instead
+          # of exec-ing it (wm/reverie.nix): the argument is "reverie <words>".
+          # (No apostrophes in here: this awk program sits inside a single-
+          # quoted shell string, and one ends it. \047 is how to print one.)
+          if (dsp == "event" && a ~ /^reverie undo/) return "Windows"
+          if (dsp == "event" && a ~ /^reverie/) return "System"
           return "Other"
         }
         function addrow(t, chord, desc, dsp, a,    i) {

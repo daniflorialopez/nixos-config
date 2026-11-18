@@ -32,7 +32,7 @@ from pulse import Pulse  # noqa: E402
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
                      "theme", "reverie.json")
 
-USAGE = ("hud show|hide|pin · cards on|off|style bare|island|banner|next · "
+USAGE = ("hud show|hide|pin|hold|release · cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
          "font caskaydia|inter · menu [show|hide] · "
@@ -66,7 +66,8 @@ class Reverie(Gtk.Application):
         self.hud.pulse = self.pulse
         self.hud.ledger = self.ledger
         self.cards.bar = self.hud.bar
-        self.pulse.listeners += [self.ledger.on_event, self.cards.on_event, self.fx.on_event]
+        self.pulse.listeners += [self.ledger.on_event, self.cards.on_event, self.fx.on_event,
+                                 self.on_key_event]
         self.restore()
         self.listen()
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -160,6 +161,24 @@ class Reverie(Gtk.Application):
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except OSError:
             pass
+
+    # -- keys -------------------------------------------------------------
+    def on_key_event(self, event, data):
+        """The binds do not run `reverie <words>`. They have Hyprland say the
+        words on its event socket (`event, reverie hud pin` arrives here as
+        `custom>>reverie hud pin`), which this daemon is already reading.
+
+        Two reasons. Nothing is forked, so a key reaches the panel in well
+        under a millisecond instead of after a shell, a readlink and a socat.
+        And the events arrive in the order the keys were pressed: with two
+        processes racing, a quick tap could deliver "release" before "hold"
+        and leave the panel up.
+        """
+        if event == "custom" and data.startswith("reverie "):
+            try:
+                self.command(data.split()[1:])
+            except Exception as exc:         # a bad bind must not take the daemon down
+                print(f"reverie: {data!r}: {exc!r}", flush=True)
 
     # -- socket -----------------------------------------------------------
     def listen(self):
