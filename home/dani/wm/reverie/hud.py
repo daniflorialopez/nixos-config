@@ -67,7 +67,14 @@ def _read(path, default=""):
 
 
 class Stats:
-    """Cheap system readings. Nothing here may block the frame clock."""
+    """System readings. `sample` runs on the main loop and may only do what
+    is free; anything that can block goes in `_slow`, on a thread.
+
+    The battery belongs in the second group and was in the first. The kernel
+    caches a battery reading for about a second and then asks the embedded
+    controller again, which on this laptop takes ~70 ms — and since the panel
+    is shown rarely, every show was that uncached read, taken before the
+    window was even mapped. It was most of the HUD's start-up delay."""
 
     def __init__(self):
         self._cpu_prev = self._cpu_times()
@@ -75,6 +82,7 @@ class Stats:
                        "bat": None, "temp": None}
         self.info = {"gen": ""}
         self.charging = False
+        self.listener = None             # called on the main loop when _slow has landed
         self._busy = False
 
     @staticmethod
@@ -97,12 +105,6 @@ class Stats:
         if mem.get("MemTotal"):
             self.values["mem"] = 1.0 - mem.get("MemAvailable", 0) / mem["MemTotal"]
 
-        bats = glob.glob("/sys/class/power_supply/BAT*")
-        if bats:
-            cap = _read(bats[0] + "/capacity")
-            self.values["bat"] = int(cap) / 100 if cap.isdigit() else None
-            self.charging = _read(bats[0] + "/status") in ("Charging", "Full", "Not charging")
-
         temps = []
         for zone in glob.glob("/sys/class/hwmon/hwmon*"):
             if _read(zone + "/name") in ("coretemp", "k10temp", "zenpower"):
@@ -123,8 +125,14 @@ class Stats:
             return ""
 
     def _slow(self):
-        """Things that fork. Off the main thread; results land when they land."""
+        """Things that fork or wait on hardware. Off the main thread; the
+        listener is told when they have landed."""
         try:
+            bats = glob.glob("/sys/class/power_supply/BAT*")
+            if bats:
+                cap = _read(bats[0] + "/capacity")
+                self.values["bat"] = int(cap) / 100 if cap.isdigit() else None
+                self.charging = _read(bats[0] + "/status") in ("Charging", "Full", "Not charging")
             if shutil.which("nvidia-smi"):
                 out = self._run("nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total",
                                 "--format=csv,noheader,nounits")
@@ -141,6 +149,8 @@ class Stats:
                 pass
         finally:
             self._busy = False
+            if self.listener is not None:
+                GLib.idle_add(self.listener)
 
 
 GAUGES = [("cpu", "cpu"), ("mem", "mem"), ("gpu", "gpu"), ("vram", "vram"),
@@ -197,6 +207,7 @@ class Hud:
         self.area.add_controller(click)
 
         self.stats = Stats()
+        self.stats.listener = self._stats_landed
         self.alpha = Spring(0.0, EFFECT)
         self.rise = Spring(0.0, SPATIAL)     # 0 -> 1 entrance travel
         self.gauge = {k: Spring(0.0, SPATIAL) for k, _ in GAUGES}
@@ -271,6 +282,9 @@ class Hud:
         if self.shown:
             if sticky != self.sticky:
                 self.sticky = sticky
+                Gtk4LayerShell.set_keyboard_mode(
+                    self.win, Gtk4LayerShell.KeyboardMode.EXCLUSIVE if sticky
+                    else Gtk4LayerShell.KeyboardMode.NONE)
                 self._apply_input()
                 self.area.queue_draw()
             return
@@ -280,6 +294,7 @@ class Hud:
         self.asked_at = time.monotonic()
         fading = self.win.get_visible()      # still on its way out
         mon = focused_gdk_monitor()
+        self._mark("monitor known")
         if mon is not None and not fading:
             Gtk4LayerShell.set_monitor(self.win, mon)
         if self.backdrop is None:
@@ -336,17 +351,21 @@ class Hud:
         else:
             self.backdrop = backdrop
             self.frosted.target = 1.0
-        if os.environ.get("REVERIE_DEBUG"):
-            print(f"hud: backdrop {'ready' if backdrop is not None else 'missing'} after "
-                  f"{(time.monotonic() - self.asked_at) * 1000:.0f} ms", flush=True)
+        self._mark("backdrop ready" if backdrop is not None else "backdrop missing")
         self._ensure_tick()
         return False
 
+    def _mark(self, what):
+        if os.environ.get("REVERIE_DEBUG"):
+            print(f"hud: {what} at {(time.monotonic() - self.asked_at) * 1000:.0f} ms", flush=True)
+
     def _present(self):
+        self._mark("present")
         self.entered = False
         self.bar.refresh()                   # shows the cached readings meanwhile
         self.bar_age = 0
         self.refresh()
+        self._mark("data read")
         self.shown_at = time.monotonic()
         self.alpha.target = 1.0
         self.rise.target = 1.0
@@ -356,9 +375,8 @@ class Hud:
         self.win.set_visible(True)
         self._apply_input()
         self._ensure_tick()
-        if os.environ.get("REVERIE_DEBUG"):
-            print(f"hud: {(time.monotonic() - self.asked_at) * 1000:.0f} ms from command to map",
-                  flush=True)
+        self._mark("mapped")
+        self.first_frame = True
         if not self.timer_id:
             self.timer_id = GLib.timeout_add(2000, self.on_timer)
 
@@ -367,7 +385,7 @@ class Hud:
         surface = self.win.get_surface()
         if surface is None:
             return
-        if self.sticky:
+        if self.sticky and self.shown:
             w, h = self.area.get_width(), self.area.get_height()
             surface.set_input_region(cairo.Region(cairo.RectangleInt(0, 0, max(w, 1), max(h, 1))))
         else:
@@ -424,6 +442,11 @@ class Hud:
         self.shown = False
         self.alpha.target = 0.0
         self.rise.target = 0.0
+        # Give the keyboard and the pointer back now, not when the fade ends:
+        # the surface stays mapped for another 0.4 s while it fades, and a
+        # pinned panel would swallow whatever was typed in that time.
+        Gtk4LayerShell.set_keyboard_mode(self.win, Gtk4LayerShell.KeyboardMode.NONE)
+        self._apply_input()
         self._ensure_tick()
 
     def toggle(self):
@@ -442,9 +465,9 @@ class Hud:
             self.hide()
         elif what in ("toggle", "pin"):
             self.toggle()
-        else:
+        elif what != "status":
             return f"unknown: hud {what}"
-        return "ok"
+        return "hud " + ("hidden" if not self.shown else "pinned" if self.sticky else "held")
 
     # -- input (pinned only) ----------------------------------------------
     def on_key(self, _ctl, keyval, _code, _state):
@@ -477,8 +500,27 @@ class Hud:
         self._ensure_tick()                  # the clock, and any gauge that moved
         return True
 
+    def _stats_landed(self):
+        """The slow readings (battery, GPU) are in: a glance is often over
+        before the two-second timer would have picked them up."""
+        if self.shown:
+            self._aim_gauges()
+            self._ensure_tick()
+        return False
+
     def refresh(self):
         self.stats.sample()
+        self._aim_gauges()
+        try:
+            self.snapshot = {
+                "monitors": hypr("j/monitors") or [],
+                "clients": hypr("j/clients") or [],
+                "active": (hypr("j/activewindow") or {}).get("address"),
+            }
+        except OSError:
+            pass
+
+    def _aim_gauges(self):
         for key, _ in GAUGES:
             v = self.stats.values[key]
             if v is None:
@@ -490,14 +532,6 @@ class Hud:
             # continuously for nothing anyone can see.
             if abs(v - self.goal[key]) >= 0.02 or v in (0.0, 1.0):
                 self.goal[key] = v
-        try:
-            self.snapshot = {
-                "monitors": hypr("j/monitors") or [],
-                "clients": hypr("j/clients") or [],
-                "active": (hypr("j/activewindow") or {}).get("address"),
-            }
-        except OSError:
-            pass
 
     # -- animation --------------------------------------------------------
     def _ensure_tick(self):
@@ -552,6 +586,9 @@ class Hud:
 
     # -- drawing ----------------------------------------------------------
     def draw(self, _area, cr, w, h):
+        if self.first_frame:
+            self.first_frame = False
+            self._mark("first frame drawn")
         a = max(0.0, min(1.0, self.alpha.x))
         rise = self.rise.x
         u = h / 1440.0                      # design unit: px at 1440p
