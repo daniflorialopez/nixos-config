@@ -215,6 +215,86 @@ What can be changed safely between power-on and login, and what cannot:
   splash is undone from the very menu option 1 hides.
 - Windows lock/sign-in picture: set in Windows Settings, outside this repo.
 
+## 5d. Reverie rice — experimental, branch `rice/reverie`, NOT merged
+
+Second "craziest rice" experiment (2026-11-18, two-hour budget). Unrelated to
+`rice/overdrive` (which has its own entry on its own branch). One module,
+`home/dani/wm/reverie.nix`, and a small Python daemon in
+`home/dani/wm/reverie/` (GTK4 + gtk4-layer-shell + cairo) that draws surfaces
+the compositor cannot. The module header lists every command.
+
+What it adds, all off or invisible until asked for: a hold-to-show **HUD**
+(clock, day arc carrying today's focus history, gauges drawn as glass lenses
+over a snapshot of the desktop, a to-scale map of every workspace; pinned, the
+map is a switcher), **zen** (stops waybar; title cards and the HUD replace
+it), workspace **title cards**, a **spotlight** that travels with focus,
+open/close **ripples**, **pulse** (workspaces as a pentatonic scale; windows
+that fade when ignored), **undo** for the last closed window, an idle
+**dream**, a focus **ledger**, and **strata**, a wallpaper rendered from the
+week's git history.
+
+**Try it without rebuilding:** `reverie try` (from the built store path)
+starts the daemon and registers the binds for the session; `reverie demo`
+walks through everything in ~30 s and restores state; `reverie untry` undoes
+it.
+
+**Tested (live, against the built package, nothing rebuilt):**
+- Builds offline; all three hosts evaluate; statix and deadnix clean; no
+  literal colours outside the palette.
+- Every command, and `reverie demo` end to end: toggles, wallpaper, workspace
+  and layers were identical before and after.
+- fade dims only the unfocused window; undo reopened a closed scratch window
+  on its own workspace; zen stops and restarts `waybar.service`; `away` /
+  `back` start and stop the dream with `dream auto on`.
+- Cost on legionix with GTK's software renderer: idle 0.0 % CPU and ~100 MB
+  resident (~160 MB after every surface has been shown once); pinned HUD
+  1.7 % of one core; spotlight at rest 0.2 %; fade 0 %; HUD on screen
+  75–175 ms after the command; no growth over 24 show/hide cycles.
+
+**Not done / not verified:**
+- **Nothing was rebuilt.** The systemd unit, the declared binds and the
+  hypridle listener have never run; only `reverie try` has. So the ledger's
+  presence signal has only been exercised by sending `away`/`back` by hand,
+  and until a rebuild the ledger overcounts the focused window while you are
+  away.
+- **Pinned HUD input is untested.** No input-injection tool is installed, so
+  the number keys and clicks on the workspace map were never exercised — only
+  that the panel maps with exclusive keyboard focus.
+- **Sound was not heard.** The WAVs are generated and `pw-play` is invoked;
+  timbre and volume are unjudged.
+- **The focus arc was drawn from sample data.** The real ledger began on
+  2026-11-18.
+- **Single monitor only.** HDMI was unplugged; the code that follows focus to
+  another monitor (HUD, spotlight, cards) has not run.
+- **On battery:** `dream auto` refuses to start, but the machine was on AC, so
+  that branch has not run.
+- **Known limits, by design or not fixed:**
+  - the dream costs ~28 % of one core while it is on screen;
+  - the HUD's glass is a snapshot, so a video behind a lens is frozen while
+    the panel is up, and showing it costs one screen capture (in memory only);
+  - `undo` re-runs the closed window's command line: terminals come back
+    without their session, sandboxed/Flatpak apps may not come back at all,
+    and a one-shot command would be run again;
+  - hold-to-show needs the key released before the modifier, otherwise the
+    panel lets itself out after 10 s;
+  - `strata` reads only `~/nixos-config` unless `REVERIE_REPOS` is set;
+  - the hypridle listener (180 s) is new idle behaviour for this machine: it
+    only notifies the daemon, it locks and dims nothing.
+- **Candidates for the daily rice** (my read, not yet Dani's): the HUD with
+  zen as a real answer to "kill the bar"; the spotlight; `undo`; the springs
+  in `reverie/common.py` as shared motion tokens.
+
+**Parked from `rice/overdrive`** (Dani, 2026-11-18: store, implement later
+once more ideas have been collected — not now):
+1. *Noir focus mode* — the whole screen monochrome except the warm attention
+   band, as a toggle.
+2. *Glow ring* — the screen edge as an ambient channel: position = source,
+   colour = severity, steady glow for states, one swell for events.
+3. *Liquid glass on windows* — per-window edge refraction via the `hyprglass`
+   plugin; needs a build against the exact Hyprland version, so check offline
+   feasibility or wait until home. (Reverie's HUD lenses are the same material
+   done inside one layer surface; they do not make windows glass.)
+
 ## 6. VM rehearsal notes (danixos-vm)
 
 - libvirt snapshots do not work for this VM ("internal snapshots of a VM with
