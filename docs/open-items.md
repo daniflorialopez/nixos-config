@@ -238,6 +238,37 @@ starts the daemon and registers the binds for the session; `reverie demo`
 walks through everything in ~30 s and restores state; `reverie untry` undoes
 it.
 
+**Keys** (redone after review, see below): `$mod+G` glance — the HUD while
+held; `$mod SHIFT+G` pin it; `$mod SHIFT+T` reopen the closed window;
+`$mod+R` the Reverie menu (spotlight, zen, cards, ripples, sound, fade, glass,
+font, dream, strata, demo — each row shows its state).
+
+**Dani's review, 2026-11-18, and what changed the same day:**
+- *HUD* — likes the concept and the elements; not convinced by the style and
+  the font; wants it to carry everything waybar carries. Changed: one shared
+  typography setting, default CaskaydiaMono set like the lock screen (`reverie
+  font inter` brings the first version's voice back for comparison); every
+  waybar module shown as a chip, read from waybar's own config and CSS
+  (`reverie/barinfo.py`), with the tooltip text next to the glyph; lenses now
+  frosted in the body and clear at the rim. **Still open:** this is a first
+  pass at the style, not Dani's verdict on it.
+- *Title cards* — "simple but genius"; wants them refined. Changed: an island
+  in the bar's material, blurred, with the bar's workspace pills at its foot.
+- *Spotlight* — good concept, looked unpolished. Changed: pool is the
+  window's shape, soft edge exactly one gap wide (it used to bleed across the
+  bar), real gradients, a rim hairline, every monitor dims.
+- *Strata* and *dream* — concept not understood from the demo; explained in
+  conversation (a labelled render for strata). **No verdict yet.** Honest
+  position on dream: as it stands it is decoration and costs ~28 % of a core;
+  a pre-made or pre-rendered video played by mpv would be cheaper and can
+  look richer. It only earns being generated if it stays palette-driven and
+  translucent over the live desktop, or is made to mean something.
+- *Keybindings* — "kind of collide with other keybindings". No chord was
+  duplicated; the collisions were of family (`$mod CTRL+S/D/Z` sat on keys
+  that already mean something) and of neighbourhood (backtick between Lock
+  and workspace 1; zen one slip from the resize modifier). Redone on keys
+  whose whole family was unused, with the modes moved into a menu.
+
 **Tested (live, against the built package, nothing rebuilt):**
 - Builds offline; all three hosts evaluate; statix and deadnix clean; no
   literal colours outside the palette.
@@ -259,13 +290,20 @@ it.
   away.
 - **Pinned HUD input is untested.** No input-injection tool is installed, so
   the number keys and clicks on the workspace map were never exercised — only
-  that the panel maps with exclusive keyboard focus.
+  that the panel maps with exclusive keyboard focus. For the same reason none
+  of the four chords has been pressed by anything but Dani: they are verified
+  as registered and free, not as pressed.
+- **Bar chips not seen in every state.** At test time there was no media
+  player, no tray application, bluetooth was off and nothing was failing, so
+  the mpris and tray chips, connected bluetooth, a discharging battery under
+  its warning thresholds and the "needs you" colours were never on screen.
 - **Sound was not heard.** The WAVs are generated and `pw-play` is invoked;
   timbre and volume are unjudged.
-- **The focus arc was drawn from sample data.** The real ledger began on
-  2026-11-18.
+- **The focus arc has one afternoon of real data.** Its look with a full day
+  was only checked with sample blocks.
 - **Single monitor only.** HDMI was unplugged; the code that follows focus to
-  another monitor (HUD, spotlight, cards) has not run.
+  another monitor (HUD, cards) and the spotlight's one-overlay-per-monitor
+  path have not run with two.
 - **On battery:** `dream auto` refuses to start, but the machine was on AC, so
   that branch has not run.
 - **Known limits, by design or not fixed:**
@@ -280,9 +318,9 @@ it.
   - `strata` reads only `~/nixos-config` unless `REVERIE_REPOS` is set;
   - the hypridle listener (180 s) is new idle behaviour for this machine: it
     only notifies the daemon, it locks and dims nothing.
-- **Candidates for the daily rice** (my read, not yet Dani's): the HUD with
-  zen as a real answer to "kill the bar"; the spotlight; `undo`; the springs
-  in `reverie/common.py` as shared motion tokens.
+- **Candidates for the daily rice**, by Dani's review: the HUD (concept),
+  title cards (liked most), the spotlight (concept). Undecided: strata,
+  dream. Not yet commented on: zen, `undo`, ripples, sound, fade.
 
 **Parked from `rice/overdrive`** (Dani, 2026-11-18: store, implement later
 once more ideas have been collected — not now):
