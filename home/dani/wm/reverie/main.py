@@ -50,6 +50,7 @@ class Reverie(Gtk.Application):
         self.ready = False
         self.zen = False
         self.zen_cards = False       # what `cards` was before zen switched it on
+        self.saved = None            # the state as last written, to write only changes
 
     def do_activate(self):
         if self.ready:
@@ -90,6 +91,7 @@ class Reverie(Gtk.Application):
         if state.get("ripples"):
             self.fx.command("ripples", ["on"])
         common.set_font(state.get("font", "caskaydia"))
+        self.hud.beats = bool(state.get("hold_repeats"))    # see Hud.hold
         # Zen is a preference, so it survives a restart. Whether the bar is
         # really stopped is not something this file can know — a clean
         # shutdown brings it back, a crash leaves it down — so say it again.
@@ -107,10 +109,14 @@ class Reverie(Gtk.Application):
             "card_style": self.cards.style,
             "ripples": self.fx.ripples_on,
             "font": common.FONT["name"],
+            "hold_repeats": self.hud.beats,
             "zen": self.zen,
             "zen_cards": self.zen_cards,
             # spotlight is a mode you enter, not a preference: never restored.
         }
+        if state == self.saved:
+            return                       # every command ends here; most change nothing
+        self.saved = state
         try:
             os.makedirs(os.path.dirname(STATE), exist_ok=True)
             with open(STATE, "w") as f:

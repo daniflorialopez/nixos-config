@@ -117,14 +117,14 @@ let
   holds = [
     { mods = "$mod SHIFT"; key = "G"; desc = "Glance - the HUD only while held"; cmd = "hud hold"; }
   ];
-  # ... and its release. Hyprland matches a release against the modifiers held
-  # at that moment, so there are two: G let go with both still down, and G let
-  # go after Shift came up. `hud release` only ends a HELD panel, so the
-  # second — which also fires whenever the pin chord is released — leaves a
-  # pinned one alone. The keybinds palette skips release binds.
+  # ... and its release, which only ever fires when G is the first of the
+  # three keys to come up: once any other key of the chord is released,
+  # Hyprland shadows the binds on the keys still held (pressed for real and
+  # watched, every order — see reverie/hud.py, `hold`). The other orders are
+  # the heartbeat's job. `hud release` ends a HELD panel only. The keybinds
+  # palette skips release binds.
   releases = [
     { mods = "$mod SHIFT"; key = "G"; desc = "Glance (release)"; cmd = "hud release"; }
-    { mods = "$mod"; key = "G"; desc = "Glance (release - Shift up first)"; cmd = "hud release"; }
   ];
 
   layerRules = [

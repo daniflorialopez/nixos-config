@@ -229,6 +229,8 @@ class Hud:
         self.first_frame = False
         self.beat_at = 0.0                   # when the held chord last made itself heard
         self.beats = False                   # ... and whether this machine repeats it at all
+        self.repeated = False                # this hold has been heard from more than once
+        self.gave_up_at = 0.0                # when a hold was ended for want of a repeat
         self.repeat = (0.6, 0.04)            # the keyboard's repeat delay and interval, s
         self.hits = []                       # (x, y, w, h, kind, value), back to front
         self.snapshot = {"monitors": [], "clients": [], "active": None}
@@ -257,6 +259,8 @@ class Hud:
         rate = (hypr("j/getoption input:repeat_rate") or {}).get("int")
         if delay and rate:
             self.repeat = (delay / 1000, 1 / rate)
+        else:
+            self.beats = False               # key repeat is off: nothing to listen for
         self.bar.refresh()                   # so the first show already has it
         self.refresh()
         self.draw(None, cairo.Context(scratch), 320, 180)
@@ -393,6 +397,8 @@ class Hud:
 
     def _expire(self):
         self.hold_id = 0
+        if self.shown and not self.sticky and self.beats and not self.repeated:
+            self.gave_up_at = time.monotonic()
         self.hide()
         return False
 
@@ -404,31 +410,42 @@ class Hud:
     def hold(self):
         """One beat of the held chord ($mod SHIFT+G).
 
-        Hold-to-glance ends on the key's release bind, and Hyprland only
-        matches a release while the same modifiers are still down. With three
-        keys in the chord that is a coin toss: let Super go a moment before G
-        and no release ever arrives. So the bind also REPEATS (binde): this is
-        called once for the press and then at the keyboard's repeat rate for
-        as long as the chord is down, and "the beats stopped" is a second way
-        to know it was let go, whatever came up first.
+        Hold-to-glance ends on the key's release bind — but only if G is the
+        first of the three keys to come up. Pressed for real (a virtual
+        keyboard through /dev/uinput, every order of letting go): the moment
+        any other key of the chord is released, Hyprland shadows the binds
+        on the keys still held, and no release bind fires for them at all —
+        not one on G with the remaining modifier, not one on the modifier
+        keys themselves, not one that ignores modifiers. Two orders out of
+        three would leave the panel up.
 
-        That only works if this machine really repeats the bind, which
-        cannot be tested from here (nothing can inject a key press). So it is
-        learned, not assumed: until two beats have arrived a repeat-interval
-        apart — no hand does that — the panel keeps the old ten-second
+        So the bind also REPEATS (binde): this is called once for the press
+        and then at the keyboard's repeat rate for as long as the chord is
+        down, and "the beats stopped" is the other way to know it was let go.
+        Measured with the same virtual keyboard: Super up first, panel gone
+        203 ms later; held for two seconds, never cut short.
+
+        That a held bind repeats is learned rather than assumed (and then
+        remembered across restarts): until two beats have arrived a repeat
+        interval apart — no hand does that — the panel keeps a ten-second
         limit. Once they have, a press with no repeat inside the keyboard's
         repeat delay means the key is already up, and after that every missed
-        beat does.
+        beat does. If that ever ends a panel while the key is in fact still
+        down — the release then arrives for a panel that is already gone —
+        the lesson is unlearned (see `command`).
         """
         now = time.monotonic()
         gap, self.beat_at = now - self.beat_at, now
         delay, interval = self.repeat
         if self.shown and not self.sticky:
+            self.repeated = True
             if gap < interval * 3:
                 self.beats = True
             if self.beats:
                 self._expire_in(interval * 3 + 0.15)
         else:
+            self.repeated = False
+            self.gave_up_at = 0.0
             self.show()
             if self.beats:
                 self._expire_in(delay + 0.25)
@@ -461,6 +478,12 @@ class Hud:
         elif what == "release":
             if self.shown and not self.sticky:   # ends a held panel, never a pinned one
                 self.hide()
+            elif self.gave_up_at and time.monotonic() - self.gave_up_at < 15:
+                # The key was still down when the panel stopped waiting for a
+                # repeat: binds do not repeat here (any more). Back to the
+                # ten-second limit until they are seen to again.
+                self.beats = False
+            self.gave_up_at = 0.0
         elif what == "hide":
             self.hide()
         elif what in ("toggle", "pin"):
