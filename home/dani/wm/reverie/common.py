@@ -191,6 +191,15 @@ def text(cr, s, x, y, size, role="fg", alpha=1.0, family=None,
     return w, h
 
 
+def ink(cr, s, size, family=None, weight=400, spacing=0):
+    """The box the glyphs really cover, as (x, y, w, h) from the point `text`
+    would be asked to draw at. A line box includes room for descenders and
+    accents that a numeral never uses, so anything set large is placed by
+    this instead."""
+    rect, _ = _layout(cr, s, size, family or FONT["family"], weight, spacing).get_pixel_extents()
+    return rect.x, rect.y, rect.width, rect.height
+
+
 def rounded(cr, x, y, w, h, r):
     r = min(r, w / 2, h / 2)
     cr.new_sub_path()

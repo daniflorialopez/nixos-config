@@ -19,7 +19,8 @@
 #   zen        — and zen (in the $mod+R menu) actually does it: waybar stops, cards
 #              announce workspace changes instead, the HUD is a key-hold away.
 #   cards      a film title card on every workspace switch: the number,
-#              large, arriving from the direction you moved.
+#              large, arriving from the direction you moved. Three looks
+#              (bare, island, banner), switchable live.
 #   spotlight  (menu) the desktop dims and the focused window sits in a
 #              pool of light that TRAVELS to wherever focus goes next.
 #   ripples    a ring outward where a window opens, inward where one closes.
@@ -30,7 +31,8 @@
 #              workspace and (if it floated) in its place.
 #
 #   reverie hud show|hide|pin|glass on|off     reverie zen on|off|toggle
-#   reverie cards|ripples on|off               reverie spotlight on|off|toggle
+#   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle
+#   reverie ripples on|off
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
@@ -145,6 +147,8 @@ let
     "blur true, match:namespace reverie-card"
     "ignore_alpha 0, match:namespace reverie-card"
     "no_anim true, match:namespace reverie-card"
+    # The bare title card: no blur on purpose (see reverie/cards.py).
+    "no_anim true, match:namespace reverie-title"
     "no_anim true, match:namespace reverie-fx"
   ];
 

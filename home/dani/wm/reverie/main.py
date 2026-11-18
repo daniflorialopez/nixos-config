@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common  # noqa: E402  (first: it pins the GI versions)
 from gi.repository import Gio, GLib, GLibUnix, Gtk  # noqa: E402
 
-from cards import Cards  # noqa: E402
+from cards import STYLES, Cards  # noqa: E402
 from fx import Fx  # noqa: E402
 from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
@@ -31,7 +31,8 @@ from pulse import Pulse  # noqa: E402
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
                      "theme", "reverie.json")
 
-USAGE = ("hud show|hide|pin|glass on|off · cards|ripples on|off · spotlight on|off|toggle · "
+USAGE = ("hud show|hide|pin|glass on|off · cards on|off|style bare|island|banner|next · "
+         "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
          "font caskaydia|inter · "
          "status · quit")
@@ -81,6 +82,8 @@ class Reverie(Gtk.Application):
                 self.pulse.command([key, "on"])
         if state.get("cards"):
             self.cards.command(["on"])
+        if state.get("card_style") in STYLES:
+            self.cards.style = state["card_style"]
         if state.get("ripples"):
             self.fx.command("ripples", ["on"])
         self.hud.glass = state.get("glass", True)
@@ -99,6 +102,7 @@ class Reverie(Gtk.Application):
             "sound": self.pulse.sound,
             "fade": self.pulse.fade,
             "cards": self.cards.enabled,
+            "card_style": self.cards.style,
             "ripples": self.fx.ripples_on,
             "glass": self.hud.glass,
             "font": common.FONT["name"],
