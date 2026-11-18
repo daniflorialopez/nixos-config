@@ -31,7 +31,7 @@ from pulse import Pulse  # noqa: E402
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
                      "theme", "reverie.json")
 
-USAGE = ("hud show|hide|pin|glass on|off · cards on|off|style bare|island|banner|next · "
+USAGE = ("hud show|hide|pin · cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
          "font caskaydia|inter · "
@@ -86,7 +86,6 @@ class Reverie(Gtk.Application):
             self.cards.style = state["card_style"]
         if state.get("ripples"):
             self.fx.command("ripples", ["on"])
-        self.hud.glass = state.get("glass", True)
         common.set_font(state.get("font", "caskaydia"))
         # Zen is a preference, so it survives a restart. Whether the bar is
         # really stopped is not something this file can know — a clean
@@ -104,7 +103,6 @@ class Reverie(Gtk.Application):
             "cards": self.cards.enabled,
             "card_style": self.cards.style,
             "ripples": self.fx.ripples_on,
-            "glass": self.hud.glass,
             "font": common.FONT["name"],
             "zen": self.zen,
             "zen_cards": self.zen_cards,
@@ -219,7 +217,7 @@ class Reverie(Gtk.Application):
                 self.pulse.command(["status"]), self.cards.command([]),
                 self.fx.command("ripples", []), self.fx.command("spotlight", []),
                 f"zen {onoff(self.zen)}",
-                self.hud.command(["glass"]), f"font {common.FONT['name']}",
+                f"font {common.FONT['name']}",
             ])
         elif head == "quit":
             GLib.idle_add(self.shutdown)

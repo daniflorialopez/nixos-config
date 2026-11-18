@@ -11,9 +11,9 @@
 # all of it. Everything is off or invisible until asked for:
 #
 #   HUD        hold $mod+G and the monitor becomes an instrument panel: clock,
-#              a day arc carrying today's focus history, gauges that are real
-#              glass lenses (they bend a snapshot of the desktop behind them),
-#              and every workspace as a scale map of its windows. Let go and
+#              a day arc carrying today's focus history, gauges, everything
+#              the bar shows, and every workspace as a scale map of its
+#              windows, on the desktop itself thrown out of focus. Let go and
 #              it is gone. $mod SHIFT+G pins it, and then the map takes clicks
 #              and the number keys jump. This is "kill the bar" —
 #   zen        — and zen (in the $mod+R menu) actually does it: waybar stops, cards
@@ -30,7 +30,7 @@
 #   undo       $mod SHIFT+T reopens the window you just closed, on its
 #              workspace and (if it floated) in its place.
 #
-#   reverie hud show|hide|pin|glass on|off     reverie zen on|off|toggle
+#   reverie hud show|hide|pin                  reverie zen on|off|toggle
 #   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle
 #   reverie ripples on|off
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
@@ -120,7 +120,6 @@ let
     { label = "Ripples"; state = "ripples"; action = "ripples toggle"; }
     { label = "Sound"; state = "sound"; action = "pulse sound toggle"; }
     { label = "Fade idle windows"; state = "fade"; action = "pulse fade toggle"; }
-    { label = "Glass lenses"; state = "glass"; action = "hud glass toggle"; }
     { label = "Font"; value = "font"; action = "font toggle"; }
     { label = "Demo"; hint = "30 s"; action = "@demo"; }
   ];
@@ -136,9 +135,10 @@ let
   menuActions = lib.concatMapStringsSep " " (r: lib.escapeShellArg r.action) menuRows;
 
   layerRules = [
-    # The HUD is glass like the rest of the chrome; the others draw their own
-    # scrims. All of them animate themselves on springs, so the compositor's
-    # layer animation would only fight them.
+    # The HUD paints its own backdrop (a blurred capture); the compositor's
+    # blur under it only matters for the fraction of a second it is fading
+    # in. Every surface animates itself on springs, so the compositor's layer
+    # animation would only fight them.
     "blur true, match:namespace reverie-hud"
     "ignore_alpha 0, match:namespace reverie-hud"
     "no_anim true, match:namespace reverie-hud"
@@ -170,7 +170,7 @@ let
     # hyprctl, pw-play, playerctl, nvidia-smi, nmcli and systemctl come
     # from the session PATH on purpose: each is optional at runtime (the
     # daemon checks) and naming them here would pin builds this host may not
-    # use. grim is named because the glass HUD is built on it.
+    # use. grim is named because the HUD's backdrop is built on it.
     runtimeInputs = [ python pkgs.socat pkgs.coreutils pkgs.grim pkgs.jq pkgs.util-linux ];
     text = ''
       export GI_TYPELIB_PATH="${typelibs}''${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
@@ -266,7 +266,7 @@ let
           }
           trap restore EXIT INT TERM
 
-          echo "1/3  the HUD — clock, focus arc, glass gauges, workspace map"
+          echo "1/3  the HUD — clock, focus arc, gauges, the bar's modules, workspace map"
           send hud show >/dev/null
           sleep 5
           send hud hide >/dev/null

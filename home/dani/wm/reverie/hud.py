@@ -6,15 +6,25 @@ instrument panel — clock, a day arc that carries today's focus history,
 gauges, and a live map of every workspace with its windows drawn to scale —
 and on release it is gone.
 
-Glass. Just before the panel maps, the output is captured once (in memory,
-never on disk) and that picture becomes the panel's own backdrop. Each gauge
-is then a lens: it paints the desktop that is really behind it, magnified, and
-bent harder toward its rim, with a rim light on top. It is clear glass with
-edge refraction — the material the compositor cannot give a layer surface —
-done in cairo, and it costs one screenshot per show.
+The backdrop is the desktop itself, out of focus. As the panel maps, the
+output is captured once (in memory, never on disk), blurred hard and
+darkened, and that picture is what the panel sits on — the lock screen's
+recipe (wm/hyprlock.nix: a screenshot, three blur passes, brightness 0.6), so
+the two read as the same material. The compositor's own blur cannot do this
+job: it is tuned for the bar's small islands (one pass, size 3) and under a
+whole-screen panel it leaves every line of a terminal half-legible, competing
+with the panel for the same pixels. The panel does not wait for the picture:
+it comes up at once on a plain scrim of the same darkness and the desktop
+goes out of focus under it about a twelfth of a second later, which reads as
+a focus pull rather than as a delay.
 
-Pinned ($mod SHIFT+`), the same panel is a switcher: the map takes clicks and
-number keys.
+On it, everything is either type and line drawn straight on the backdrop
+(clock, arc, gauges) or an island in the bar's own material (the bar's
+modules, the workspace cards). Nothing pretends to be glass: the first two
+versions drew refracting lenses round the gauges and they read as an effect
+from another desktop.
+
+Pinned, the same panel is a switcher: the map takes clicks and number keys.
 
 Everything moves on springs (common.Spring), so letting go halfway through the
 entrance turns the motion around instead of snapping.
@@ -42,7 +52,9 @@ TAU = math.tau
 # wrapper so a chip here and a pill on the bar stay the same shape.
 ISLAND_RADIUS = float(os.environ.get("REVERIE_ISLAND_RADIUS", "12"))
 STAGGER = 0.045              # seconds between one gauge starting and the next
-SOFT = 8                     # downscale factor of the frosted copy of the backdrop
+HALVINGS = 5                 # the capture is halved this often before going back up
+TINT = 0.56                  # how much bgDeep is laid over the blurred desktop
+VEIL = 0.90                  # the scrim that has to do the job alone if there is no capture
 RANKS = ("accent", "fg", "hint", "slate")     # focus-history colours, most-used first
 
 
@@ -135,6 +147,41 @@ GAUGES = [("cpu", "cpu"), ("mem", "mem"), ("gpu", "gpu"), ("vram", "vram"),
           ("temp", "temp"), ("bat", "bat")]
 
 
+def frost(shot, width, height):
+    """A capture of the output -> the same picture out of focus and darkened,
+    at the size the panel draws at.
+
+    Halved five times and doubled back up. Each halving averages four pixels
+    and each doubling interpolates between them, so the chain is a wide, even
+    blur — the dual-filter trick compositors use — and nearly all of it
+    happens on images too small to cost anything (about 10 ms in all at
+    1440p, measured). The tint is baked in here as well, off the main loop,
+    so that a frame of the panel is a single blit.
+    """
+    def resample(src, w, h):
+        out = cairo.ImageSurface(cairo.FORMAT_RGB24, max(1, w), max(1, h))
+        ctx = cairo.Context(out)
+        ctx.scale(out.get_width() / src.get_width(), out.get_height() / src.get_height())
+        ctx.set_source_surface(src, 0, 0)
+        ctx.get_source().set_filter(cairo.FILTER_BILINEAR)
+        ctx.get_source().set_extend(cairo.EXTEND_PAD)     # no dark fringe at the edges
+        ctx.paint()
+        return out, ctx
+
+    steps = [shot]
+    for _ in range(HALVINGS):
+        last = steps[-1]
+        steps.append(resample(last, last.get_width() // 2, last.get_height() // 2)[0])
+    out = steps.pop()
+    for bigger in reversed(steps[1:]):
+        out = resample(out, bigger.get_width(), bigger.get_height())[0]
+    out, ctx = resample(out, width, height)
+    ctx.identity_matrix()
+    ctx.set_source_rgba(*PAL["bgDeep"], TINT)
+    ctx.paint()
+    return out
+
+
 class Hud:
     def __init__(self, app):
         self.win = layer_window(app, "reverie-hud")
@@ -157,9 +204,9 @@ class Hud:
         self.shown = False
         self.entered = False                 # the entrance animation has finished
         self.sticky = False
-        self.glass = True
-        self.backdrop = None
-        self.backdrop_soft = None
+        self.backdrop = None                 # the blurred, darkened desktop
+        self.frosted = Spring(0.0, EFFECT)   # 0 -> 1 as that picture fades in
+        self.veil = Spring(TINT, EFFECT)     # scrim under it while it is not there
         self.token = 0
         self.shown_at = 0.0
         self.asked_at = 0.0
@@ -224,25 +271,34 @@ class Hud:
         self.sticky = sticky
         self.token += 1
         self.asked_at = time.monotonic()
-        fading = self.win.get_visible()      # still on its way out: backdrop is still right
-        mon = None
-        if not fading:
-            mon = focused_gdk_monitor()
-            if mon is not None:
-                Gtk4LayerShell.set_monitor(self.win, mon)
-        if self.glass and mon is not None and shutil.which("grim"):
-            self._capture(mon.get_connector(), self.token)
-        else:
-            self._present(self.token, self.backdrop if fading else None,
-                          self.backdrop_soft if fading else None)
+        fading = self.win.get_visible()      # still on its way out
+        mon = focused_gdk_monitor()
+        if mon is not None and not fading:
+            Gtk4LayerShell.set_monitor(self.win, mon)
+        if self.backdrop is None:
+            # (Shown again while fading out, it keeps the picture it has.)
+            self.frosted.x = self.frosted.v = self.frosted.target = 0.0
+            self.veil.x = self.veil.target = TINT
+            self.veil.v = 0.0
+            if mon is not None and shutil.which("grim"):
+                geo = mon.get_geometry()
+                self._capture(mon.get_connector(), geo.width, geo.height, self.token)
+            else:
+                self.veil.target = VEIL
+        self._present()
 
-    def _capture(self, output, token):
-        """One frame of the output over a pipe, decoded off the main loop.
+    def _capture(self, output, width, height, token):
+        """One frame of the output over a pipe, blurred off the main loop.
 
-        PPM rather than PNG: grim writes it in ~60 ms at 1440p and the pixels
-        need no decoding, only repacking from RGB to cairo's BGRX — three
-        extended-slice assignments, which run at C speed (~8 ms measured).
-        PNG, even at compression level 0, cost about twice as much end to end.
+        PPM at full size, not PNG and not grim's own -s: measured at 1440p,
+        full-size PPM is 55 ms, and asking grim to scale it down first is 140
+        (its scaler is the slow part). The pixels need no decoding, only
+        repacking from RGB to cairo's BGRX — three extended-slice
+        assignments, which run at C speed (~12 ms).
+
+        The panel is usually already on screen when the capture is taken, a
+        few percent opaque. After five halvings that is not something anyone
+        can find in the result.
         """
         def work():
             surf = None
@@ -257,33 +313,29 @@ class Hud:
                     buf[0::4] = rgb[2:n:3]
                     buf[1::4] = rgb[1:n:3]
                     buf[2::4] = rgb[0:n:3]
-                    surf = cairo.ImageSurface.create_for_data(
+                    shot = cairo.ImageSurface.create_for_data(
                         buf, cairo.FORMAT_RGB24, w, h, w * 4)
+                    surf = frost(shot, width, height)
             except (OSError, ValueError, subprocess.SubprocessError, cairo.Error, MemoryError):
                 surf = None
-            GLib.idle_add(self._present, token, surf, self.soften(surf))
+            GLib.idle_add(self._frosted, token, surf)
         threading.Thread(target=work, daemon=True).start()
 
-    @staticmethod
-    def soften(surf):
-        """The same picture at an eighth of the size. Painted back up it is a
-        blur for free — the frosted body of the glass; `surf` stays sharp for
-        the rim, where the bend should be legible."""
-        if surf is None:
-            return None
-        w, h = surf.get_width() // SOFT, surf.get_height() // SOFT
-        small = cairo.ImageSurface(cairo.FORMAT_RGB24, max(1, w), max(1, h))
-        ctx = cairo.Context(small)
-        ctx.scale(1 / SOFT, 1 / SOFT)
-        ctx.set_source_surface(surf, 0, 0)
-        ctx.paint()
-        return small
-
-    def _present(self, token, backdrop, soft=None):
+    def _frosted(self, token, backdrop):
         if token != self.token or not self.shown:
             return False                     # let go before the capture came back
-        self.backdrop = backdrop
-        self.backdrop_soft = soft if backdrop is not None else None
+        if backdrop is None:
+            self.veil.target = VEIL          # no picture: the scrim does it alone
+        else:
+            self.backdrop = backdrop
+            self.frosted.target = 1.0
+        if os.environ.get("REVERIE_DEBUG"):
+            print(f"hud: backdrop {'ready' if backdrop is not None else 'missing'} after "
+                  f"{(time.monotonic() - self.asked_at) * 1000:.0f} ms", flush=True)
+        self._ensure_tick()
+        return False
+
+    def _present(self):
         self.entered = False
         self.bar.refresh()                   # shows the cached readings meanwhile
         self.bar_age = 0
@@ -298,11 +350,10 @@ class Hud:
         self._apply_input()
         self._ensure_tick()
         if os.environ.get("REVERIE_DEBUG"):
-            print(f"hud: {(time.monotonic() - self.asked_at) * 1000:.0f} ms from command to map"
-                  f" (glass {'on' if backdrop is not None else 'off'})", flush=True)
+            print(f"hud: {(time.monotonic() - self.asked_at) * 1000:.0f} ms from command to map",
+                  flush=True)
         if not self.timer_id:
             self.timer_id = GLib.timeout_add(2000, self.on_timer)
-        return False
 
     def _apply_input(self):
         """Held: every click falls through. Pinned: the panel takes them."""
@@ -342,10 +393,6 @@ class Hud:
             self.hide()
         elif what in ("toggle", "pin"):
             self.toggle()
-        elif what == "glass":
-            if len(words) > 1:
-                self.glass = (not self.glass) if words[1] == "toggle" else words[1] == "on"
-            return f"glass {'on' if self.glass else 'off'}"
         else:
             return f"unknown: hud {what}"
         return "ok"
@@ -415,6 +462,8 @@ class Hud:
         self.last = now
         self.alpha.step(dt)
         self.rise.step(dt)
+        self.frosted.step(dt)
+        self.veil.step(dt)
         since = time.monotonic() - self.shown_at
         waiting = False
         for i, (key, _) in enumerate(GAUGES):
@@ -441,11 +490,10 @@ class Hud:
         if not self.shown and self.alpha.x < 0.01:
             self.win.set_visible(False)
             self.backdrop = None             # ~14 MB; do not keep it while hidden
-            self.backdrop_soft = None
             self.tick_id = 0
             return False
-        settled = self.alpha.resting and self.rise.resting and \
-            all(s.resting for s in self.gauge.values())
+        settled = self.alpha.resting and self.rise.resting and self.frosted.resting and \
+            self.veil.resting and all(s.resting for s in self.gauge.values())
         if self.shown and settled and not waiting:
             self.entered = True
             self.area.queue_draw()           # the resting frame, whatever the cap skipped
@@ -453,94 +501,27 @@ class Hud:
             return False
         return True
 
-    # -- glass ------------------------------------------------------------
-    def _paint_backdrop(self, cr, cx, cy, zoom, width, alpha, soft=False):
-        """Paint the captured desktop magnified by `zoom` about (cx, cy);
-        `soft` uses the frosted copy."""
-        source = self.backdrop_soft if soft and self.backdrop_soft is not None else self.backdrop
-        s = width / source.get_width()
-        cr.save()
-        cr.translate(cx, cy)
-        cr.scale(zoom * s, zoom * s)
-        cr.translate(-cx / s, -cy / s)
-        cr.set_source_surface(source, 0, 0)
-        cr.get_source().set_filter(cairo.FILTER_BILINEAR)
-        cr.paint_with_alpha(alpha)
-        cr.restore()
-
-    def _rim(self, cr, x0, y0, x1, y1, a):
-        """Light catching the top-left edge, a fainter return at bottom-right."""
-        fg = PAL["fg"]
-        rim = cairo.LinearGradient(x0, y0, x1, y1)
-        rim.add_color_stop_rgba(0.0, *fg, 0.60 * a)
-        rim.add_color_stop_rgba(0.45, *fg, 0.07 * a)
-        rim.add_color_stop_rgba(1.0, *fg, 0.26 * a)
-        cr.set_source(rim)
-
-    def lens(self, cr, cx, cy, radius, width, u, a):
-        """A disc of glass. Its body is frosted, so what is written on it
-        stays readable over anything; its rim is clear and bends the desktop
-        harder the closer to the edge — which is where real glass shows what
-        it is made of."""
-        if self.backdrop is not None:
-            for frac, zoom, soft in ((1.0, 1.60, False), (0.955, 1.36, False),
-                                     (0.90, 1.22, False), (0.84, 1.12, True)):
-                cr.save()
-                cr.new_path()
-                cr.arc(cx, cy, radius * frac, 0, TAU)
-                cr.clip()
-                self._paint_backdrop(cr, cx, cy, zoom, width, a, soft)
-                cr.restore()
-        # Smoked toward the centre, clear toward the rim: the number stays
-        # readable over whatever is behind it, and the bend is left visible
-        # where it is strongest.
-        r, g, b = PAL["bgDeep"]
-        smoke = cairo.RadialGradient(cx, cy, 0, cx, cy, radius)
-        if self.backdrop is not None:
-            smoke.add_color_stop_rgba(0.0, r, g, b, 0.66 * a)
-            smoke.add_color_stop_rgba(0.80, r, g, b, 0.60 * a)
-            smoke.add_color_stop_rgba(1.0, r, g, b, 0.28 * a)
-        else:
-            smoke.add_color_stop_rgba(0.0, r, g, b, 0.30 * a)
-            smoke.add_color_stop_rgba(1.0, r, g, b, 0.30 * a)
-        cr.new_path()
-        cr.arc(cx, cy, radius, 0, TAU)
-        cr.set_source(smoke)
-        cr.fill()
-        cr.new_path()
-        cr.arc(cx, cy, radius - 0.75 * u, 0, TAU)
-        cr.set_line_width(1.5 * u)
-        self._rim(cr, cx - radius, cy - radius, cx + radius, cy + radius, a)
-        cr.stroke()
-
-    def pane(self, cr, x, y, w, h, r, width, u, a, live):
-        """A glass card: the same idea as `lens`, for a rounded rectangle."""
-        cx, cy = x + w / 2, y + h / 2
-        if self.backdrop is not None:
-            inset = 7 * u
-            for grow, zoom, soft in ((0.0, 1.30, False), (inset, 1.07, True)):
-                cr.save()
-                rounded(cr, x + grow, y + grow, w - 2 * grow, h - 2 * grow, max(1.0, r - grow))
-                cr.clip()
-                self._paint_backdrop(cr, cx, cy, zoom, width, a, soft)
-                cr.restore()
-        rounded(cr, x, y, w, h, r)
-        rgba(cr, "bgDeep", (0.52 if live else 0.66) * a)
-        cr.fill()
-        rounded(cr, x + 0.75 * u, y + 0.75 * u, w - 1.5 * u, h - 1.5 * u, r)
-        cr.set_line_width(1.5 * u)
-        self._rim(cr, x, y, x + w, y + h, a * (1.0 if live else 0.55))
-        cr.stroke()
-
     # -- drawing ----------------------------------------------------------
     def draw(self, _area, cr, w, h):
         a = max(0.0, min(1.0, self.alpha.x))
         rise = self.rise.x
         u = h / 1440.0                      # design unit: px at 1440p
 
-        # Scrim: the desktop stays recognisable underneath.
-        rgba(cr, "bgDeep", 0.66 * a)
-        cr.paint()
+        f = max(0.0, min(1.0, self.frosted.x))
+        if f < 0.999:
+            # Until the picture is there (and for good if it never comes): a
+            # scrim over the live desktop, as dark as the picture will be.
+            rgba(cr, "bgDeep", max(0.0, min(1.0, self.veil.x)) * a)
+            cr.paint()
+        if self.backdrop is not None and f > 0.001:
+            # The desktop, out of focus and already darkened (see frost).
+            bw, bh = self.backdrop.get_width(), self.backdrop.get_height()
+            cr.save()
+            if (bw, bh) != (w, h):
+                cr.scale(w / bw, h / bh)
+            cr.set_source_surface(self.backdrop, 0, 0)
+            cr.paint_with_alpha(a * f)
+            cr.restore()
 
         lift = (1.0 - rise) * 46 * u       # everything travels up into place
         self.draw_clock(cr, w / 2, 250 * u + lift, u, a)
@@ -549,7 +530,9 @@ class Hud:
         self.draw_map(cr, w, h, u, a, lift * 2.4)
         self.draw_corners(cr, w, h, u, a)
         if self.sticky:
-            text(cr, label("1-9 jump   ·   click a window   ·   any key closes"), w / 2,
+            # 1…0 is how the keybinds palette writes the number row: 0 is ten.
+            text(cr, label("1…0 workspaces 1-10   ·   click a window   ·   any other key closes"),
+                 w / 2,
                  h - 58 * u, 13 * u, "hint", a, weight=FONT["strong"], align="center",
                  spacing=FONT["track"] * u)
 
@@ -645,7 +628,6 @@ class Hud:
         for key, name in present:
             raw = self.stats.values[key]
             v = max(0.0, min(1.08, self.gauge[key].x))
-            self.lens(cr, x, cy, r + 24 * u, width, u, a)
             # Loudness rule: a gauge is quiet blue until it actually needs you.
             hot = (key in ("cpu", "mem", "vram", "gpu") and raw > 0.9) or \
                   (key == "temp" and raw > 88) or \
@@ -697,7 +679,14 @@ class Hud:
             mw, mh = mon["width"] / mon["scale"], mon["height"] / mon["scale"]
             card_h = card_w * mh / mw
             live = wid in active_ws
-            self.pane(cr, x, y, card_w, card_h, 14 * u, w, u, a, live)
+            # An island, like the chips above: the one you are on is the
+            # bar's material at full strength, the others stand back.
+            rounded(cr, x, y, card_w, card_h, 14 * u)
+            rgba(cr, "bg", (0.85 if live else 0.50) * a)
+            cr.fill_preserve()
+            cr.set_line_width(1.0 * u)
+            rgba(cr, "fg", (0.24 if live else 0.10) * a)
+            cr.stroke()
             self.hits.append((x, y, card_w, card_h, "workspace", wid))
             s = card_w / mw
             for c in clients:
@@ -707,8 +696,6 @@ class Hud:
                 focused = c["address"] == self.snapshot["active"]
                 self.hits.append((cx0, cy0, cw, ch, "window", c["address"]))
                 rounded(cr, cx0 + 1, cy0 + 1, cw - 2, ch - 2, 5 * u)
-                rgba(cr, "bg", 0.62 * a)     # a floor, so the glass under it
-                cr.fill_preserve()           # cannot make the label unreadable
                 if focused:
                     rgba(cr, "accent", 0.30 * a)
                 else:
