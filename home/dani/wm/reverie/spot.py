@@ -196,7 +196,16 @@ class View:
         self.connector = monitor.get_connector()
         self.origin = (0, 0)
         self.spot = spot
-        self.win = layer_window(spot.app, "reverie-fx")
+        # On the `top` layer, not `overlay` with the rest of reverie. Above
+        # the windows is all the darkness needs to be, and among surfaces of
+        # one layer the compositor stacks by who was mapped last: this
+        # overlay unmaps whenever nothing is dimmed, so arriving from an
+        # empty workspace it was mapped again AFTER the title card and lay
+        # over it — the card half in the dark, the pool's edge across it
+        # (Dani, 2026-11-19: "the card is affected visually by the shadow and
+        # the spotlight"). A layer below, the title card, the HUD and the
+        # menu are above it whatever the order.
+        self.win = layer_window(spot.app, "reverie-fx", layer=Gtk4LayerShell.Layer.TOP)
         Gtk4LayerShell.set_monitor(self.win, monitor)
         self.canvas = Canvas(self)
         self.win.set_child(self.canvas)
