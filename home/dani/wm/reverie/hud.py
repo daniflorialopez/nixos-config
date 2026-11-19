@@ -35,6 +35,26 @@ focuses that window. Everything else is arranged round that and kept quiet:
 the time and the day's focus history above it, the machine's readings in a
 corner, what the bar would be showing below.
 
+The panel is meant to be watched arrive and leave, not only read (Dani,
+2026-11-19: "could it be more spectacular?"). Four things, all in the panel's
+own vocabulary of light and depth rather than decoration laid on it:
+
+  - the cards come in as a sweep: the workspace you are on steps back into
+    its card, its neighbours arrive from their own sides a moment apart;
+  - the selected card sits in a pool of light, and the backdrop darkens
+    towards its corners — the spotlight's idea, on the panel. The light
+    glides with the selection;
+  - each card has the wallpaper under its windows, so it is the workspace in
+    small, and an empty workspace is not a blank;
+  - going to a workspace, its card comes forward until it is the whole
+    screen and the panel lets go over the real thing (`leave`).
+
+What it may cost is fixed by the software renderer: a frame at rest is 8-9 ms,
+of the entrance 12, of the card coming forward 17-21 (measured, 1440p).
+Things tried and taken out for that reason: the backdrop stepping back as it
+blurs (a scaled whole-screen picture, +14 ms a frame) and a real radial
+gradient for the light (+13 ms; it is a small picture of one, stretched).
+
 Everything moves on springs (common.Spring), so letting go halfway through the
 entrance turns the motion around instead of snapping.
 """
@@ -65,6 +85,10 @@ STAGGER = 0.045              # seconds between one gauge starting and the next
 HERO = 1.24                  # how much larger the selected workspace's card is drawn
 CARD = 540                   # the widest an unselected card gets, in design px
 STALE = 0.25                 # how far a window's picture darkens when left alone ten minutes
+VIGNETTE = 0.42              # how much darker the backdrop's corners are than its middle
+GLOW = 0.15                  # the light behind the selected card, at its brightest
+SWEEP = 0.040                # seconds between one card setting off and the next
+ZOOM = (520.0, 45.6)         # the chosen card coming forward: critically damped, ~0.2 s
 MODIFIERS = ("Super_L", "Super_R", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L",
              "Alt_R", "Meta_L", "Meta_R", "ISO_Level3_Shift", "Caps_Lock", "Num_Lock")
 HALVINGS = 5                 # the capture is halved this often before going back up
@@ -172,6 +196,26 @@ GAUGES = [("cpu", "cpu"), ("mem", "mem"), ("gpu", "gpu"), ("vram", "vram"),
           ("temp", "temp"), ("bat", "bat")]
 
 
+_GLOW = []
+
+
+def glow():
+    """A soft round light, 160 px across, to be stretched to whatever size
+    is wanted. Painting a radial gradient the size of the middle of the
+    screen costs 13 ms a frame in software (measured); stretching this
+    costs one. It is so smooth that the stretch cannot be seen."""
+    if not _GLOW:
+        surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, 160, 160)
+        ctx = cairo.Context(surf)
+        light = cairo.RadialGradient(80, 80, 0, 80, 80, 80)
+        for stop, alpha in ((0.0, 1.0), (0.35, 0.65), (0.7, 0.21), (1.0, 0.0)):
+            light.add_color_stop_rgba(stop, *PAL["fg"], alpha)
+        ctx.set_source(light)
+        ctx.paint()
+        _GLOW.append(surf)
+    return _GLOW[0]
+
+
 def frost(shot, width, height):
     """A capture of the output -> the same picture out of focus and darkened,
     at the size the panel draws at.
@@ -203,6 +247,15 @@ def frost(shot, width, height):
     out, ctx = resample(out, width, height)
     ctx.identity_matrix()
     ctx.set_source_rgba(*PAL["bgDeep"], TINT)
+    ctx.paint()
+    # Darker towards the corners, so the middle — where the workspaces are —
+    # is where the light is. Baked in here: a whole-screen gradient is the
+    # most expensive thing a frame could ask for, and this one never changes.
+    edge = cairo.RadialGradient(width / 2, height / 2, 0.42 * min(width, height),
+                                width / 2, height / 2, 0.5 * math.hypot(width, height))
+    edge.add_color_stop_rgba(0.0, *PAL["bgDeep"], 0.0)
+    edge.add_color_stop_rgba(1.0, *PAL["bgDeep"], VIGNETTE)
+    ctx.set_source(edge)
     ctx.paint()
     return out
 
@@ -259,6 +312,14 @@ class Hud:
         self.bar_age = 0
         self.thumbs = Thumbs(self._thumb_landed)     # the windows' own pictures
         self.reveal = {}                     # address -> Spring: its picture fading in
+        self.arrive = {}                     # workspace -> Spring: its card coming in, 0 -> 1
+        self.here = None                     # the workspace you are on
+        self.placed = []                     # the cards as last laid out (see draw_map)
+        self.output = None                   # the monitor the panel is on
+        self.capturing = False               # the backdrop's capture is being taken
+        self.zoom = Spring(0.0, ZOOM)        # the chosen card on its way to being the screen
+        self.zoom_ws = None                  # ... and which one that is
+        self.zoomed = None                   # ... and where it started from
         GLib.idle_add(self._warm)
 
     def _bar_landed(self):
@@ -316,6 +377,9 @@ class Hud:
         self.sticky = sticky
         self.cursor = None                   # start on the workspace you are on
         self.grow = {}
+        self.arrive = {}                     # the cards come in again
+        self.zoom_ws = self.zoomed = None
+        self.zoom.x = self.zoom.v = self.zoom.target = 0.0
         self.token += 1
         self.asked_at = time.monotonic()
         fading = self.win.get_visible()      # still on its way out
@@ -323,6 +387,7 @@ class Hud:
         self._mark("monitor known")
         if mon is not None and not fading:
             Gtk4LayerShell.set_monitor(self.win, mon)
+            self.output = mon.get_connector()
         if self.backdrop is None:
             # (Shown again while fading out, it keeps the picture it has.)
             self.frosted.x = self.frosted.v = self.frosted.target = 0.0
@@ -330,6 +395,7 @@ class Hud:
             self.veil.v = 0.0
             if mon is not None and shutil.which("grim"):
                 geo = mon.get_geometry()
+                self.capturing = True
                 self._capture(mon.get_connector(), geo.width, geo.height, self.token)
             else:
                 self.veil.target = VEIL
@@ -349,10 +415,16 @@ class Hud:
         can find in the result.
         """
         def work():
-            surf = None
+            surf, asked = None, False
             try:
                 raw = subprocess.run(["grim", "-t", "ppm", "-o", output, "-"],
                                      capture_output=True, timeout=3).stdout
+                # The windows' pictures only now: asked for at the same time,
+                # they and this capture queued for the same compositor and
+                # the backdrop came 100 ms later than it used to (measured).
+                # From here on they are taken while this thread blurs.
+                GLib.idle_add(self._photograph_after, token)
+                asked = True
                 magic, size, depth, rgb = raw.split(b"\n", 3)
                 w, h = (int(n) for n in size.split())
                 n = w * h * 3
@@ -366,8 +438,17 @@ class Hud:
                     surf = frost(shot, width, height)
             except (OSError, ValueError, subprocess.SubprocessError, cairo.Error, MemoryError):
                 surf = None
+            if not asked:                    # no capture: the pictures all the same
+                GLib.idle_add(self._photograph_after, token)
             GLib.idle_add(self._frosted, token, surf)
         threading.Thread(target=work, daemon=True).start()
+
+    def _photograph_after(self, token):
+        self.capturing = False
+        if token == self.token and self.shown:
+            self._photograph(everything=True)
+            self._mark("pictures asked for")
+        return False
 
     def _frosted(self, token, backdrop):
         if token != self.token or not self.shown:
@@ -392,7 +473,8 @@ class Hud:
         self.bar_age = 0
         self.refresh()
         self._mark("data read")
-        self._photograph(everything=True)
+        if not self.capturing:
+            self._photograph(everything=True)
         self.shown_at = time.monotonic()
         self.alpha.target = 1.0
         self.rise.target = 1.0
@@ -489,6 +571,24 @@ class Hud:
         self._apply_input()
         self._ensure_tick()
 
+    def leave(self, wid):
+        """Gone to a workspace: its card comes forward until it is the whole
+        screen, and only then does the panel let go — over the real thing,
+        which by now is exactly where the picture is.
+
+        The switch itself has already been asked for and is not waiting for
+        any of this; the keyboard and the pointer go back at once.
+        """
+        card = next((c for c in self.placed if c[0] == wid), None)
+        forward = self.sticky and self.alpha.x > 0.9 and card is not None and \
+            card[5].get("name") == self.output
+        self.hide()
+        if forward:
+            self.alpha.target = self.rise.target = 1.0     # hold the picture meanwhile
+            self.zoom_ws, self.zoomed = wid, None
+            self.zoom.x = self.zoom.v = 0.0
+            self.zoom.target = 1.0
+
     def toggle(self):
         self.hide() if self.shown else self.show(sticky=True)
 
@@ -526,7 +626,10 @@ class Hud:
         if name.startswith("KP_"):
             name = name[3:]
         if len(name) == 1 and name.isdigit():
-            hypr(f"dispatch workspace {10 if name == '0' else name}")
+            wid = 10 if name == "0" else int(name)
+            hypr(f"dispatch workspace {wid}")
+            self.leave(wid)
+            return True
         elif name in ("Left", "h", "ISO_Left_Tab", "Right", "l", "Tab") and self.ids:
             step = -1 if name in ("Left", "h", "ISO_Left_Tab") else 1
             at = self.ids.index(self.cursor) if self.cursor in self.ids else 0
@@ -535,6 +638,8 @@ class Hud:
             return True
         elif name in ("Return", "Enter", "space") and self.cursor is not None:
             hypr(f"dispatch workspace {self.cursor}")
+            self.leave(self.cursor)
+            return True
         self.hide()
         return True
 
@@ -543,9 +648,12 @@ class Hud:
             if hx <= x <= hx + hw and hy <= y <= hy + hh:
                 if kind == "window":
                     hypr(f"dispatch focuswindow address:{value}")
+                    value = next((c["workspace"]["id"] for c in self.snapshot["clients"]
+                                  if c["address"] == value), None)
                 else:
                     hypr(f"dispatch workspace {value}")
-                break
+                self.leave(value)
+                return
         self.hide()
 
     # -- data -------------------------------------------------------------
@@ -607,9 +715,21 @@ class Hud:
                 wants.append((c["address"], c["size"], min(1.0, scale * mon["scale"])))
         for address in [a for a in self.reveal if a not in alive]:
             del self.reveal[address]
-        self.thumbs.refresh(wants, alive)
+        cards = None
+        if everything:
+            # ... and the wallpaper, at the size of the selected card.
+            cards = {m["name"]: (round(CARD * HERO * m["height"] / m["scale"] / 1440),
+                                 round(CARD * HERO * m["height"] / m["scale"] / 1440
+                                       * m["height"] / m["width"])) for m in mons.values()}
+        self.thumbs.refresh(wants, alive, cards)
 
     def _thumb_landed(self, address):
+        if not self.reveal and address is not None:
+            self._mark("first picture")
+        if address is None:                  # a wallpaper, not a window
+            if self.shown:
+                self._ensure_tick()
+            return
         if address not in self.reveal:
             self.reveal[address] = Spring(0.0, EFFECT)   # a first picture fades in
         self.reveal[address].target = 1.0
@@ -666,6 +786,19 @@ class Hud:
             spring.step(dt)
         for spring in self.reveal.values():
             spring.step(dt)
+        # The cards set off one after another, outwards from where you are.
+        at = self.ids.index(self.here) if self.here in self.ids else 0
+        for wid, spring in self.arrive.items():
+            if self.shown and wid in self.ids and \
+                    since < 0.02 + abs(self.ids.index(wid) - at) * SWEEP:
+                waiting = True
+            else:
+                spring.target = 1.0
+            spring.step(dt)
+        if self.zoom_ws is not None:
+            self.zoom.step(dt)
+            if self.zoom.x > 0.72:
+                self.alpha.target = 0.0      # nearly the screen: let go over the real one
         # The panel may refresh at 165 Hz, and every frame here is a
         # full-screen software draw. Sixty is plenty for a spring.
         if now - self.drawn_at >= 1 / 61:
@@ -674,12 +807,14 @@ class Hud:
         if not self.shown and self.alpha.x < 0.01:
             self.win.set_visible(False)
             self.backdrop = None             # ~14 MB; do not keep it while hidden
+            self.zoom_ws = self.zoomed = None
             self.tick_id = 0
             return False
         settled = self.alpha.resting and self.rise.resting and self.frosted.resting and \
             self.veil.resting and all(s.resting for s in self.gauge.values()) and \
             all(s.resting for s in self.grow.values()) and \
-            all(s.resting for s in self.reveal.values())
+            all(s.resting for s in self.reveal.values()) and \
+            all(s.resting for s in self.arrive.values())
         if self.shown and settled and not waiting:
             self.entered = True
             self.area.queue_draw()           # the resting frame, whatever the cap skipped
@@ -712,17 +847,26 @@ class Hud:
             cr.paint_with_alpha(a * f)
             cr.restore()
 
+        # While a card is coming forward, everything else gets out of its way.
+        z = max(0.0, min(1.0, self.zoom.x)) if self.zoom_ws is not None else 0.0
+        rest = a * max(0.0, 1.0 - 2.5 * z)
         lift = (1.0 - rise) * 46 * u       # everything travels up into place
-        self.draw_corners(cr, u, a)                                   # the machine, top left
-        self.draw_clock(cr, w / 2, 92 * u + lift * 0.6, u, a)         # the time, top centre
-        self.draw_gauges(cr, w - 64 * u, 100 * u + lift * 0.6, u, a)  # its readings, top right
-        self.draw_map(cr, w, u, a, lift * 1.6)                        # the hero
-        self.draw_bar(cr, w, 1104 * u + lift * 2.2, u, a)             # what the bar would show
+        self.draw_corners(cr, u, rest)                                   # the machine, top left
+        self.draw_clock(cr, w / 2, 92 * u + lift * 0.6, u, rest)         # the time, top centre
+        self.draw_gauges(cr, w - 64 * u, 100 * u + lift * 0.6, u, rest)  # its readings, top right
+        self.draw_map(cr, w, u, rest, lift * 1.6)                        # the hero
+        self.draw_bar(cr, w, 1104 * u + lift * 2.2, u, rest)             # what the bar would show
         if self.sticky:
             # 1…0 is how the keybinds palette writes the number row: 0 is ten.
             text(cr, label("1…0 workspaces 1-10   ·   ← → enter   ·   click a window   ·   esc"),
-                 w / 2, h - 58 * u, 13 * u, "hint", a, weight=FONT["strong"], align="center",
+                 w / 2, h - 58 * u, 13 * u, "hint", rest, weight=FONT["strong"], align="center",
                  spacing=FONT["track"] * u)
+        if self.zoomed is not None:
+            # The chosen workspace, on top of all of it, between its card and
+            # the whole monitor.
+            wid, x, y, cw, ch, mon, clients, g = self.zoomed
+            self.draw_workspace(cr, wid, x * (1 - z), y * (1 - z), cw + (w - cw) * z,
+                                ch + (h - ch) * z, mon, clients, g, u, a, z)
 
     def draw_clock(self, cr, cx, top, u, a):
         """The time under the arc of the day; `top` is the arc's crown."""
@@ -860,6 +1004,8 @@ class Hud:
         active_ws = {m["activeWorkspace"]["id"] for m in mons.values()}
         here = next((m["activeWorkspace"]["id"] for m in mons.values() if m.get("focused")), None)
         self.ids = ids = sorted(set(by_ws) | active_ws)
+        self.here = here
+        self.placed = []
         if not ids:
             return
         if self.cursor not in ids:
@@ -867,6 +1013,8 @@ class Hud:
         for wid in ids:
             if wid not in self.grow:         # arrives at its size, does not grow into it
                 self.grow[wid] = Spring(1.0 if wid == self.cursor else 0.0, SPATIAL)
+            if wid not in self.arrive:       # part of the entrance, or simply there
+                self.arrive[wid] = Spring(1.0 if self.entered else 0.0, SPATIAL)
 
         # One row, centred. Widths come from the springs, so when the
         # selection moves the cards trade sizes and their neighbours make room.
@@ -892,48 +1040,118 @@ class Hud:
         if self.bar.title:
             text(cr, self.bar.title, w / 2, cy - tallest / 2 - 54 * u, 15 * u, "muted", a,
                  family=ICON_FAMILY, weight=400, align="center")
+        self.placed = placed
+        # The selected card sits in a pool of light — the spotlight's idea,
+        # on the panel. It is wherever the cards' sizes say the selection is,
+        # so when the selection moves the light glides with it.
+        weight = sum(min(1.0, grown[p[0]]) for p in placed)
+        if weight > 0.05:
+            lx = sum(min(1.0, grown[p[0]]) * (p[1] + p[3] / 2) for p in placed) / weight
+            rx, ry = base * HERO * 0.98, tallest * 1.25
+            cr.save()
+            cr.translate(lx - rx, cy - ry)
+            cr.scale(rx / 80, ry / 80)
+            cr.set_source_surface(glow(), 0, 0)
+            cr.get_source().set_filter(cairo.FILTER_BILINEAR)
+            cr.rectangle(0, 0, 160, 160)
+            cr.clip()
+            cr.paint_with_alpha(GLOW * a * min(1.0, weight))
+            cr.restore()
         for wid, x, y, cw, ch, mon, clients in placed:
             g = min(1.0, grown[wid])
-            self.draw_workspace(cr, wid, x, y, cw, ch, mon, clients, g, u, a)
+            if wid == self.zoom_ws:
+                if self.zoomed is None:      # from where it is now; drawn last, by draw()
+                    self.zoomed = (wid, x, y, cw, ch, mon, clients, g)
+                continue
+            # The entrance. Where you are steps back into its card; the
+            # others come in from their own side, a moment later each. Done
+            # with the card's own rectangle, not by scaling the drawing: type
+            # drawn at a new scale every frame is rasterised anew every
+            # frame, and that was twelve milliseconds of each (measured).
+            ar = self.arrive[wid].x
+            side = 0 if wid == here or here is None else (1 if wid > here else -1)
+            grew = 1.0 + 0.16 * (1.0 - ar) if side == 0 else 0.90 + 0.10 * ar
+            mid = x + cw / 2 + side * (1.0 - ar) * 150 * u
+            cw, ch = cw * grew, ch * grew
+            x, y = mid - cw / 2, cy - ch / 2
+            seen = a * max(0.0, min(1.0, ar * 1.4))
+            self.draw_workspace(cr, wid, x, y, cw, ch, mon, clients, g, u, seen)
             # Its number, set like the title card's: thin, placed by the
             # digit's own box. Where you are is `fg` with the accent dot.
             size = (40 + 22 * g) * u
             ix, iy, iw, _ih = ink(cr, str(wid), size, weight=FONT["numeral_weight"])
             ny = cy + tallest / 2 + 28 * u
             role = "fg" if wid == here else "subtle" if g > 0.5 else "muted"
-            text(cr, str(wid), x + cw / 2 - iw / 2 - ix, ny - iy, size, role, a,
+            text(cr, str(wid), x + cw / 2 - iw / 2 - ix, ny - iy, size, role, seen,
                  weight=FONT["numeral_weight"])
             if wid == here:
-                rgba(cr, "accent", a)
+                rgba(cr, "accent", seen)
                 cr.new_path()
                 cr.arc(x + cw / 2, ny + 66 * u, 3.5 * u, 0, TAU)
                 cr.fill()
 
-    def draw_workspace(self, cr, wid, x, y, cw, ch, mon, clients, g, u, a):
+    def draw_workspace(self, cr, wid, x, y, cw, ch, mon, clients, g, u, a, z=0.0):
         """One workspace: an island, its windows to scale on it, as pictures
         of themselves where there are any (thumbs.py). `g` is how
         far it is the selected one (0..1): larger already, and lifted — a
-        darker, brighter-edged card with a shadow under it."""
-        rad = 14 * u
+        darker, brighter-edged card with a shadow under it.
+
+        Under the windows is the wallpaper, as on the workspace itself, held
+        back a little on the cards that are not selected. `z` is how far the
+        card has come forward on its way to being the whole screen (0..1):
+        everything that makes it a card — corners, shadow, edge, the names
+        written on the windows — goes as it does."""
+        card = 1.0 - z
+        rad = 14 * u * card
         for spread, alpha in ((20, 0.06), (11, 0.09), (4, 0.13)):
-            if g > 0.02:
+            if g > 0.02 and card > 0.02:
                 rounded(cr, x - spread * u, y - spread * u + 8 * u * g, cw + 2 * spread * u,
                         ch + 2 * spread * u, rad + spread * u)
-                rgba(cr, "bgDeep", alpha * g * a)
+                rgba(cr, "bgDeep", alpha * g * a * card)
                 cr.fill()
+        base = 0.50 + 0.38 * g
         rounded(cr, x, y, cw, ch, rad)
-        rgba(cr, "bg", (0.50 + 0.38 * g) * a)
-        cr.fill_preserve()
-        cr.set_line_width((1.0 + 0.5 * g) * u)
-        rgba(cr, "fg", (0.10 + 0.24 * g) * a)
-        cr.stroke()
+        rgba(cr, "bg", (base + (1.0 - base) * z) * a)
+        cr.fill()
+        wall = self.thumbs.wall(mon.get("name"))
+        if wall is not None:
+            cr.save()
+            # Only where it shows: between the windows. Under them it would be
+            # painted to be covered, and stretched over a card that is on its
+            # way to being the screen that is most of a frame (measured). The
+            # holes stop a few pixels inside each window, under its rounded
+            # corners; where two windows overlap the rule lets it through
+            # again, which costs a little and shows nothing.
+            scale = cw / (mon["width"] / mon["scale"])
+            rounded(cr, x, y, cw, ch, rad)
+            for c in clients:
+                hx, hy = x + (c["at"][0] - mon["x"]) * scale + 5, y + (c["at"][1] - mon["y"]) * scale + 5
+                hw, hh = c["size"][0] * scale - 10, c["size"][1] * scale - 10
+                if hw > 0 and hh > 0:
+                    cr.rectangle(hx, hy, hw, hh)
+            cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+            cr.clip()
+            cr.translate(x, y)
+            cr.scale(cw / wall.get_width(), ch / wall.get_height())
+            cr.set_source_surface(wall, 0, 0)
+            cr.get_source().set_filter(cairo.FILTER_BILINEAR)
+            cr.paint_with_alpha(a)
+            cr.restore()
+            rounded(cr, x, y, cw, ch, rad)
+            rgba(cr, "bgDeep", (0.50 - 0.34 * g) * a * card)
+            cr.fill()
+        if card > 0.02:
+            rounded(cr, x, y, cw, ch, rad)
+            cr.set_line_width((1.0 + 0.5 * g) * u)
+            rgba(cr, "fg", (0.10 + 0.24 * g) * a * card)
+            cr.stroke()
         self.hits.append((x, y, cw, ch, "workspace", wid))
 
         s = cw / (mon["width"] / mon["scale"])
         ts = max(12.5 * u, min(15 * u, 60 * u * s))   # the names grow with the card
         if not clients:
             _, eh = measure(cr, label("empty"), 13 * u)
-            text(cr, label("empty"), x + cw / 2, y + (ch - eh) / 2, 13 * u, "hint", a,
+            text(cr, label("empty"), x + cw / 2, y + (ch - eh) / 2, 13 * u, "hint", a * card,
                  align="center", spacing=FONT["track"] * u)
             return
         cr.save()
@@ -977,12 +1195,12 @@ class Hud:
                 cr.get_source().set_filter(cairo.FILTER_BILINEAR)
                 cr.paint_with_alpha(a * seen)
                 cr.restore()
-                if heat < 1.0:
+                if heat < 1.0 and card > 0.02:
                     rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
-                    rgba(cr, "bgDeep", STALE * (1.0 - heat) * a * seen)
+                    rgba(cr, "bgDeep", STALE * (1.0 - heat) * a * seen * card)
                     cr.fill()
             room = pw - 20 * u
-            named = room > 44 * u and ph > ts * 1.5 + 12 * u
+            named = card > 0.02 and room > 44 * u and ph > ts * 1.5 + 12 * u
             title = (c.get("title") or "").strip()
             titled = named and bool(title) and ph > ts * 3.0 + 12 * u
             if named and seen > 0.001:
@@ -990,8 +1208,8 @@ class Hud:
                 # shaded behind it: dark at the top edge, gone below the text.
                 depth = min(ph - 2, ts * (4.6 if titled else 3.0))
                 shade = cairo.LinearGradient(0, py + 1, 0, py + 1 + depth)
-                shade.add_color_stop_rgba(0.0, *PAL["bgDeep"], 0.86 * a * seen)
-                shade.add_color_stop_rgba(0.55, *PAL["bgDeep"], 0.60 * a * seen)
+                shade.add_color_stop_rgba(0.0, *PAL["bgDeep"], 0.86 * a * seen * card)
+                shade.add_color_stop_rgba(0.55, *PAL["bgDeep"], 0.60 * a * seen * card)
                 shade.add_color_stop_rgba(1.0, *PAL["bgDeep"], 0.0)
                 cr.save()
                 rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
@@ -1008,11 +1226,11 @@ class Hud:
                 # XWayland windows carry a mark: they are the ones paying
                 # the extra latency, and nothing else on screen says so.
                 name = (c.get("class") or "?").lower() + ("  ·x11" if c.get("xwayland") else "")
-                text(cr, name, px + 10 * u, py + 8 * u, ts, "fg" if focused else "subtle", a,
-                     weight=FONT["regular"], width=room)
+                text(cr, name, px + 10 * u, py + 8 * u, ts, "fg" if focused else "subtle",
+                     a * card, weight=FONT["regular"], width=room)
                 if titled:
-                    text(cr, title, px + 10 * u, py + 8 * u + ts * 1.5, ts - 1.0 * u, "muted", a,
-                         family=ICON_FAMILY, weight=400, width=room)
+                    text(cr, title, px + 10 * u, py + 8 * u + ts * 1.5, ts - 1.0 * u, "muted",
+                         a * card, family=ICON_FAMILY, weight=400, width=room)
         cr.restore()
 
     def draw_corners(self, cr, u, a):

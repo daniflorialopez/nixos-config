@@ -26,6 +26,9 @@ Two things are needed that neither `hyprctl` nor grim provide:
     and with the interpreter lock released, straight from the PPM's packed
     RGB; only the small result is repacked for cairo.
 
+The wallpaper is read the same way, once per picture and monitor, at card
+size: the wallpaper daemon says which file is on which output.
+
 A picture is kept until the window closes, so the next time the panel opens
 it has something to show at once and the fresh one simply replaces it. It is
 only shown while the window still has the size it was taken at: after a
@@ -34,6 +37,7 @@ resize the card falls back to the drawn window until the new picture lands.
 
 import ctypes
 import os
+import re
 import shutil
 import socket
 import struct
@@ -168,6 +172,53 @@ def toplevels():
         wire.close()
 
 
+def _surface(pixbuf):
+    """A (small) RGB pixbuf, repacked as the BGRX cairo wants."""
+    width, height = pixbuf.get_width(), pixbuf.get_height()
+    stride, pixels, step = pixbuf.get_rowstride(), pixbuf.get_pixels(), pixbuf.get_n_channels()
+    buf = bytearray(width * height * 4)
+    if stride == width * step:
+        n = width * height * step
+        buf[0::4], buf[1::4], buf[2::4] = pixels[2:n:step], pixels[1:n:step], pixels[0:n:step]
+    else:                                    # rows padded to four bytes
+        for y in range(height):
+            row = pixels[y * stride:y * stride + width * step]
+            at = y * width * 4
+            buf[at:at + width * 4:4] = row[2::step]
+            buf[at + 1:at + width * 4:4] = row[1::step]
+            buf[at + 2:at + width * 4:4] = row[0::step]
+    return cairo.ImageSurface.create_for_data(buf, cairo.FORMAT_RGB24, width, height, width * 4)
+
+
+def wallpapers():
+    """{output name: path of the picture on it}, as the wallpaper daemon
+    reports it (awww, formerly swww). Empty if it is not there or shows a
+    plain colour."""
+    tool = shutil.which("awww") or shutil.which("swww")
+    if tool is None:
+        return {}
+    try:
+        text = subprocess.run([tool, "query"], capture_output=True, text=True, timeout=2).stdout
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    return {m.group(1): m.group(2).strip() for m in
+            re.finditer(r"(\S+): \d+x\d+.*?displaying: image: (.+)$", text, re.MULTILINE)}
+
+
+def wallpaper(path, width, height):
+    """The wallpaper as it sits on the monitor (scaled to fill, centred),
+    `width` x `height`, or None."""
+    try:
+        full = GdkPixbuf.Pixbuf.new_from_file(path)
+        scale = max(width / full.get_width(), height / full.get_height())
+        w = max(width, round(full.get_width() * scale))
+        h = max(height, round(full.get_height() * scale))
+        small = full.scale_simple(w, h, GdkPixbuf.InterpType.BILINEAR)
+        return _surface(small.new_subpixbuf((w - width) // 2, (h - height) // 2, width, height))
+    except (GLib.Error, cairo.Error, MemoryError, ValueError):
+        return None
+
+
 def picture(identifier, width, height):
     """One window as a cairo surface `width` x `height`, or None."""
     try:
@@ -181,20 +232,7 @@ def picture(identifier, width, height):
             GLib.Bytes.new(rgb), GdkPixbuf.Colorspace.RGB, False, 8, w, h, w * 3)
         width, height = max(1, min(w, width)), max(1, min(h, height))
         small = full.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
-        stride, pixels = small.get_rowstride(), small.get_pixels()
-        buf = bytearray(width * height * 4)
-        if stride == width * 3:
-            n = width * height * 3
-            buf[0::4], buf[1::4], buf[2::4] = pixels[2:n:3], pixels[1:n:3], pixels[0:n:3]
-        else:                                # rows padded to four bytes
-            for y in range(height):
-                row = pixels[y * stride:y * stride + width * 3]
-                at = y * width * 4
-                buf[at:at + width * 4:4] = row[2::3]
-                buf[at + 1:at + width * 4:4] = row[1::3]
-                buf[at + 2:at + width * 4:4] = row[0::3]
-        return cairo.ImageSurface.create_for_data(buf, cairo.FORMAT_RGB24, width, height,
-                                                  width * 4)
+        return _surface(small)
     except (OSError, ValueError, subprocess.SubprocessError, GLib.Error, cairo.Error,
             MemoryError):
         return None
@@ -204,6 +242,7 @@ class Thumbs:
     def __init__(self, landed):
         self.landed = landed                 # called with an address, on the main loop
         self.shots = {}                      # address -> (surface, the window's size then)
+        self.walls = {}                      # output -> (path, mtime, size, surface)
         self.busy = False
         self.able = bool(shutil.which("grim"))
         self.took = 0.0                      # how long the last round was, for `status`
@@ -213,18 +252,47 @@ class Thumbs:
         shot = self.shots.get(address)
         return shot[0] if shot is not None and shot[1] == tuple(size) else None
 
-    def refresh(self, wants, alive):
+    def wall(self, output):
+        """The wallpaper on that output at card size, if it has been read."""
+        held = self.walls.get(output)
+        return held[3] if held is not None else None
+
+    def refresh(self, wants, alive, cards=None):
         """`wants`: [(address, the window's size, the scale to keep it at)].
 
-        `alive` is every window there is: the pictures of the rest are let go."""
+        `alive` is every window there is: the pictures of the rest are let go.
+        `cards`: {output: (width, height)} — the size to keep each monitor's
+        wallpaper at; given when the panel opens, so a changed wallpaper is
+        picked up then."""
         for address in [a for a in self.shots if a not in alive]:
             del self.shots[address]
-        if self.busy or not self.able or not wants:
+        if self.busy or not self.able or not (wants or cards):
             return
         self.busy = True
-        threading.Thread(target=self._work, args=(list(wants),), daemon=True).start()
+        threading.Thread(target=self._work, args=(list(wants), dict(cards or {})),
+                         daemon=True).start()
 
-    def _work(self, wants):
+    def _walls(self, cards):
+        for output, path in wallpapers().items():
+            if output not in cards:
+                continue
+            try:
+                key = (path, os.stat(path).st_mtime, cards[output])
+            except OSError:
+                continue
+            held = self.walls.get(output)
+            if held is not None and held[:3] == key:
+                continue                     # the same picture as last time
+            surface = wallpaper(path, *cards[output])
+            if surface is not None:
+                GLib.idle_add(self._wall_landed, output, key + (surface,))
+
+    def _wall_landed(self, output, held):
+        self.walls[output] = held
+        self.landed(None)
+        return False
+
+    def _work(self, wants, cards):
         start = time.monotonic()
         try:
             identifiers = toplevels()
@@ -239,6 +307,8 @@ class Thumbs:
                     GLib.idle_add(self._land, address, surface, tuple(size))
             with ThreadPoolExecutor(max_workers=WORKERS) as pool:
                 list(pool.map(one, wants))
+            if cards:
+                self._walls(cards)           # after the windows: it can wait, they cannot
         except (OSError, struct.error):
             pass                             # no pictures: the cards stay drawn
         finally:
