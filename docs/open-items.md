@@ -225,7 +225,8 @@ the compositor cannot. The module header lists every command.
 
 **What is in it now**, all off or invisible until asked for: the **HUD**
 (clock, day arc carrying today's focus history, gauges, every waybar module as
-a chip, a to-scale map of every workspace that is also a switcher) on a
+a chip, a to-scale map of every workspace, built from live pictures of its
+windows, that is also a switcher) on a
 blurred capture of the desktop; **zen** (stops waybar; title cards and the HUD
 replace it); workspace **title cards** in three looks; a **spotlight** that
 travels with focus; open/close **ripples**; **pulse** (workspaces as a
@@ -336,20 +337,43 @@ window-shaped spotlight pool, keys on unused families plus a menu.
   map is the hero (large cards in the middle, windows named by application
   and title, the selected card larger and lifted, left/right/enter to move
   and go), clock and gauges made small around it. **Not yet judged.**
-- **NEXT, asked for by Dani for the afternoon of 2026-11-19 ("don't forget
-  the thumbnails for tomorrow"):** real thumbnails on the HUD's workspace
-  cards instead of drawn windows. Known going in: the daemon has to hold a
-  screenshot of each workspace in memory and take one on every arrival; the
-  capture is of the whole output, so the spotlight's dimming and any title
-  card on screen are in it unless waited out or undone; a thumbnail goes
-  stale when the workspace's windows change, so it needs a rule for falling
-  back to the drawn windows.
 - *Two spotlight bugs, reported right after:* the previous window's pool
   carried onto the next workspace, and sometimes no spotlight at all after a
   switch. One cause (the canvas was not redrawn when the pool jumped instead
   of travelling), fixed and covered by checks that compare what was painted
   with the focused window: 40 cases, all passing. **Not yet confirmed by
   Dani.**
+
+**2026-11-19, afternoon — real thumbnails on the HUD's cards (commit
+`bce450a`), asked for by Dani the night before:**
+- Not workspace screenshots, as first planned. Hyprland hands out a single
+  window's own buffer even when its workspace is not showing (`grim -T`), so
+  every window is photographed when the panel opens and the card is put
+  together from those (`reverie/thumbs.py`). Nothing is cached from an
+  earlier visit, so nothing is stale, and neither the spotlight's dimming,
+  the fade, nor a title card can be in the picture.
+- While the panel stays pinned, the windows on the showing workspace are
+  retaken every two seconds; a window that opens or changes size gets a new
+  picture; one with no picture (yet) is the drawn pane it was before.
+- Measured and seen on the real compositor: first pictures on the cards
+  ~125 ms after the command; a frame of the panel 6 ms; windows on a hidden
+  workspace captured correctly; a window closing and one opening while
+  pinned followed within the two-second reading; a window at 30 % opacity
+  photographed at full strength. Daemon memory 55-90 MB anonymous across
+  repeated opens (it was 240-320 MB before freed capture buffers were handed
+  back with `malloc_trim`).
+- **Not judged by Dani yet.** In particular: the name and title are still
+  written on each window, over a shade at its top edge — they may now be
+  more than the picture needs; and a window untouched for ten minutes is
+  darkened by up to a quarter (the old "attention heat").
+- **Not verified:** XWayland windows, fullscreen windows, floating windows
+  overlapping others, more than three windows at once, a second monitor, a
+  scaled monitor (pictures are kept at layout-pixel size, so they would be
+  soft there). Transparent windows come out on black rather than on the
+  wallpaper. The space between windows and an empty workspace's card are
+  still the plain island, not the wallpaper.
+- This session started after a reboot: the daemon and the session binds were
+  gone (nothing in git was), and were brought back with `reverie try`.
 
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
