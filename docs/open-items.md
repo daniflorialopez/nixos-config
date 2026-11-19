@@ -375,6 +375,47 @@ window-shaped spotlight pool, keys on unused families plus a menu.
 - This session started after a reboot: the daemon and the session binds were
   gone (nothing in git was), and were brought back with `reverie try`.
 
+**2026-11-19, night — Dani's fifth round** ("I like a lot what we have
+accomplished"), and what changed:
+- *"I don't want any auto fading the screen when it is not being used ... it
+  is messing up some of the transparencies and it looks unpolished."* That
+  was reverie's own **fade** (windows lose opacity after a minute without
+  focus); the system has no idle dimming or locking at all (hypridle runs
+  with no listeners). Switched off, and it stays off across restarts. **The
+  code and its menu tile are still there**: removing them changes the menu's
+  grid, so it waits for Dani's word. The HUD's darkening of long-untouched
+  windows' pictures is a different thing and is still on.
+- *Where do the thumbnails' screenshots go?* Nowhere: they are never files.
+  grim writes each picture to a pipe, the daemon keeps a small copy in its
+  own memory, replaces it when a newer one is taken, drops it when the
+  window closes, and all of it is gone when the daemon stops.
+- *Spotlight "can be improved further if it can be smoother"* — commit
+  `f88d3a3`. It was drawing ~42 frames a second (21-22 in half a second,
+  waits of 17-28 ms): the daemon's software renderer cannot repaint a whole
+  monitor every frame. The spotlight is now its own program
+  (`reverie/spot.py`) on GTK's GL renderer, started when the spotlight is
+  switched on and gone when it is off: 91 frames in 553 ms (165 a second),
+  longest wait 7-8 ms. Same handoff and timings. 22 live checks pass
+  (handoffs, workspace switches incl. to and from empty, rapid switches,
+  floating, maximise, close, menu lit, on/off/on). **Costs:** ~240 MB
+  resident while the spotlight is on (the GL driver), nothing when off; the
+  light takes ~0.3 s longer to appear when switched on (a process starts).
+  **Not judged by Dani.** Not tested: two monitors.
+- *"Could the HUD be more spectacular? We can always revert."* — commit
+  `131a20a`, one commit so `git revert 131a20a` is the way back. Cards sweep
+  in; the selected card sits in a pool of light and the backdrop darkens to
+  its corners; the wallpaper is under the windows on each card; going to a
+  workspace, its card comes forward to fill the screen. Frame cost 8-9 ms at
+  rest (was 6), 12 entering, 17-21 while a card comes forward. Seen on the
+  real screen: the entrance, and the zoom into the current workspace by a
+  real key press (panel gone and unmapped afterwards). **Only rendered
+  offscreen:** the zoom into a different workspace (it happens over
+  Hyprland's own slide and the title card, which I have not watched
+  together). **Not judged by Dani**; the light may be too faint to notice.
+- Dani was using the machine during this session (Firefox on workspace 3):
+  my live tests switched workspaces and took the keyboard for a second a few
+  times. Offscreen first, and ask, when that is the case.
+
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
   deadnix clean on `reverie.nix`; no literal colours outside the palette.
