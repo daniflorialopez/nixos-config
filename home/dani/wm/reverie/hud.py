@@ -3,7 +3,7 @@
 The bar is a 1995 taskbar: always on, full of numbers nobody is reading. This
 is the opposite trade. While the key is held the whole monitor becomes an
 instrument panel — clock, a day arc that carries today's focus history,
-gauges, and a live map of every workspace with its windows drawn to scale —
+gauges, and a live map of every workspace with its windows shown to scale —
 and on release it is gone.
 
 The backdrop is the desktop itself, out of focus. As the panel maps, the
@@ -26,8 +26,9 @@ from another desktop.
 
 The layout has one hero. Pinned — which is how it is mostly used — this is a
 switcher, so the workspaces take the middle of the screen: one card each with
-its windows drawn to scale and named (application, then title, because two
-browser windows are told apart by nothing else). The card the switcher is on
+its windows to scale — each one its own picture, taken as the panel opens
+(thumbs.py), on a drawn pane until that lands — and named (application, then
+title, because two browser windows are told apart by nothing else). The card the switcher is on
 is drawn larger and lifted off the panel; left and right move it, enter goes
 there, the number row jumps straight to a workspace, a click on a window
 focuses that window. Everything else is arranged round that and kept quiet:
@@ -52,6 +53,7 @@ from barinfo import BarInfo
 from common import (EFFECT, FONT, ICON_FAMILY, PAL, SPATIAL, Spring, focused_gdk_monitor, hypr,
                     ink, label, layer_window, measure, rgba, rounded, text)
 from ledger import human
+from thumbs import Thumbs
 
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
 
@@ -61,6 +63,8 @@ TAU = math.tau
 ISLAND_RADIUS = float(os.environ.get("REVERIE_ISLAND_RADIUS", "12"))
 STAGGER = 0.045              # seconds between one gauge starting and the next
 HERO = 1.24                  # how much larger the selected workspace's card is drawn
+CARD = 540                   # the widest an unselected card gets, in design px
+STALE = 0.25                 # how far a window's picture darkens when left alone ten minutes
 MODIFIERS = ("Super_L", "Super_R", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L",
              "Alt_R", "Meta_L", "Meta_R", "ISO_Level3_Shift", "Caps_Lock", "Num_Lock")
 HALVINGS = 5                 # the capture is halved this often before going back up
@@ -253,6 +257,8 @@ class Hud:
         self.bar = BarInfo()                 # everything waybar shows
         self.bar.listeners.append(self._bar_landed)
         self.bar_age = 0
+        self.thumbs = Thumbs(self._thumb_landed)     # the windows' own pictures
+        self.reveal = {}                     # address -> Spring: its picture fading in
         GLib.idle_add(self._warm)
 
     def _bar_landed(self):
@@ -386,6 +392,7 @@ class Hud:
         self.bar_age = 0
         self.refresh()
         self._mark("data read")
+        self._photograph(everything=True)
         self.shown_at = time.monotonic()
         self.alpha.target = 1.0
         self.rise.target = 1.0
@@ -547,6 +554,7 @@ class Hud:
             self.timer_id = 0
             return False
         self.refresh()
+        self._photograph(everything=False)
         self.bar_age += 1
         if self.bar_age >= 5:                # pinned: the bar's modules every ~10 s
             self.bar_age = 0
@@ -573,6 +581,40 @@ class Hud:
             }
         except OSError:
             pass
+
+    def _photograph(self, everything):
+        """Ask for the windows' pictures (see thumbs.py).
+
+        All of them when the panel opens. After that only what can have
+        changed: a window on a workspace that is not showing is not drawing
+        frames, so its picture is still true; the ones in front of you are
+        taken again with each reading of the gauges, and any window that has
+        appeared or changed size since gets its first one.
+        """
+        mons = {m["id"]: m for m in self.snapshot["monitors"]}
+        showing = {m["activeWorkspace"]["id"] for m in mons.values()}
+        alive, wants = set(), []
+        for c in self.snapshot["clients"]:
+            ws, mon = c.get("workspace", {}).get("id", -1), mons.get(c.get("monitor"))
+            if not c.get("mapped", True) or ws < 0 or mon is None or min(c["size"]) < 1:
+                continue
+            alive.add(c["address"])
+            if everything or ws in showing or self.thumbs.get(c["address"], c["size"]) is None:
+                # Kept at the size the selected card shows it, in device
+                # pixels: sizes are in layout pixels, 1440 design px are the
+                # monitor's height, and the picture is as wide as the buffer.
+                scale = CARD * HERO * mon["height"] / mon["scale"] / 1440 / mon["width"]
+                wants.append((c["address"], c["size"], min(1.0, scale * mon["scale"])))
+        for address in [a for a in self.reveal if a not in alive]:
+            del self.reveal[address]
+        self.thumbs.refresh(wants, alive)
+
+    def _thumb_landed(self, address):
+        if address not in self.reveal:
+            self.reveal[address] = Spring(0.0, EFFECT)   # a first picture fades in
+        self.reveal[address].target = 1.0
+        if self.shown:
+            self._ensure_tick()
 
     def _aim_gauges(self):
         for key, _ in GAUGES:
@@ -622,6 +664,8 @@ class Hud:
         for wid, spring in self.grow.items():
             spring.target = 1.0 if wid == self.cursor else 0.0
             spring.step(dt)
+        for spring in self.reveal.values():
+            spring.step(dt)
         # The panel may refresh at 165 Hz, and every frame here is a
         # full-screen software draw. Sixty is plenty for a spring.
         if now - self.drawn_at >= 1 / 61:
@@ -634,7 +678,8 @@ class Hud:
             return False
         settled = self.alpha.resting and self.rise.resting and self.frosted.resting and \
             self.veil.resting and all(s.resting for s in self.gauge.values()) and \
-            all(s.resting for s in self.grow.values())
+            all(s.resting for s in self.grow.values()) and \
+            all(s.resting for s in self.reveal.values())
         if self.shown and settled and not waiting:
             self.entered = True
             self.area.queue_draw()           # the resting frame, whatever the cap skipped
@@ -826,7 +871,7 @@ class Hud:
         # One row, centred. Widths come from the springs, so when the
         # selection moves the cards trade sizes and their neighbours make room.
         n, gap = len(ids), 40 * u
-        base = min(540 * u, (w - 240 * u - gap * (n - 1)) / (n - 1 + HERO))
+        base = min(CARD * u, (w - 240 * u - gap * (n - 1)) / (n - 1 + HERO))
         grown = {wid: max(0.0, min(1.15, self.grow[wid].x)) for wid in ids}
         widths = {wid: base * (1.0 + (HERO - 1.0) * grown[wid]) for wid in ids}
         x = (w - sum(widths.values()) - gap * (n - 1)) / 2
@@ -865,7 +910,8 @@ class Hud:
                 cr.fill()
 
     def draw_workspace(self, cr, wid, x, y, cw, ch, mon, clients, g, u, a):
-        """One workspace: an island, its windows to scale on it. `g` is how
+        """One workspace: an island, its windows to scale on it, as pictures
+        of themselves where there are any (thumbs.py). `g` is how
         far it is the selected one (0..1): larger already, and lifted — a
         darker, brighter-edged card with a shadow under it."""
         rad = 14 * u
@@ -893,35 +939,78 @@ class Hud:
         cr.save()
         rounded(cr, x, y, cw, ch, rad)
         cr.clip()                           # a window hanging off the monitor stays on the card
-        for c in clients:
+        # Back to front, as the compositor stacks them: tiled, then floating
+        # (the one used last on top), then whatever is fullscreen.
+        for c in sorted(clients, key=lambda c: (bool(c.get("fullscreen")), bool(c.get("floating")),
+                                                -c.get("focusHistoryID", 0))):
             px = x + (c["at"][0] - mon["x"]) * s
             py = y + (c["at"][1] - mon["y"]) * s
             pw, ph = c["size"][0] * s, c["size"][1] * s
             focused = c["address"] == self.snapshot["active"]
             self.hits.append((px, py, pw, ph, "window", c["address"]))
+            # Attention heat: a window you were in a moment ago is lighter
+            # than one you have not touched for ten minutes.
+            age = 600.0
+            if self.pulse is not None and c["address"] in self.pulse.seen:
+                age = time.monotonic() - self.pulse.seen[c["address"]]
+            heat = 1.0 if focused else max(0.0, 1.0 - age / 600.0)
+            shot = self.thumbs.get(c["address"], c["size"])
+            seen = 0.0                      # how far its picture has faded in
+            if shot is not None and c["address"] in self.reveal:
+                seen = max(0.0, min(1.0, self.reveal[c["address"]].x))
+            if seen < 0.999:
+                # No picture (yet): the window as a drawn pane.
+                rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
+                if focused:
+                    rgba(cr, "accent", 0.26 * a)
+                else:
+                    rgba(cr, "overlay", (0.30 + 0.50 * heat) * a)
+                cr.fill()
+            if seen > 0.001:
+                # The window itself, as it looks right now.
+                cr.save()
+                rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
+                cr.clip()
+                cr.translate(px + 1, py + 1)
+                cr.scale((pw - 2) / shot.get_width(), (ph - 2) / shot.get_height())
+                cr.set_source_surface(shot, 0, 0)
+                cr.get_source().set_filter(cairo.FILTER_BILINEAR)
+                cr.paint_with_alpha(a * seen)
+                cr.restore()
+                if heat < 1.0:
+                    rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
+                    rgba(cr, "bgDeep", STALE * (1.0 - heat) * a * seen)
+                    cr.fill()
+            room = pw - 20 * u
+            named = room > 44 * u and ph > ts * 1.5 + 12 * u
+            title = (c.get("title") or "").strip()
+            titled = named and bool(title) and ph > ts * 3.0 + 12 * u
+            if named and seen > 0.001:
+                # Its name is written on the picture, so the picture is
+                # shaded behind it: dark at the top edge, gone below the text.
+                depth = min(ph - 2, ts * (4.6 if titled else 3.0))
+                shade = cairo.LinearGradient(0, py + 1, 0, py + 1 + depth)
+                shade.add_color_stop_rgba(0.0, *PAL["bgDeep"], 0.86 * a * seen)
+                shade.add_color_stop_rgba(0.55, *PAL["bgDeep"], 0.60 * a * seen)
+                shade.add_color_stop_rgba(1.0, *PAL["bgDeep"], 0.0)
+                cr.save()
+                rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
+                cr.clip()
+                cr.rectangle(px + 1, py + 1, pw - 2, depth)
+                cr.set_source(shade)
+                cr.fill()
+                cr.restore()
             rounded(cr, px + 1, py + 1, pw - 2, ph - 2, 6 * u)
-            if focused:
-                rgba(cr, "accent", 0.26 * a)
-            else:
-                # Attention heat: a window you were in a moment ago is
-                # lighter than one you have not touched for ten minutes.
-                age = 600.0
-                if self.pulse is not None and c["address"] in self.pulse.seen:
-                    age = time.monotonic() - self.pulse.seen[c["address"]]
-                rgba(cr, "overlay", (0.30 + 0.50 * max(0.0, 1.0 - age / 600.0)) * a)
-            cr.fill_preserve()
-            cr.set_line_width(1 * u)
+            cr.set_line_width((1.0 + 0.6 * seen * focused) * u)
             rgba(cr, "accent" if focused else "slate", a)
             cr.stroke()
-            room = pw - 20 * u
-            if room > 44 * u and ph > ts * 1.5 + 12 * u:
+            if named:
                 # XWayland windows carry a mark: they are the ones paying
                 # the extra latency, and nothing else on screen says so.
                 name = (c.get("class") or "?").lower() + ("  ·x11" if c.get("xwayland") else "")
                 text(cr, name, px + 10 * u, py + 8 * u, ts, "fg" if focused else "subtle", a,
                      weight=FONT["regular"], width=room)
-                title = (c.get("title") or "").strip()
-                if title and ph > ts * 3.0 + 12 * u:
+                if titled:
                     text(cr, title, px + 10 * u, py + 8 * u + ts * 1.5, ts - 1.0 * u, "muted", a,
                          family=ICON_FAMILY, weight=400, width=room)
         cr.restore()
