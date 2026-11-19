@@ -127,6 +127,7 @@ class Reverie(Gtk.Application):
     def shutdown(self, *_):
         """Leave the desktop as it was found: nothing dimmed, the bar back."""
         self.pulse.restore()
+        self.fx.close()                  # the spotlight is a child: it goes too
         self.ledger.set_away(True)       # closes and saves the open block
         if self.zen:
             self.bar_running(True)       # the preference stays; the bar must not stay gone
