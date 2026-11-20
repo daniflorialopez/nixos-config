@@ -105,8 +105,9 @@ FADE = (40.0, 75.0)          # a card turned this far starts to go; this far, it
 DEPTH_IN = 520.0             # how far back the neighbours start their entrance
 CENTRE_Y = 716.0             # where the carousel's middle is, as in hud.py
 TILT = (2.4, 1.6)            # degrees the carousel leans to the pointer, across and up
-TINT = 0.52                  # bgDeep over the wallpaper when it is fully out of focus
-GLOW = 0.16                  # the light behind the selected card, at its brightest
+TINT = 0.42                  # bgDeep over the wallpaper when it is fully out of focus
+GRAIN = 0.035                # ... and how much darker a pixel of it can be than its neighbour
+GLOW = 0.20                  # the light behind the selected card, at its brightest
 LABELS = 1.3                 # the cards' lettering is drawn this much larger than shown
 FLY = (200.0, 23.0)          # the desktop stepping back: half-way in 0.1 s, in place by 0.3
 RETURN = (900.0, 60.0)       # a card coming forward to be the screen: no overshoot, 90% in 130 ms
@@ -270,8 +271,8 @@ def wallpaper_levels(path, width, height):
     Out of focus the way hud.frost does it: halved, then doubled back up,
     each doubling a linear interpolation — a wide even blur made almost
     entirely on images too small to cost anything. A copy is kept no larger
-    than 640 px wide: what is left in it is so smooth that the graphics card
-    can stretch it the rest of the way.
+    than 640 px wide (the last one, 1280): what is left in it is so smooth
+    that the graphics card can stretch it the rest of the way.
 
     The panel fades from each to the next as it opens, so the wallpaper goes
     out of focus rather than being swapped for a blurred one; and each is
@@ -285,21 +286,27 @@ def wallpaper_levels(path, width, height):
         .new_subpixbuf((sw - w) // 2, (sh - h) // 2, w, h).copy()
 
     def doubled(src):
-        # With cairo, not GdkPixbuf: its enlargement leaves each source pixel
-        # a soft-edged square, and four of those on top of each other were a
-        # lattice across the whole backdrop. And not one interpolation but
-        # the mean of four, half a pixel apart: a plain one is smooth but
-        # creased along every line of the coarsest picture, and on a slow
-        # gradient the creases show as faint stripes.
+        """Twice the size, and smoother: the mean of nine copies a pixel
+        apart in every direction.
+
+        With cairo, not GdkPixbuf: its enlargement leaves each source pixel
+        a soft-edged square, and four of those on top of each other were a
+        lattice across the whole backdrop. And not a plain interpolation
+        either: that is smooth, but creased along every line of the coarsest
+        picture, so that on a slow gradient the steps from one shade to the
+        next run in straight lines and right angles — which the eye finds at
+        once, where it would not find the same steps in round shapes.
+        """
         out = cairo.ImageSurface(cairo.FORMAT_RGB24, src.get_width() * 2, src.get_height() * 2)
         ctx = cairo.Context(out)
         ctx.scale(2, 2)
         ctx.set_operator(cairo.OPERATOR_ADD)
-        for ox, oy in ((-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5)):
-            ctx.set_source_surface(src, ox, oy)
-            ctx.get_source().set_filter(cairo.FILTER_BILINEAR)
-            ctx.get_source().set_extend(cairo.EXTEND_PAD)     # no dark fringe at the edges
-            ctx.paint_with_alpha(0.25)
+        for ox in (-0.5, 0.0, 0.5):
+            for oy in (-0.5, 0.0, 0.5):
+                ctx.set_source_surface(src, ox, oy)
+                ctx.get_source().set_filter(cairo.FILTER_BILINEAR)
+                ctx.get_source().set_extend(cairo.EXTEND_PAD)     # no dark fringe at the edges
+                ctx.paint_with_alpha(1 / 9)
         return out
 
     levels, down = [texture_of_pixbuf(sharp)], sharp
@@ -307,7 +314,9 @@ def wallpaper_levels(path, width, height):
         down = down.scale_simple(max(1, down.get_width() // 2), max(1, down.get_height() // 2),
                                  GdkPixbuf.InterpType.BILINEAR)       # halving: an average
         up = _surface(down)
-        while up.get_width() * 2 <= max(640, w // 2):
+        # The last one — what the panel rests on — is kept at twice the
+        # size of the others, for the grain below.
+        while up.get_width() * 2 <= (w if step == 4 else max(640, w // 2)):
             up = doubled(up)
         # ... and each a step further into shadow, darker towards its
         # corners: painted into the copy here, once, so that a frame does
@@ -323,6 +332,16 @@ def wallpaper_levels(path, width, height):
         edge.add_color_stop_rgba(1.0, *PAL["bgDeep"], VIGNETTE * share)
         ctx.set_source(edge)
         ctx.paint()
+        if step == 4:
+            # A dark, slow gradient has only a few dozen shades to be made
+            # of, and shows it: bands. A little grain breaks them up — each
+            # pixel darker by a random amount of up to three percent — and
+            # it is what a frosted pane looks like besides.
+            stride = cairo.ImageSurface.format_stride_for_width(cairo.FORMAT_A8, uw)
+            grain = cairo.ImageSurface.create_for_data(bytearray(os.urandom(stride * uh)),
+                                                       cairo.FORMAT_A8, uw, uh, stride)
+            ctx.set_source_rgba(*PAL["bgDeep"], GRAIN)
+            ctx.mask_surface(grain, 0, 0)
         levels.append(texture_of_surface(up))
     return levels
 
