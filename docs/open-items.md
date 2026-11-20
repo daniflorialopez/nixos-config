@@ -225,9 +225,10 @@ the compositor cannot. The module header lists every command.
 
 **What is in it now**, all off or invisible until asked for: the **HUD**
 (clock, day arc carrying today's focus history, gauges, every waybar module as
-a chip, a to-scale map of every workspace, built from live pictures of its
-windows, that is also a switcher) on a
-blurred capture of the desktop; **zen** (stops waybar; title cards and the HUD
+a chip, and every workspace as a card built from live pictures of its windows,
+on a carousel that is also a switcher — drawn on the graphics card by
+`reverie/stage.py` since 2026-11-20, with the plain panel `reverie/hud.py`
+behind it as the fallback); **zen** (stops waybar; title cards and the HUD
 replace it); workspace **title cards** in three looks; a **spotlight** that
 travels with focus; open/close **ripples**; **pulse** (workspaces as a
 pentatonic scale; windows that fade when ignored); **undo** for the last
@@ -415,6 +416,77 @@ accomplished"), and what changed:
 - Dani was using the machine during this session (Firefox on workspace 3):
   my live tests switched workspaces and took the keyboard for a second a few
   times. Offscreen first, and ask, when that is the case.
+
+**2026-11-20, small hours — Dani's sixth round** ("I like it A LOT. But I
+think there is room still for making it spectacular and jaw-dropping"), and
+what changed:
+- *Bug: "when you go from an empty workspace to another with a spotlighted
+  window, the card is affected visually by the shadow and the spotlight."*
+  Commit `d1bcd07`. The spotlight's overlay and the title card were on the
+  same layer, where the compositor stacks by who mapped last; the spotlight
+  unmaps when nothing is dimmed, so arriving from an empty workspace it was
+  mapped again after the card and lay over it (`hyprctl layers` showed it).
+  The spotlight is now on the `top` layer, under everything reverie puts on
+  `overlay`. Checked on the real compositor with the card straddling the
+  pool's edge. **Not confirmed by Dani.** Side effect, by design: the menu
+  and the HUD can no longer be dimmed by the spotlight either; a bar that is
+  (re)started while the spotlight is showing sits above it until the
+  spotlight is next mapped.
+- *The HUD, "spectacular and jaw-dropping"* — commits `9181b2e`, `98ac731`.
+  The same panel as a program that draws on the graphics card
+  (`reverie/stage.py`; `reverie/capture.py` takes its pictures,
+  `reverie/host.py` is the daemon's end of it). Its first frame is the
+  screen itself, which then recedes to become the card of the workspace you
+  are on while the wallpaper goes out of focus; the other workspaces stand
+  on a carousel in perspective; left/right turn it; going somewhere, the
+  card comes forward to be the screen; pinned, it leans to the pointer.
+  **Back to the plain panel: `reverie hud stage off`** (remembered; `on`
+  brings it back). **Not judged by Dani.**
+  - *Seen and measured on the real compositor:* frame one identical to the
+    capture (no pixel differs); pinned, right/left, esc, enter on a
+    neighbour (a real switch), the number of the current workspace, pin and
+    unpin 150 ms apart; the held chord with G or Super let go first, a 120 ms
+    tap; clicks on the backdrop, on the card in front and on a neighbour's
+    (turned) card; a stage frozen with its panel up (killed after 3.8 s, the
+    plain panel answered meanwhile, the stage restarted itself). All with
+    real key presses and clicks through `/dev/uinput`.
+  - *Timings:* key to first frame ~30 ms when the graphics card is awake,
+    ~85 ms after 5+ s idle; the carousel turning and the way out run at 165
+    frames a second; the way in does too when the card is awake, and at
+    30-60 for its first tenth of a second when it is not.
+  - *Costs:* about 190 MB of memory and 180 MB of GPU memory for as long as
+    the daemon runs (the stage is kept warm); nothing measurable when idle.
+  - *Why the cold start cannot be fixed from here:* the RTX 3070 idles at
+    P8, 210 MHz of 2100, and takes ~0.2 s of load to clock up
+    (`nvidia-smi --query-gpu=pstate,clocks.gr`; measured with repeated
+    identical renders). The driver can be told to stay at full clock on
+    mains (`NVreg_RegistryDwords` PowerMizer keys; a rebuild and a reboot;
+    more idle power and heat). **Not done, not recommended without Dani
+    asking for it.**
+  - *Not verified:* two monitors (the stage opens on the focused one and
+    falls back to a fade for a card that belongs to another); a scaled
+    monitor; more than five workspaces (the carousel shows the one in front
+    and two to each side, and a line of numbers for the rest — rendered
+    never, since there were three); a fullscreen game underneath (the
+    stage's surface waits on the `bottom` layer precisely so that it does
+    not block direct scan-out — reasoned from Hyprland's source, not
+    measured); a monitor whose buffer format is not 8-bit RGB (the capture
+    then fails and the panel opens by fading in, which *is* simulated).
+  - *Known limits:* the title card of the destination appears over the card
+    as it comes forward (unchanged behaviour; seen, looks coherent, Dani's
+    to judge); transparent windows are opaque in their pictures; the
+    gauges no longer sweep up one after another (that was cairo work in
+    every frame of the entrance); `reverie hud pin` on the command line now
+    answers `hud: pin` rather than the panel's state (`reverie hud status`
+    still gives it).
+- *Still waiting from the fifth round:* whether the Fade tile goes from the
+  menu (asked, not answered).
+- Test tooling that proved its worth and lives only in the session's
+  scratchpad (gone at reboot): an offscreen renderer of any frame through
+  the real GL renderer (`Gsk.GLRenderer().realize_for_display` +
+  `render_texture`), and a simulation of the panel's whole life on a
+  made-up clock. The second caught a fade that settled at 4% and would have
+  left an invisible surface mapped for good, before anything ran on screen.
 
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
