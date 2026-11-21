@@ -130,7 +130,7 @@ class Stats:
         nums = [int(p) for p in parts]
         return sum(nums), nums[3] + nums[4]
 
-    def sample(self, slow=True):
+    def sample(self):
         total, idle = self._cpu_times()
         pt, pi = self._cpu_prev
         if total > pt:
@@ -153,7 +153,7 @@ class Stats:
                         temps.append(int(v) / 1000)
         self.values["temp"] = max(temps) if temps else None
 
-        if slow and not self._busy:
+        if not self._busy:
             self._busy = True
             threading.Thread(target=self._slow, daemon=True).start()
 
@@ -261,10 +261,8 @@ def frost(shot, width, height):
 
 
 class Hud:
-    NAMESPACE = "reverie-hud"                # the layer surface's; stage.Stage has its own
-
     def __init__(self, app):
-        self.win = layer_window(app, self.NAMESPACE)
+        self.win = layer_window(app, "reverie-hud")
         self.area = Gtk.DrawingArea()
         self.area.set_draw_func(self.draw)
         self.win.set_child(self.area)

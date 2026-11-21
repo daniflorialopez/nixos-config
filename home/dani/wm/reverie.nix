@@ -8,22 +8,14 @@
 # screenshot — and it answers with surfaces the compositor cannot draw.
 #
 # One small Python daemon (./reverie, GTK4 + gtk4-layer-shell + cairo) owns
-# all of it — and starts two helpers of its own for the two things that have
-# to be drawn on the graphics card (reverie/stage.py, reverie/spot.py).
-# Everything is off or invisible until asked for:
+# all of it. Everything is off or invisible until asked for:
 #
 #   HUD        $mod+G and the monitor becomes an instrument panel: clock, a
 #              day arc carrying today's focus history, gauges, everything the
-#              bar shows, and every workspace as a card made of live pictures
-#              of its windows. The desktop itself steps back to become the
-#              card in front; the others stand on a carousel to either side;
-#              going to one, its card comes forward to be the screen. Pinned
-#              like this it takes clicks, arrows and the number keys;
-#              $mod SHIFT+G is the same panel only while held. (That is
-#              reverie/stage.py. `reverie hud stage off` gives the plain
-#              panel the daemon draws itself, reverie/hud.py, which is also
-#              what answers if the stage is not running.) This is "kill the
-#              bar" —
+#              bar shows, and every workspace as a scale map of its windows,
+#              on the desktop itself thrown out of focus. Pinned like this
+#              the map takes clicks and the number keys jump; $mod SHIFT+G
+#              is the same panel only while held. This is "kill the bar" —
 #   zen        — and zen (in the menu) actually does it: waybar stops, cards
 #              announce workspace changes instead, the HUD is a key-hold away.
 #   menu       $mod+R: a deck of tiles along the bottom, one per switch, lit
@@ -41,7 +33,6 @@
 #              and (if it floated) in its place.
 #
 #   reverie hud show|hide|pin|hold|release     reverie zen on|off|toggle
-#   reverie hud stage on|off
 #   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle
 #   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
@@ -144,10 +135,6 @@ let
     "blur true, match:namespace reverie-hud"
     "ignore_alpha 0, match:namespace reverie-hud"
     "no_anim true, match:namespace reverie-hud"
-    # The same panel drawn on the graphics card (reverie/stage.py). Its first
-    # frame is a capture of the screen, so it must simply be there: no fade,
-    # and no blur either (it is opaque).
-    "no_anim true, match:namespace reverie-stage"
     # The title card is an island too: blurred like the bar, and only where
     # it is drawn (everything around it is fully transparent).
     "blur true, match:namespace reverie-card"

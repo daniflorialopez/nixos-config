@@ -22,7 +22,6 @@ from gi.repository import Gio, GLib, GLibUnix, Gtk  # noqa: E402
 
 from cards import STYLES, Cards  # noqa: E402
 from fx import Fx  # noqa: E402
-from host import StageHost  # noqa: E402
 from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
 from menu import Menu  # noqa: E402
@@ -33,8 +32,7 @@ from pulse import Pulse  # noqa: E402
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
                      "theme", "reverie.json")
 
-USAGE = ("hud show|hide|pin|hold|release|stage on|off · "
-         "cards on|off|style bare|island|banner|next · "
+USAGE = ("hud show|hide|pin|hold|release · cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
          "font caskaydia|inter · menu [show|hide] · "
@@ -63,7 +61,6 @@ class Reverie(Gtk.Application):
         self.ledger = Ledger()
         self.pulse = Pulse(self)
         self.hud = Hud(self)
-        self.stage = StageHost(self)     # the same panel on the graphics card, when it is there
         self.cards = Cards(self)
         self.fx = Fx(self, self.pulse)
         self.menu = Menu(self)
@@ -95,9 +92,6 @@ class Reverie(Gtk.Application):
             self.fx.command("ripples", ["on"])
         common.set_font(state.get("font", "caskaydia"))
         self.hud.beats = bool(state.get("hold_repeats"))    # see Hud.hold
-        self.stage.wanted = bool(state.get("stage", True))
-        if self.stage.wanted:
-            self.stage.start()
         # Zen is a preference, so it survives a restart. Whether the bar is
         # really stopped is not something this file can know — a clean
         # shutdown brings it back, a crash leaves it down — so say it again.
@@ -116,7 +110,6 @@ class Reverie(Gtk.Application):
             "ripples": self.fx.ripples_on,
             "font": common.FONT["name"],
             "hold_repeats": self.hud.beats,
-            "stage": self.stage.wanted,
             "zen": self.zen,
             "zen_cards": self.zen_cards,
             # spotlight is a mode you enter, not a preference: never restored.
@@ -135,7 +128,6 @@ class Reverie(Gtk.Application):
         """Leave the desktop as it was found: nothing dimmed, the bar back."""
         self.pulse.restore()
         self.fx.close()                  # the spotlight is a child: it goes too
-        self.stage.stop()                # ... and so is the stage
         self.ledger.set_away(True)       # closes and saves the open block
         if self.zen:
             self.bar_running(True)       # the preference stays; the bar must not stay gone
@@ -230,29 +222,10 @@ class Reverie(Gtk.Application):
         head, rest = words[0], words[1:]
         if head == "hud":
             self.menu.hide()             # one panel with the keyboard at a time
-            if rest and rest[0] == "stage":
-                # Which panel answers: the one on the graphics card (stage.py)
-                # or the daemon's own (hud.py). The second is always there.
-                if len(rest) > 1:
-                    self.stage.wanted = not self.stage.wanted if rest[1] == "toggle" \
-                        else rest[1] == "on"
-                    self.hud.hide()
-                    if self.stage.wanted:
-                        self.stage.start()
-                    else:
-                        self.stage.stop()
-                reply = f"hud stage {onoff(self.stage.wanted)}" + (
-                    "" if not self.stage.wanted else
-                    " (running)" if self.stage.usable() else " (not running: the plain panel answers)")
-            elif self.stage.usable():
-                self.hud.hide()          # never both
-                reply = self.stage.command(rest)
-            else:
-                reply = self.hud.command(rest)
+            reply = self.hud.command(rest)
         elif head == "menu":
             if not self.menu.shown:
                 self.hud.hide()
-                self.stage.hide()
             return self.menu.command(rest)
         elif head == "pulse":
             reply = self.pulse.command(rest)
@@ -271,7 +244,6 @@ class Reverie(Gtk.Application):
                 if want == "toggle":
                     want = names[(names.index(common.FONT["name"]) + 1) % len(names)]
                 common.set_font(want)
-                self.stage.font(common.FONT["name"])
             reply = f"font {common.FONT['name']}"
         elif head == "zen":
             want = not self.zen if (not rest or rest[0] == "toggle") else rest[0] == "on"
@@ -287,7 +259,6 @@ class Reverie(Gtk.Application):
                 self.fx.command("ripples", []), self.fx.command("spotlight", []),
                 f"zen {onoff(self.zen)}",
                 f"font {common.FONT['name']}",
-                f"stage {onoff(self.stage.usable())}",
             ])
         elif head == "quit":
             GLib.idle_add(self.shutdown)
