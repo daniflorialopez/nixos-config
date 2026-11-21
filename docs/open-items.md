@@ -225,10 +225,8 @@ the compositor cannot. The module header lists every command.
 
 **What is in it now**, all off or invisible until asked for: the **HUD**
 (clock, day arc carrying today's focus history, gauges, every waybar module as
-a chip, and every workspace as a card built from live pictures of its windows,
-on a carousel that is also a switcher — drawn on the graphics card by
-`reverie/stage.py` since 2026-11-20, with the plain panel `reverie/hud.py`
-behind it as the fallback); **zen** (stops waybar; title cards and the HUD
+a chip, and a to-scale map of every workspace, built from live pictures of its
+windows, that is also a switcher) on a blurred capture of the desktop; **zen** (stops waybar; title cards and the HUD
 replace it); workspace **title cards** in three looks; a **spotlight** that
 travels with focus; open/close **ripples**; **pulse** (workspaces as a
 pentatonic scale; windows that fade when ignored); **undo** for the last
@@ -432,61 +430,51 @@ what changed:
   and the HUD can no longer be dimmed by the spotlight either; a bar that is
   (re)started while the spotlight is showing sits above it until the
   spotlight is next mapped.
-- *The HUD, "spectacular and jaw-dropping"* — commits `9181b2e`, `98ac731`.
-  The same panel as a program that draws on the graphics card
-  (`reverie/stage.py`; `reverie/capture.py` takes its pictures,
-  `reverie/host.py` is the daemon's end of it). Its first frame is the
-  screen itself, which then recedes to become the card of the workspace you
-  are on while the wallpaper goes out of focus; the other workspaces stand
-  on a carousel in perspective; left/right turn it; going somewhere, the
-  card comes forward to be the screen; pinned, it leans to the pointer.
-  **Back to the plain panel: `reverie hud stage off`** (remembered; `on`
-  brings it back). **Not judged by Dani.**
-  - *Seen and measured on the real compositor:* frame one identical to the
-    capture (no pixel differs); pinned, right/left, esc, enter on a
-    neighbour (a real switch), the number of the current workspace, pin and
-    unpin 150 ms apart; the held chord with G or Super let go first, a 120 ms
-    tap; clicks on the backdrop, on the card in front and on a neighbour's
-    (turned) card; a stage frozen with its panel up (killed after 3.8 s, the
-    plain panel answered meanwhile, the stage restarted itself). All with
-    real key presses and clicks through `/dev/uinput`.
-  - *Timings:* key to first frame ~30 ms when the graphics card is awake,
-    ~85 ms after 5+ s idle; the carousel turning and the way out run at 165
-    frames a second; the way in does too when the card is awake, and at
-    30-60 for its first tenth of a second when it is not.
-  - *Costs:* about 190 MB of memory and 180 MB of GPU memory for as long as
-    the daemon runs (the stage is kept warm); nothing measurable when idle.
-  - *Why the cold start cannot be fixed from here:* the RTX 3070 idles at
-    P8, 210 MHz of 2100, and takes ~0.2 s of load to clock up
-    (`nvidia-smi --query-gpu=pstate,clocks.gr`; measured with repeated
-    identical renders). The driver can be told to stay at full clock on
-    mains (`NVreg_RegistryDwords` PowerMizer keys; a rebuild and a reboot;
-    more idle power and heat). **Not done, not recommended without Dani
-    asking for it.**
-  - *Not verified:* two monitors (the stage opens on the focused one and
-    falls back to a fade for a card that belongs to another); a scaled
-    monitor; more than five workspaces (the carousel shows the one in front
-    and two to each side, and a line of numbers for the rest — rendered
-    never, since there were three); a fullscreen game underneath (the
-    stage's surface waits on the `bottom` layer precisely so that it does
-    not block direct scan-out — reasoned from Hyprland's source, not
-    measured); a monitor whose buffer format is not 8-bit RGB (the capture
-    then fails and the panel opens by fading in, which *is* simulated).
-  - *Known limits:* the title card of the destination appears over the card
-    as it comes forward (unchanged behaviour; seen, looks coherent, Dani's
-    to judge); transparent windows are opaque in their pictures; the
-    gauges no longer sweep up one after another (that was cairo work in
-    every frame of the entrance); `reverie hud pin` on the command line now
-    answers `hud: pin` rather than the panel's state (`reverie hud status`
-    still gives it).
+- *The HUD, "spectacular and jaw-dropping"* — commits `9181b2e`, `98ac731`:
+  the panel as a second program drawing on the graphics card
+  (`reverie/stage.py`), in which the screen itself receded to become a card
+  on a carousel of workspaces in perspective. **Rejected by Dani on
+  2026-11-22 and reverted (`343a42d`)** — see the seventh round below.
 - *Still waiting from the fifth round:* whether the Fade tile goes from the
   menu (asked, not answered).
-- Test tooling that proved its worth and lives only in the session's
-  scratchpad (gone at reboot): an offscreen renderer of any frame through
-  the real GL renderer (`Gsk.GLRenderer().realize_for_display` +
-  `render_texture`), and a simulation of the panel's whole life on a
-  made-up clock. The second caught a fade that settled at 4% and would have
-  left an invisible surface mapped for good, before anything ran on screen.
+
+**2026-11-22 — Dani's seventh round:** *"the idea of improving the HUD with
+some sort of carousel was good but the execution looks terribly buggy and
+quite horrible to look at. I would prefer to keep the previous version of the
+HUD rather than the current one."*
+- **Done:** the carousel is reverted (`343a42d`). `stage.py`, `capture.py`,
+  `host.py`, the `hud stage` switch and the `reverie-stage` layer rule are
+  gone; everything under `home/` is byte for byte what it was at `d1bcd07`
+  and builds to the same store path. The HUD is again the daemon's own panel
+  — the one of the fifth round (`131a20a`): cards in a flat row, sweep in,
+  light behind the selection, wallpaper in the cards, zoom into the chosen
+  workspace. Seen on the real compositor after the revert. The title-card
+  fix and the GL spotlight stay.
+- **What the HUD is to Dani now:** the fifth-round panel, which he likes
+  "A LOT". Leave it alone unless he asks.
+- **Parked, as an idea only:** a carousel of workspaces ("the idea ... was
+  good"). The code at `98ac731` is NOT the way to do it and should not be
+  brought back as it is. **Not known:** what exactly looked buggy and
+  horrible — Dani did not say and was not pressed. Whoever tries again
+  should ask first, and show small steps on the real screen before building
+  the whole.
+- **What went wrong on my side, for the record:** I reported it as tested —
+  every key and click pressed for real, frame timings, a pixel-exact first
+  frame — and none of that is "does it look right to the person using it".
+  I could only look at stills, and said so in passing; I should have handed
+  it over as an experiment to be judged before making it the default, as
+  `rice/reverie`'s own history (strata, dream, the lenses) had already
+  taught.
+- Worth keeping from that work, should anything need it again (all in the
+  history at `98ac731`): Hyprland hands over a capture of the screen in
+  ~15 ms and of a window in ~5 if asked directly (wlr-screencopy,
+  hyprland-toplevel-export) instead of through grim; GTK's GL renderer can
+  render any frame offscreen for inspection
+  (`Gsk.GLRenderer().realize_for_display` + `render_texture`); the RTX 3070
+  idles at a tenth of its clock and needs ~0.2 s of load to leave it, so
+  anything drawn on it is slow for its first frames after an idle spell.
+- Noticed in passing on the HUD's own chips, unrelated to reverie:
+  `restic-backups-remote.service` is in the failed state ("backup failed").
 
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
