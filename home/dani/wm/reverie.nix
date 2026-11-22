@@ -68,7 +68,26 @@ let
 
   palette = pkgs.writeText "reverie-palette.json" theme.json;
 
-  src = ./reverie;
+  # The program itself is Python (./reverie), and until this was here the
+  # build never looked at it: the wrapper below is shellchecked, but a typo
+  # in the daemon would only have shown when the service failed to start on
+  # the rebuilt system. So the source is a derivation with a check: every
+  # module is compiled, and then imported — with the same typelibs and
+  # palette the daemon gets, no display, nothing running. A build that
+  # passes is a daemon that at least starts to load.
+  #
+  # (unchecked-hash: the store resets every file's time, which would make an
+  # ordinary .pyc look stale and be recompiled, in memory, at every start.)
+  src = pkgs.runCommand "reverie-src" { nativeBuildInputs = [ python ]; } ''
+    cp -r ${./reverie} $out
+    chmod -R u+w $out
+    cd $out
+    export HOME=$TMPDIR GI_TYPELIB_PATH=${typelibs} REVERIE_PALETTE=${palette}
+    python3 -m compileall -q --invalidation-mode unchecked-hash .
+    for module in *.py; do
+      python3 -c "import ''${module%.py}"
+    done
+  '';
 
   # Keys. One list, two consumers: the declared Hyprland config below, and
   # `reverie try`, which registers the same binds at runtime so the branch can
