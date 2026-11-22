@@ -215,7 +215,7 @@ What can be changed safely between power-on and login, and what cannot:
   splash is undone from the very menu option 1 hides.
 - Windows lock/sign-in picture: set in Windows Settings, outside this repo.
 
-## 5d. Reverie rice — experimental, branch `rice/reverie`, NOT merged
+## 5d. Reverie rice — merged 2026-11-22 (8634e2f); liquid glass on trial, branch `feat/liquid-glass`
 
 Second "craziest rice" experiment (2026-11-18). Unrelated to `rice/overdrive`
 (which has its own entry on its own branch). One module,
@@ -592,16 +592,51 @@ HUD rather than the current one."*
     and it is five months behind: two crash fixes came later (one on
     unloading, one for "a huge window, bar or menu"). A plugin that crashes
     takes the session with it.
-  - **Proposed to Dani, waiting for his go** (it is his mobile data and his
-    open windows): build v0.6.4, load it by hand with `hyprctl plugin load`
-    as a trial that is gone at the next login, on windows only at first;
-    declare it (behind an option, off by default) only if he likes it.
-    Reverie applied first, so that the two are not tried at once.
-- *Applying reverie:* a dry run of the rebuild from this branch builds 33
-  small local derivations (config files, units, completions) and fetches
-  nothing. Still to be run by Dani:
-  `nix run .#reverie -- untry`, then
-  `sudo nixos-rebuild test --flake .#legionix`.
+  - **Dani: "now bring hyprglass v0.6.4".** Done on `feat/liquid-glass`
+    (off master), nothing loaded into his session yet:
+    - `fddc2c0` — `pkgs/hyprglass/package.nix`, `nix build .#hyprglass`
+      (mkHyprlandPlugin, so always against the hosts' Hyprland).
+    - `b5644af` — `pkgs/hyprglass/trial.nix`, the `glass` command:
+      `nix run .#glass -- on [preset]`, `preset <name>`, `off`, `status`.
+      Runtime only; `off`, a logout or a reboot removes all of it.
+  - **What a nested Hyprland showed** (the system's binary, this desktop's
+    `general`/`decoration` blocks, the real wallpaper, Alacritty, a copy of
+    the bar — nothing of the real session touched):
+    - It loads, draws, unloads and reloads without a crash; so does layer
+      glass on the bar.
+    - **Hyprland's own blur covers it completely.** With blur on, loading
+      the plugin changes not one pixel. Blur has to be off for the window
+      (`no_blur true` rule / `setprop … no_blur 1`); the layers can keep it.
+    - **It only shows through transparency, and this desktop has little:**
+      windows are 88–94 % opaque, the bar's islands nearly solid. On the
+      windows as they are, every preset looks alike. The trial therefore
+      gives the open Alacritty terminals a see-through background
+      (`alacritty msg config window.opacity=0.55`; text stays solid).
+      **For glass to stay, something has to become translucent on purpose**
+      — the terminal's background, and whichever of bar / launcher /
+      notifications / reverie's menu should carry it. That is a theming
+      decision for Dani, after he has seen the trial.
+    - Presets: `glass` is the liquid one (wide refraction band with colour
+      fringes at the edges — may be too much for the palette), `subtle` and
+      `default` frosted, `clear` a plain plate, `high_contrast` dark.
+    - A change of preset repaints only partly until the windows are
+      touched; the command re-sets the window property to force it.
+    - The plugin hooks Hyprland's layer rendering as soon as it is loaded,
+      whether layer glass is on or not.
+  - **Not tested:** the real session — on the NVIDIA machine's own outputs,
+    with reverie's spotlight/HUD/cards on screen, with a game, and what it
+    costs per frame. A plugin crash ends the session.
+  - **Waiting for Dani:** save work, `nix run .#glass -- on`, look, say
+    which preset (if any) and on what. Then: an off-by-default option
+    (`plugin =` in the Hyprland config, the `no_blur` rule, the terminal's
+    opacity), one surface at a time. Not inside the HUD, not on the bare
+    title card.
+- *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
+  confirmed "all the keybindings work as intended"; `rice/reverie` is merged
+  into master (8634e2f, not pushed). **The running system is not yet the
+  boot default** — still to be run by Dani:
+  `sudo nixos-rebuild switch --flake .#legionix`.
+  (zen is on in reverie's saved state, which is why the bar is stopped.)
 
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
