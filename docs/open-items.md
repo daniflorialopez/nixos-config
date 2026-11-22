@@ -215,7 +215,7 @@ What can be changed safely between power-on and login, and what cannot:
   splash is undone from the very menu option 1 hides.
 - Windows lock/sign-in picture: set in Windows Settings, outside this repo.
 
-## 5d. Reverie rice — merged 2026-11-22 (8634e2f); liquid glass on trial, branch `feat/liquid-glass`
+## 5d. Reverie rice — merged 2026-11-22 (8634e2f); liquid glass: the switch is built on `feat/liquid-glass`, waiting for a rebuild
 
 Second "craziest rice" experiment (2026-11-18). Unrelated to `rice/overdrive`
 (which has its own entry on its own branch). One module,
@@ -626,11 +626,58 @@ HUD rather than the current one."*
   - **Not tested:** the real session — on the NVIDIA machine's own outputs,
     with reverie's spotlight/HUD/cards on screen, with a game, and what it
     costs per frame. A plugin crash ends the session.
-  - **Waiting for Dani:** save work, `nix run .#glass -- on`, look, say
-    which preset (if any) and on what. Then: an off-by-default option
-    (`plugin =` in the Hyprland config, the `no_blur` rule, the terminal's
-    opacity), one surface at a time. Not inside the HUD, not on the bare
-    title card.
+  - **Dani tried the trial (2026-11-22):** "for sure they are a treat to
+    the eyes", not sure which look he likes most; wants "as much glass as
+    reasonably possible", as proper switches, and suggested the two glass
+    switches take the place of reverie's Font and Demo tiles so the deck
+    stays symmetrical. Done, three commits, nothing applied yet:
+    - `48c3172` — `programs.glass.enable` (`home/dani/wm/glass.nix`,
+      legionix) + `glass on|off|toggle|look liquid|frosted|clear|next`.
+      The choice is runtime state (`~/.local/state/theme/glass.json`);
+      the command writes `glass.conf`, which the Hyprland config sources
+      last and which declares the plugin when on — so Hyprland loads and
+      unloads it itself, and a reload or a login cannot lose it — and
+      `glass.toml`, which Alacritty imports (background 0.65 while on).
+      The trial command (`trial.nix`) is gone; this replaced it.
+    - `d12188b` — the bar's three islands and the swayosd pill: their
+      background is `programs.glass.islandBackground` (0.85 off, 0.30 on,
+      from `glass.css`), and the plugin's layer glass is on for them.
+    - `274ce47` — reverie's menu: tile 7 Glass, tile 8 Glass look, where
+      Font and Demo were (both still commands). Only when built with
+      `glass`.
+  - **How it was tested:** all of it in a nested Hyprland running the
+    real generated config, with its own state directory, a copy of the
+    bar and a second reverie daemon. The complete legionix system builds
+    from the branch. **Never run in the real session**, and the swayosd
+    pill has not been seen on screen at all (its stylesheet parses).
+  - **Known limits of what is there:**
+    - One look for everything. The idea of a refracting look for small
+      floating pieces and a frosted one behind text is not built.
+    - Only Alacritty turns see-through; every other window stays 88–94 %
+      solid and shows almost no glass. That is as intended.
+    - With glass on, the terminal breaks the "Hyprland owns all window
+      opacity" rule (`shell/alacritty.nix`) on purpose.
+    - Nothing switches glass off for a game. Fullscreen windows draw no
+      decorations, so the glass itself should cost nothing there, but the
+      plugin's hook stays in the render path and none of this is
+      measured. A GameMode hook calling `glass off` is the obvious fix if
+      it shows in the eFootball numbers.
+    - If the plugin crashes Hyprland: it restarts in safe mode (no config,
+      so no plugin). `glass off` from there or a TTY, then load the
+      config. Read from the binary's own text, never tried.
+    - A rebuild that changes Hyprland builds a new plugin; the running
+      (old) Hyprland will refuse it until the next login.
+  - **Next surfaces, one per step, each shown to Dani first:** the
+    launcher (walker), reverie's menu deck, then the terminal opacity and
+    per-surface looks once he has lived with it; notifications last and
+    only if he wants them (the theme frames them as solid on purpose).
+    Not: the HUD, the bare title card, the spotlight, tooltips, the
+    mouse grid. Not possible: lock screen, login screen.
+  - **Waiting for Dani:** first the old trial's `off`
+    (`/nix/store/g7qyg7hb0xdbig59a0jkglaxwar9zpr9-glass/bin/glass off`),
+    then `sudo nixos-rebuild test --flake .#legionix` from
+    `feat/liquid-glass`, then Super+R and tile 7. Merge only after he has
+    seen it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
