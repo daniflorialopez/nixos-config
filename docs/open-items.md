@@ -722,23 +722,36 @@ HUD rather than the current one."*
       background then comes out darker than its palette colour).
       Oddity found on the way: only a terminal opened while glass is on is
       see-through in fullscreen; one opened before stays solid there.
-  - **The HUD and glass — tried, not built.** Three experiments in the
-    nested Hyprland with a patched copy of reverie (nothing committed):
-    the plugin's glass as the HUD's backdrop instead of the captured
-    picture; glass only behind cards and chips (mask threshold); backdrop
-    glass with refraction. Picture kept while the session lasts. None
-    reads as glass: the first and third look like today's HUD (dark,
-    out of focus — the only gain is that the backdrop is live), the
-    second is worse (a lighter, half-legible desktop between the cards).
-    Why: glass shows through see-through shapes and at their edges, and
-    the HUD is opaque pictures and thin type on one dark full-screen
-    surface — and the plugin does one glass per layer surface. What
-    would give it a real glass look: split the HUD into two layers, a
-    frosted backdrop and, above it, the chip row and the card frames as
-    glass pieces (see-through, the island's 0.30). That is a rebuild of
-    how the HUD is layered; if done, only as something that applies when
-    Glass is on, today's HUD staying the default. **Waiting for Dani's
-    word.**
+  - **The HUD and glass.** First three experiments with the HUD's one
+    surface handed to the plugin (glass as its backdrop; glass only behind
+    cards and chips; backdrop glass with refraction): none read as glass.
+    Why, from the plugin's source: on a layer the glass is one rectangle,
+    the surface's own box, and the surface's alpha only cuts holes in it —
+    and the HUD is opaque pictures and thin type on one dark surface.
+    Dani: "Yes, prototype the two-layer HUD".
+    - **Built, `46a4b29`, not applied yet — a prototype** (`src/rest.py`):
+      once the panel has arrived (about half a second), its backdrop moves
+      to a surface of its own underneath, the panel goes see-through
+      between its cards, and between the two a glass tray under the
+      workspace cards and a glass pill under each chip fade in. The
+      entrance and the exit are the single-surface panel as before; so is
+      the panel over a fullscreen window, and with
+      `reverie hud glass off` (saved; default on, and only ever with
+      liquid glass on). The light behind the selected card is in the tray.
+    - **Not known until Dani runs it:** how it looks at the real size and
+      what three more surfaces cost at 165 Hz; whether the tray arriving
+      half a second after the cards reads as intended or as late.
+    - **Limits known already:** the pieces follow the chosen look, and
+      under `clear` the tray is only a lighter plate (the plugin's default
+      tint), under `liquid` it has a refracted rim; the tray is laid out
+      for the row at rest and does not travel with the cards on their way
+      in; if glass is switched off from a terminal while the panel is
+      held up, the pieces stay as plain see-through shapes until it
+      closes.
+    - **If he likes it, next:** a preset of its own for the pieces
+      (tint, rim), the gauges and the clock left alone (lenses round the
+      gauges were tried long ago and rejected). **If he does not:**
+      revert `46a4b29`; nothing else depends on it.
   - **Still to do, one per step, each shown to Dani first:** per-surface
     looks (a refracting one for small floating pieces, a frosted one
     behind text) once he has lived with one look for all; the terminal's
@@ -748,8 +761,8 @@ HUD rather than the current one."*
     possible: lock screen, login screen.
   - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
     from `feat/liquid-glass` (glass can stay on), then the launcher, the
-    deck, and a terminal opened afterwards in fullscreen. Merge only
-    after he has seen it.
+    deck, a terminal opened afterwards in fullscreen, and Super+G for
+    the HUD. Merge only after he has seen it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
