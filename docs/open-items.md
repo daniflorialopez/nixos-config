@@ -700,6 +700,45 @@ HUD rather than the current one."*
     - If only the colours in `glass.css` change with a new version of the
       command (not the units that read them), waybar and swayosd keep the
       old ones until the next toggle.
+  - **Dani, after seeing launcher and deck (2026-11-22, night):** they
+    "should be quite darker than the normal selected glass, perhaps a
+    separate type of glass"; a fullscreen window "completely ignores the
+    liquid glass look and it looks see-through completely"; and "I wonder
+    if the HUD couldn't get a glass look that doesn't look bad." Done,
+    committed, not applied yet:
+    - `5f998c8` — a glass of their own for the panels that are read: the
+      plugin's preset per layer namespace, `menu` (its subtle glass,
+      blur 1.6, brightness 0.55) for `walker` and `reverie-menu`, whatever
+      look is chosen for the rest; box and deck 0.60 solid over it. The
+      clear-look special case (`popupAlphaClear`, the deck's 0.72) is gone
+      again, since this glass always blurs.
+    - `9dda57a` — fullscreen: Hyprland draws no decorations for a truly
+      fullscreen window and the plugin's glass is one, so with blur off a
+      see-through terminal was a hole onto the wallpaper. Real fullscreen
+      (`fullscreen_state_internal 2`) gets Hyprland's blur back. It is
+      frosted, not glass, and brighter than the windowed terminal (blur
+      cannot dim). **If Dani would rather have fullscreen solid:**
+      `force_rgbx true` on the same match instead (the terminal's
+      background then comes out darker than its palette colour).
+      Oddity found on the way: only a terminal opened while glass is on is
+      see-through in fullscreen; one opened before stays solid there.
+  - **The HUD and glass — tried, not built.** Three experiments in the
+    nested Hyprland with a patched copy of reverie (nothing committed):
+    the plugin's glass as the HUD's backdrop instead of the captured
+    picture; glass only behind cards and chips (mask threshold); backdrop
+    glass with refraction. Picture kept while the session lasts. None
+    reads as glass: the first and third look like today's HUD (dark,
+    out of focus — the only gain is that the backdrop is live), the
+    second is worse (a lighter, half-legible desktop between the cards).
+    Why: glass shows through see-through shapes and at their edges, and
+    the HUD is opaque pictures and thin type on one dark full-screen
+    surface — and the plugin does one glass per layer surface. What
+    would give it a real glass look: split the HUD into two layers, a
+    frosted backdrop and, above it, the chip row and the card frames as
+    glass pieces (see-through, the island's 0.30). That is a rebuild of
+    how the HUD is layered; if done, only as something that applies when
+    Glass is on, today's HUD staying the default. **Waiting for Dani's
+    word.**
   - **Still to do, one per step, each shown to Dani first:** per-surface
     looks (a refracting one for small floating pieces, a frosted one
     behind text) once he has lived with one look for all; the terminal's
@@ -708,9 +747,9 @@ HUD rather than the current one."*
     spotlight, tooltips, the mouse grid, the power/capture menus. Not
     possible: lock screen, login screen.
   - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
-    from `feat/liquid-glass` (glass can stay on), then Super+Space for
-    the launcher and Super+R for the deck. Merge only after he has seen
-    it.
+    from `feat/liquid-glass` (glass can stay on), then the launcher, the
+    deck, and a terminal opened afterwards in fullscreen. Merge only
+    after he has seen it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
