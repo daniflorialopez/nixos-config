@@ -667,17 +667,50 @@ HUD rather than the current one."*
       config. Read from the binary's own text, never tried.
     - A rebuild that changes Hyprland builds a new plugin; the running
       (old) Hyprland will refuse it until the next login.
-  - **Next surfaces, one per step, each shown to Dani first:** the
-    launcher (walker), reverie's menu deck, then the terminal opacity and
-    per-surface looks once he has lived with it; notifications last and
-    only if he wants them (the theme frames them as solid on purpose).
-    Not: the HUD, the bare title card, the spotlight, tooltips, the
-    mouse grid. Not possible: lock screen, login screen.
-  - **Waiting for Dani:** first the old trial's `off`
-    (`/nix/store/g7qyg7hb0xdbig59a0jkglaxwar9zpr9-glass/bin/glass off`),
-    then `sudo nixos-rebuild test --flake .#legionix` from
-    `feat/liquid-glass`, then Super+R and tile 7. Merge only after he has
-    seen it.
+  - **Dani applied it (2026-11-22): "It looks great now. Do the next
+    ones."** (Super+R was dead for a moment first — my test compositor had
+    overwritten the session's display variables in systemd; fixed, and the
+    tests now run sealed off in their own runtime directory.) Done since,
+    committed, not applied yet:
+    - `f86ccd3` — the launcher (walker): its box is `popup_bg` by name,
+      0.90 off, 0.50 on, 0.72 under the clear look
+      (`programs.glass.popupAlpha`/`popupAlphaClear`); the plugin gets the
+      `walker` namespace with a mask threshold of 0.4 so the box's shadow
+      gets no glass. Launcher, window switcher, emoji, clipboard, the
+      Super+S board and the wallpaper picker share the box; the power and
+      capture menus keep their own 0.97 and stay solid, on purpose.
+    - `291e4e4` — reverie's menu deck: namespace `reverie-menu`, and the
+      deck paints itself 0.50 (0.72 under clear) when glass is on.
+    - `c3f750b` — fix: the command lost track of which state files it had
+      changed (writes through a pipe), so walker was not restarted when
+      the look crossed into or out of clear; and `glass refresh` (run at
+      every activation) now reloads Hyprland when the rules file changed,
+      so a rebuild that adds a surface takes effect without a toggle.
+  - **How these were tested:** the launcher with a stand-in layer surface
+    named `walker` wearing the real new stylesheet (the real walker will
+    not run as a second copy in a nested Hyprland — it panics there with
+    the old stylesheet too); the deck with a second reverie daemon. All
+    four launcher stylesheets parse under GTK4. **The real launcher has
+    not been seen with glass.**
+  - **Known limits added by these:**
+    - The plugin samples what is behind a layer once and keeps it until a
+      window is focused or moved or the layer reopens. Stepping the look
+      changes windows at once; the bar's islands and an open deck catch
+      up at the next change of focus / the next opening.
+    - If only the colours in `glass.css` change with a new version of the
+      command (not the units that read them), waybar and swayosd keep the
+      old ones until the next toggle.
+  - **Still to do, one per step, each shown to Dani first:** per-surface
+    looks (a refracting one for small floating pieces, a frosted one
+    behind text) once he has lived with one look for all; the terminal's
+    0.65; notifications last and only if he wants them (the theme frames
+    them as solid on purpose). Not: the HUD, the bare title card, the
+    spotlight, tooltips, the mouse grid, the power/capture menus. Not
+    possible: lock screen, login screen.
+  - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
+    from `feat/liquid-glass` (glass can stay on), then Super+Space for
+    the launcher and Super+R for the deck. Merge only after he has seen
+    it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
