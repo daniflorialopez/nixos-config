@@ -219,8 +219,9 @@ What can be changed safely between power-on and login, and what cannot:
 
 Second "craziest rice" experiment (2026-11-18). Unrelated to `rice/overdrive`
 (which has its own entry on its own branch). One module,
-`home/dani/wm/reverie.nix`, and a small Python daemon in
-`home/dani/wm/reverie/` (GTK4 + gtk4-layer-shell + cairo) that draws surfaces
+`home/dani/wm/reverie.nix`, and a small Python daemon — since 2026-11-22 a
+package of its own, `pkgs/reverie/` (`nix build .#reverie`) —
+(GTK4 + gtk4-layer-shell + cairo) that draws surfaces
 the compositor cannot. The module header lists every command.
 
 **What is in it now**, all off or invisible until asked for: the **HUD**
@@ -553,6 +554,54 @@ HUD rather than the current one."*
     card** (frozen).
   - Not checked: whether v0.6.4 has layer support at all; how it behaves
     with NVIDIA, with the spotlight's overlay, and under a fullscreen game.
+
+**2026-11-22, evening — Dani's answers, and what was done with them:**
+- *The Nix tidy: yes.* Done, two commits, no change to what runs:
+  - `65386d8` — the program is `pkgs/reverie/` (`package.nix`, the keys and
+    layer rules as data in `hyprland.nix`, the Python in `src/`, moved with
+    history); `home/dani/wm/reverie.nix` is only configuration; the flake has
+    its first `packages` output (`nix build .#reverie`,
+    `nix run .#reverie -- try`). Checked: legionix's and danix-hp's
+    generated `hyprland.conf` were the same store paths as before, the
+    wrapper and sources identical apart from store hashes, `.#reverie` is
+    the derivation legionix installs, statix and deadnix clean.
+  - `837eaf1` — `services.reverie.enable` (and `.package`); only
+    `hosts/legionix/desktop.nix` sets it. danix-hp no longer gets the
+    command, service, listener or binds it had never been rebuilt with.
+- *Remove the Fade switch and the `island`/`banner` cards: no.* They stay,
+  as they are. Do not ask again.
+- *Noir first, then the glow ring, after the merge: yes.*
+- *Liquid glass after the 26.11 bump: no* — "can't we install hyprglass
+  0.57.2? I would really like to use it as soon as possible." Looked into
+  further:
+  - The current hyprglass (v1.2.0) only runs on Hyprland 0.57.2. That
+    Hyprland is in the nixpkgs-unstable this flake already has locked, but
+    **0.57 removed the `hyprland.conf` format: Lua is the only config.**
+    Moving to it means rewriting the whole Hyprland configuration in Lua
+    (92 binds and 19 rules in today's generated file, spread over 9 Nix
+    files), which the Home Manager release in use cannot generate, checking
+    everything reverie asks of Hyprland again, and 264 MiB of downloads
+    (115 for Hyprland, the rest to build a plugin against it; dry runs).
+    That is the 26.11 migration, not a quick step.
+  - What can be had now is **hyprglass v0.6.4**, whose own pin names
+    exactly this machine's Hyprland commit (`a0136d8`): nine C++ files and
+    a Makefile, configured in the old config format
+    (`plugin:hyprglass { … }`), glass on windows and — by listing their
+    namespaces — on layer surfaces, presets `subtle`, `clear`, `glass`,
+    `high_contrast`. Cost: ~105 MiB of build dependencies plus its source,
+    and it is five months behind: two crash fixes came later (one on
+    unloading, one for "a huge window, bar or menu"). A plugin that crashes
+    takes the session with it.
+  - **Proposed to Dani, waiting for his go** (it is his mobile data and his
+    open windows): build v0.6.4, load it by hand with `hyprctl plugin load`
+    as a trial that is gone at the next login, on windows only at first;
+    declare it (behind an option, off by default) only if he likes it.
+    Reverie applied first, so that the two are not tried at once.
+- *Applying reverie:* a dry run of the rebuild from this branch builds 33
+  small local derivations (config files, units, completions) and fetches
+  nothing. Still to be run by Dani:
+  `nix run .#reverie -- untry`, then
+  `sudo nixos-rebuild test --flake .#legionix`.
 
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
