@@ -43,6 +43,14 @@ ISLAND_RADIUS = float(os.environ.get("REVERIE_ISLAND_RADIUS", "12"))
 COLS = 5
 KEYS = "1234567890"
 KNOB = (520.0, 36.0)         # a switch knob: quick, the faintest overshoot
+# How solid the deck is. An island, like the bar's; and like the bar's it
+# turns see-through when liquid glass is on (the `glass` command lists this
+# surface for the plugin). Less so than the bar's 0.30: the bar's islands
+# hold a clock and icons, this holds ten labels in small type. And less
+# again under the clear look, which does not blur — whatever is behind the
+# deck would run sharp through those labels. (The launcher's box does the
+# same, with the same two numbers: wm/glass.nix.)
+PANEL, PANEL_GLASS, PANEL_GLASS_CLEAR = 0.85, 0.50, 0.72
 
 # id, label, kind, the line under the label (toggles and actions). A tile has
 # room for about 23 characters there.
@@ -289,7 +297,10 @@ class Menu:
         # The bar's material, like every other island. Outside it the surface
         # is fully transparent, so the layer rule blurs under the deck only.
         rounded(cr, x, y, pw, ph, 22 * u)
-        rgba(cr, "bg", 0.85 * a)
+        solid = PANEL
+        if glass.BIN and self.app.glass.on:
+            solid = PANEL_GLASS_CLEAR if self.app.glass.look == "clear" else PANEL_GLASS
+        rgba(cr, "bg", solid * a)
         cr.fill_preserve()
         cr.set_line_width(1.0 * u)
         rgba(cr, "fg", 0.10 * a)

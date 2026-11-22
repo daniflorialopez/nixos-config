@@ -116,7 +116,7 @@ writeShellApplication {
         preset = name:glass, chromatic_aberration:0.12
         layers {
             enabled = 1
-            namespaces = waybar, swayosd, walker
+            namespaces = waybar, swayosd, walker, reverie-menu
             # The launcher's box casts a shadow, and to the plugin a shadow
             # is something to put glass behind. The box is more solid than
             # its shadow ever gets; this is the line between the two (and
