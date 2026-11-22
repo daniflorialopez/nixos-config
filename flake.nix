@@ -144,8 +144,14 @@
 
           # The liquid-glass plugin, built against this nixpkgs' Hyprland (the
           # top of its file says why it is the version it is). No host loads
-          # it.
+          # it; `glass` is how it is tried.
           hyprglass = pkgs.callPackage ./pkgs/hyprglass/package.nix { };
+
+          # `nix run .#glass -- on` loads it into the running session until
+          # `nix run .#glass -- off` or the next login.
+          glass = pkgs.callPackage ./pkgs/hyprglass/trial.nix {
+            inherit (self.packages.${system}) hyprglass;
+          };
         };
 
       # Tools for working on this repo, loaded automatically by direnv via
