@@ -15,7 +15,8 @@
 #   glass.toml   Alacritty imports it: a see-through background when on.
 #
 #   glass on | off | toggle        glass look liquid|frosted|clear|next
-#   glass status [json]            glass refresh   (rewrite the files only)
+#   glass status [json]            glass refresh   (rewrite the files; what
+#                                  runs at every activation, see wm/glass.nix)
 #
 # Three things that are not in the plugin's README, found in a nested
 # Hyprland, shape the on-file:
@@ -65,6 +66,8 @@ writeShellApplication {
   text = ''
     plugin=${hyprglass}/lib/libhyprglass.so
     looks="liquid frosted clear"
+    # Activation runs this from a system unit, which has no session variables.
+    export XDG_RUNTIME_DIR="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
     dir="''${XDG_STATE_HOME:-$HOME/.local/state}/theme"
     state="$dir/glass.json"
 
@@ -88,7 +91,9 @@ writeShellApplication {
     }
 
     # Replace a file only when its content changes: the programs watching
-    # these should not be woken for nothing. `changed` collects the names.
+    # these should not be woken for nothing. `changed` collects the names —
+    # which is why nothing is ever PIPED into this: the receiving end of a
+    # pipe is a subshell, and what it remembers is gone when it ends.
     changed=""
     put() {
       local tmp
@@ -104,7 +109,7 @@ writeShellApplication {
 
     write() {
       mkdir -p "$dir"
-      jq -n --argjson on "$on" --arg look "$look" '{on: $on, look: $look}' | put "$state"
+      put "$state" < <(jq -n --argjson on "$on" --arg look "$look" '{on: $on, look: $look}')
       if [ "$on" = true ]; then
         put "$dir/glass.conf" <<EOF
     # Liquid glass is ON. Written by \`glass\`; do not edit, it is rewritten.
@@ -127,14 +132,21 @@ writeShellApplication {
     EOF
         popup="${popupOn}"
         if [ "$look" = clear ]; then popup="${popupOnClear}"; fi
-        printf '@define-color bg_alpha %s;\n@define-color popup_bg %s;\n' \
-          "${islandOn}" "$popup" | put "$dir/glass.css"
-        printf '[window]\nopacity = %s\n' "${terminalOpacity}" | put "$dir/glass.toml"
+        put "$dir/glass.css" <<EOF
+    @define-color bg_alpha ${islandOn};
+    @define-color popup_bg $popup;
+    EOF
+        put "$dir/glass.toml" <<EOF
+    [window]
+    opacity = ${terminalOpacity}
+    EOF
       else
-        echo "# Liquid glass is off. Written by \`glass\`." | put "$dir/glass.conf"
-        printf '@define-color bg_alpha %s;\n@define-color popup_bg %s;\n' \
-          "${islandOff}" "${popupOff}" | put "$dir/glass.css"
-        echo "# Liquid glass is off. Written by \`glass\`." | put "$dir/glass.toml"
+        put "$dir/glass.conf" <<< "# Liquid glass is off. Written by \`glass\`."
+        put "$dir/glass.css" <<EOF
+    @define-color bg_alpha ${islandOff};
+    @define-color popup_bg ${popupOff};
+    EOF
+        put "$dir/glass.toml" <<< "# Liquid glass is off. Written by \`glass\`."
       fi
     }
 
@@ -194,6 +206,12 @@ writeShellApplication {
         ;;
       refresh)
         write
+        # A new generation can bring new rules (another surface, another
+        # plugin path) while glass is on. Hyprland only reads them on a
+        # reload, and nothing else is going to ask for one.
+        case "$changed" in
+          *glass.conf*) hypr reload config-only ;;
+        esac
         exit 0
         ;;
       status)

@@ -133,9 +133,9 @@ in
       # The three files have to exist before anything reads them: a missing
       # `source` is a Hyprland config error, a missing CSS import leaves the
       # islands without a background. Written at every activation (which is
-      # also when a new plugin path or new rules get into them), before the
-      # step that reloads Hyprland, and again before the GTK programs start,
-      # in case the state directory was cleared in between.
+      # also when a new plugin path or new rules get into them — the command
+      # reloads Hyprland itself if they did), and again before the GTK
+      # programs start, in case the state directory was cleared in between.
       home.activation.glassState = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
         run ${refresh}
       '';
