@@ -130,6 +130,14 @@
         legionix = mkHost "legionix";
       };
 
+      # Programs this repo carries itself. reverie is the Python daemon behind
+      # the HUD, the title cards and the spotlight (pkgs/reverie); the hosts
+      # get it through home/dani/wm/reverie.nix, and this makes it buildable
+      # and runnable on its own: `nix build .#reverie`, `nix run .#reverie -- try`.
+      packages.${system}.reverie = nixpkgs.legacyPackages.${system}.callPackage ./pkgs/reverie/package.nix {
+        inherit theme metrics;
+      };
+
       # Tools for working on this repo, loaded automatically by direnv via
       # .envrc (`use flake`). Kept out of the system and home profiles on
       # purpose: they only matter inside this directory.

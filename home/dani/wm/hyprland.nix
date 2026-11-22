@@ -288,6 +288,10 @@ let
       tsv="$(hyprctl binds -j | jq -r '
         .[]
         | select(.mouse | not)
+        # A release bind is the second half of a hold gesture (the reverie
+        # HUD), not an action: listing it would be a row that does nothing
+        # useful when picked.
+        | select(.release | not)
         | [(.modmask | tostring), .key, (.keycode | tostring), .description, .dispatcher, .arg]
         | @tsv
       ')"
@@ -325,6 +329,12 @@ let
             if (a ~ /brightness|hyprlock|makoctl|dnd-toggle|switchxkblayout|kb-layout-next|screenshot|wl-kbptr|keybinds-menu|color-pick|menus:power/) return "System"
             return "Apps"
           }
+          # The reverie binds say their command on the event socket instead
+          # of exec-ing it (wm/reverie.nix): the argument is "reverie <words>".
+          # (No apostrophes in here: this awk program sits inside a single-
+          # quoted shell string, and one ends it. \047 is how to print one.)
+          if (dsp == "event" && a ~ /^reverie undo/) return "Windows"
+          if (dsp == "event" && a ~ /^reverie/) return "System"
           return "Other"
         }
         function addrow(t, chord, desc, dsp, a,    i) {
@@ -405,6 +415,7 @@ in
     ./swayosd.nix
     ./mouseless.nix
     ./recording.nix
+    ./reverie.nix
   ];
 
   # Both of these are Aquamarine's NVIDIA multi-GPU workarounds, straight off
