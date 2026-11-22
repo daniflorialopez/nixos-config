@@ -416,6 +416,7 @@ in
     ./mouseless.nix
     ./recording.nix
     ./reverie.nix
+    ./glass.nix
   ];
 
   # Both of these are Aquamarine's NVIDIA multi-GPU workarounds, straight off

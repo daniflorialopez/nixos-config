@@ -143,13 +143,11 @@
           reverie = pkgs.callPackage ./pkgs/reverie/package.nix { inherit theme metrics; };
 
           # The liquid-glass plugin, built against this nixpkgs' Hyprland (the
-          # top of its file says why it is the version it is). No host loads
-          # it; `glass` is how it is tried.
+          # top of its file says why it is the version it is), and `glass`,
+          # the switch that turns it on and off (home/dani/wm/glass.nix
+          # installs both where `programs.glass.enable` is set).
           hyprglass = pkgs.callPackage ./pkgs/hyprglass/package.nix { };
-
-          # `nix run .#glass -- on` loads it into the running session until
-          # `nix run .#glass -- off` or the next login.
-          glass = pkgs.callPackage ./pkgs/hyprglass/trial.nix {
+          glass = pkgs.callPackage ./pkgs/hyprglass/glass.nix {
             inherit (self.packages.${system}) hyprglass;
           };
         };
