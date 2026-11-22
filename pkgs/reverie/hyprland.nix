@@ -69,6 +69,13 @@
     "blur true, match:namespace reverie-hud"
     "ignore_alpha 0, match:namespace reverie-hud"
     "no_anim true, match:namespace reverie-hud"
+    # The HUD at rest in glass (src/rest.py, only with liquid glass on). Its
+    # backdrop on a surface of its own comes and goes unseen behind the
+    # panel, so it must not animate; the glass pieces are the one thing here
+    # the compositor is asked to fade, because the plugin's glass fades with
+    # a layer's own alpha and not with anything drawn into it.
+    "no_anim true, match:namespace reverie-hud-back"
+    "animation fade, match:namespace reverie-hud-glass"
     # The title card is an island too: blurred like the bar, and only where
     # it is drawn (everything around it is fully transparent).
     "blur true, match:namespace reverie-card"

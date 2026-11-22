@@ -126,7 +126,7 @@ writeShellApplication {
         preset = name:menu, inherits:subtle, blur_strength:1.6, brightness:0.55, adaptive_dim:0.6
         layers {
             enabled = 1
-            namespaces = waybar, swayosd, walker, reverie-menu
+            namespaces = waybar, swayosd, walker, reverie-menu, reverie-hud-glass
             namespace_presets = walker:menu, reverie-menu:menu
             # The launcher's box casts a shadow, and to the plugin a shadow
             # is something to put glass behind. The box is more solid than
