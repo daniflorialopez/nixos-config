@@ -20,6 +20,8 @@
 #   Hyprland   sources glass.conf: the plugin and its rules, or nothing
 #   waybar     \  their "island" background comes from glass.css instead of
 #   swayosd    /  being a constant: 0.85 solid off, see-through on
+#   walker     the launcher's box likewise: 0.90 off, half see-through on
+#              (the power menu states its own, nearly solid, and keeps it)
 #   Alacritty  imports glass.toml: its background opacity while glass is on
 #
 # The terminal is the one deliberate break with shell/alacritty.nix's rule
@@ -30,6 +32,11 @@ let
   cfg = config.programs.glass;
   stateDir = "${config.xdg.stateHome}/theme";
   islandOff = theme.cssRgba "bg" "0.85";
+  popupOff = theme.cssRgba "bgDeep" "0.90";
+  # Where glass is enabled, the stylesheets take these colours from the
+  # command's state file; where it is not, they are the constants they were.
+  fromState =
+    constants: if cfg.enable then ''@import url("file://${stateDir}/glass.css");'' else constants;
   refresh = "${lib.getExe cfg.command} refresh";
 in
 {
@@ -47,6 +54,21 @@ in
       type = lib.types.str;
       default = "0.30";
       description = "How solid an island (bar group, volume pill) is while glass is on; off it is 0.85.";
+    };
+
+    popupAlpha = lib.mkOption {
+      type = lib.types.str;
+      default = "0.50";
+      description = "How solid the launcher's box is while glass is on; off it is 0.90.";
+    };
+
+    popupAlphaClear = lib.mkOption {
+      type = lib.types.str;
+      default = "0.72";
+      description = ''
+        The same under the clear look, which does not blur: what is behind
+        the box would otherwise run sharp through its text.
+      '';
     };
 
     terminalOpacity = lib.mkOption {
@@ -71,6 +93,15 @@ in
         it is.
       '';
     };
+
+    popupBackground = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = ''
+        The same for `popup_bg`, the background of a popup box (the
+        launcher's).
+      '';
+    };
   };
 
   config = lib.mkMerge [
@@ -78,15 +109,14 @@ in
       programs.glass = {
         command = pkgs.callPackage ../../../pkgs/hyprglass/glass.nix {
           hyprglass = cfg.plugin;
-          inherit islandOff;
+          inherit islandOff popupOff;
           islandOn = theme.cssRgba "bg" cfg.islandAlpha;
+          popupOn = theme.cssRgba "bgDeep" cfg.popupAlpha;
+          popupOnClear = theme.cssRgba "bgDeep" cfg.popupAlphaClear;
           inherit (cfg) terminalOpacity;
         };
-        islandBackground =
-          if cfg.enable then
-            ''@import url("file://${stateDir}/glass.css");''
-          else
-            "@define-color bg_alpha ${islandOff};";
+        islandBackground = fromState "@define-color bg_alpha ${islandOff};";
+        popupBackground = fromState "@define-color popup_bg ${popupOff};";
       };
     }
 
@@ -104,13 +134,14 @@ in
       # `source` is a Hyprland config error, a missing CSS import leaves the
       # islands without a background. Written at every activation (which is
       # also when a new plugin path or new rules get into them), before the
-      # step that reloads Hyprland, and again before the two GTK programs
-      # start, in case the state directory was cleared in between.
+      # step that reloads Hyprland, and again before the GTK programs start,
+      # in case the state directory was cleared in between.
       home.activation.glassState = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
         run ${refresh}
       '';
       systemd.user.services.waybar.Service.ExecStartPre = refresh;
       systemd.user.services.swayosd.Service.ExecStartPre = refresh;
+      systemd.user.services.walker.Service.ExecStartPre = refresh;
     })
   ];
 }

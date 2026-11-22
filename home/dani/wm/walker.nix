@@ -77,9 +77,15 @@ let
   # Palette and shared chrome for both walker themes. walker gives every
   # theme its own CSS file and they do not inherit from one another, so the
   # common part lives here to stop dani-soft and dani-grid drifting apart.
+  #
+  # The box's background is `popup_bg`, by name: where liquid glass is enabled
+  # it follows the `glass` switch (wm/glass.nix), elsewhere it is the 0.90 it
+  # always was. The power menu overrides it with its own 0.97 further down
+  # and so stays solid either way, which is the point of that override.
   baseCss = ''
+    ${config.programs.glass.popupBackground}
     /* Tokyo Night (see waybar/palette.css) */
-    @define-color window_bg_color ${theme.cssRgba "bgDeep" "0.90"};
+    @define-color window_bg_color @popup_bg;
     @define-color panel_bg_color ${theme.cssRgba "surface" "0.85"};
     @define-color accent_bg_color ${theme.cssRgba "accent" "0.14"};
     @define-color accent_line_color ${theme.cssRgba "accent" "0.24"};

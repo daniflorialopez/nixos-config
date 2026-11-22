@@ -9,8 +9,9 @@
 #   glass.conf   Hyprland sources it (wm/glass.nix). On, it declares the
 #                plugin, so Hyprland itself loads it — at every start and on
 #                every reload — and unloads it when the file is empty again.
-#   glass.css    the "island" background for the bar and the volume pill:
-#                solid as designed when off, see-through when on.
+#   glass.css    two backgrounds by name, solid as designed when off and
+#                see-through when on: `bg_alpha`, the "island" of the bar
+#                and the volume pill, and `popup_bg`, the launcher's box.
 #   glass.toml   Alacritty imports it: a see-through background when on.
 #
 #   glass on | off | toggle        glass look liquid|frosted|clear|next
@@ -41,10 +42,15 @@
   coreutils,
   systemd,
   hyprglass,
-  # The island background, off and on (CSS colours), and how solid the
-  # terminal's background is while glass is on.
+  # The island and the popup background, off and on (CSS colours), and how
+  # solid the terminal's background is while glass is on.
   islandOff ? "rgba(26, 27, 38, 0.85)",
   islandOn ? "rgba(26, 27, 38, 0.30)",
+  popupOff ? "rgba(22, 22, 30, 0.90)",
+  popupOn ? "rgba(22, 22, 30, 0.50)",
+  # The clear look does not blur: what is behind a panel stays sharp and runs
+  # straight through its text. A panel that is read is more solid under it.
+  popupOnClear ? "rgba(22, 22, 30, 0.72)",
   terminalOpacity ? "0.65",
 }:
 
@@ -82,12 +88,18 @@ writeShellApplication {
     }
 
     # Replace a file only when its content changes: the programs watching
-    # these should not be woken for nothing.
+    # these should not be woken for nothing. `changed` collects the names.
+    changed=""
     put() {
       local tmp
       tmp=$(mktemp "$1.XXXXXX")
       cat > "$tmp"
-      if cmp -s "$tmp" "$1"; then rm -f "$tmp"; else mv -f "$tmp" "$1"; fi
+      if cmp -s "$tmp" "$1"; then
+        rm -f "$tmp"
+      else
+        mv -f "$tmp" "$1"
+        changed="$changed ''${1##*/}"
+      fi
     }
 
     write() {
@@ -104,15 +116,24 @@ writeShellApplication {
         preset = name:glass, chromatic_aberration:0.12
         layers {
             enabled = 1
-            namespaces = waybar, swayosd
+            namespaces = waybar, swayosd, walker
+            # The launcher's box casts a shadow, and to the plugin a shadow
+            # is something to put glass behind. The box is more solid than
+            # its shadow ever gets; this is the line between the two (and
+            # the same number Hyprland's own blur rule uses for it).
+            namespace_mask_thresholds = walker=0.4
         }
     }
     EOF
-        echo "@define-color bg_alpha ${islandOn};" | put "$dir/glass.css"
+        popup="${popupOn}"
+        if [ "$look" = clear ]; then popup="${popupOnClear}"; fi
+        printf '@define-color bg_alpha %s;\n@define-color popup_bg %s;\n' \
+          "${islandOn}" "$popup" | put "$dir/glass.css"
         printf '[window]\nopacity = %s\n' "${terminalOpacity}" | put "$dir/glass.toml"
       else
         echo "# Liquid glass is off. Written by \`glass\`." | put "$dir/glass.conf"
-        echo "@define-color bg_alpha ${islandOff};" | put "$dir/glass.css"
+        printf '@define-color bg_alpha %s;\n@define-color popup_bg %s;\n' \
+          "${islandOff}" "${popupOff}" | put "$dir/glass.css"
         echo "# Liquid glass is off. Written by \`glass\`." | put "$dir/glass.toml"
       fi
     }
@@ -136,7 +157,8 @@ writeShellApplication {
       if systemctl --user is-active -q waybar.service 2> /dev/null; then
         systemctl --user reload waybar.service 2> /dev/null || true
       fi
-      systemctl --user try-restart swayosd.service 2> /dev/null || true
+      # These two read their stylesheet once, when they start.
+      systemctl --user try-restart swayosd.service walker.service 2> /dev/null || true
     }
 
     case "''${1:-status}" in
@@ -162,7 +184,13 @@ writeShellApplication {
           *) echo "glass: no look '$want' (there are: $looks)" >&2; exit 2 ;;
         esac
         write
-        if [ "$on" = true ]; then hypr reload config-only; fi
+        if [ "$on" = true ]; then
+          hypr reload config-only
+          # Into or out of the clear look the launcher's box changes too.
+          case "$changed" in
+            *glass.css*) systemctl --user try-restart walker.service 2> /dev/null || true ;;
+          esac
+        fi
         ;;
       refresh)
         write
