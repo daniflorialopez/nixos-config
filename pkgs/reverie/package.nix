@@ -22,6 +22,9 @@
 #              announce workspace changes instead, the HUD is a key-hold away.
 #   menu       $mod+R: a deck of tiles along the bottom, one per switch, lit
 #              when on. It stays open while you flip them (src/menu.py).
+#              Built with `glass` (pkgs/hyprglass), two of the tiles are
+#              liquid glass, on/off and its look; reverie only passes the
+#              word on (src/glass.py).
 #   cards      a film title card on every workspace switch: the number,
 #              large, arriving from the direction you moved. Three looks
 #              (bare, island, banner), switchable live.
@@ -38,6 +41,7 @@
 #   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle
 #   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
+#   reverie glass on|off|toggle|look <name>    (only when built with `glass`)
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
 #                    binds for this session only (`reverie untry` removes them)
@@ -74,6 +78,8 @@
   # theme/metrics.nix), handed in by whoever calls this.
   theme,
   metrics,
+  # The `glass` command, where liquid glass is installed; null where it is not.
+  glass ? null,
 }:
 let
   python = python3.withPackages (p: [
@@ -160,6 +166,7 @@ writeShellApplication {
     # (0.85 bg, a 10% fg hairline, a floating rounded box), so they take the
     # island radius from there rather than restating 12.
     export REVERIE_ISLAND_RADIUS="${toString metrics.islandRadius}"
+    ${lib.optionalString (glass != null) ''export REVERIE_GLASS="${lib.getExe glass}"''}
     sock="''${XDG_RUNTIME_DIR:-/tmp}/reverie.sock"
     self="$(readlink -f "$0")"
 

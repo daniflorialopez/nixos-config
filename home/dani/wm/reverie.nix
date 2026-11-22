@@ -40,8 +40,12 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; };
-      defaultText = lib.literalExpression "pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; }";
+      # With liquid glass enabled (wm/glass.nix), its switch is on the menu.
+      default = pkgs.callPackage ../../../pkgs/reverie/package.nix {
+        inherit theme metrics;
+        glass = if config.programs.glass.enable then config.programs.glass.command else null;
+      };
+      defaultText = lib.literalExpression "pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; glass = …; }";
       description = "The reverie package: the daemon and the `reverie` command.";
     };
   };

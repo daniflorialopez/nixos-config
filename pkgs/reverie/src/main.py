@@ -22,6 +22,7 @@ from gi.repository import Gio, GLib, GLibUnix, Gtk  # noqa: E402
 
 from cards import STYLES, Cards  # noqa: E402
 from fx import Fx  # noqa: E402
+from glass import Glass  # noqa: E402
 from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
 from menu import Menu  # noqa: E402
@@ -35,7 +36,8 @@ STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.loc
 USAGE = ("hud show|hide|pin|hold|release · cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
-         "font caskaydia|inter · menu [show|hide] · "
+         "font caskaydia|inter · glass on|off|toggle|look liquid|frosted|clear|next · "
+         "menu [show|hide] · "
          "status · quit")
 
 
@@ -63,6 +65,7 @@ class Reverie(Gtk.Application):
         self.hud = Hud(self)
         self.cards = Cards(self)
         self.fx = Fx(self, self.pulse)
+        self.glass = Glass()
         self.menu = Menu(self)
         self.hud.pulse = self.pulse
         self.hud.ledger = self.ledger
@@ -144,6 +147,7 @@ class Reverie(Gtk.Application):
             "spotlight": self.fx.spot, "zen": self.zen, "cards": self.cards.enabled,
             "ripples": self.fx.ripples_on, "sound": self.pulse.sound, "fade": self.pulse.fade,
             "font": common.FONT["name"], "style": self.cards.style,
+            "glass": self.glass.on, "glass_look": self.glass.look,
         }
 
     # -- zen: kill the bar --------------------------------------------------
@@ -245,6 +249,8 @@ class Reverie(Gtk.Application):
                     want = names[(names.index(common.FONT["name"]) + 1) % len(names)]
                 common.set_font(want)
             reply = f"font {common.FONT['name']}"
+        elif head == "glass":
+            return self.glass.command(rest)      # its state is the command's, not ours
         elif head == "zen":
             want = not self.zen if (not rest or rest[0] == "toggle") else rest[0] == "on"
             self.set_zen(want)

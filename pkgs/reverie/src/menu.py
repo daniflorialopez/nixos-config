@@ -16,8 +16,13 @@ bar leave, a sample title card in the new style.
   arrows / hjkl  move      enter / space  flip      tab  next
   click          flip      esc, q, a click outside, or the menu key: close
 
-The two tiles on the right do something and leave: reopen the window you last
-closed (the tile says which), and the demo.
+A tile on the right does something and leaves: reopen the window you last
+closed (the tile says which), and — where there is no liquid glass — the demo.
+
+Where the package was built with the `glass` command (glass.py), its switch
+and its look take the two tiles that were Font and Demo: both of those are
+still commands (`reverie font`, `reverie demo`), neither was a thing to flip
+twice. The deck stays ten tiles, two full rows.
 """
 
 import math
@@ -27,6 +32,7 @@ import subprocess
 import cairo
 
 import common
+import glass
 from cards import STYLES
 from common import (EFFECT, FONT, SPATIAL, Spring, focused_output, layer_window, rgba,
                     rounded, text)
@@ -47,11 +53,19 @@ TILES = [
     ("ripples", "Ripples", "toggle", "a ring on open, close"),
     ("sound", "Sound", "toggle", "a note per workspace"),
     ("fade", "Fade", "toggle", "idle windows dim"),
+] + ([
+    ("glass", "Glass", "toggle", "see-through, refracting"),
+    ("glass_look", "Glass look", "cycle", ""),
+    ("style", "Card look", "cycle", ""),
+    ("undo", "Reopen", "action", "nothing closed yet"),
+] if glass.BIN else [
     ("font", "Font", "cycle", ""),
     ("style", "Card look", "cycle", ""),
     ("undo", "Reopen", "action", "nothing closed yet"),
     ("demo", "Demo", "action", "a 30 s tour"),
-]
+])
+# What a cycle tile steps through, for its row of dots.
+OPTIONS = {"font": tuple(common.FONTS), "style": tuple(STYLES), "glass_look": glass.LOOKS}
 COMMANDS = {
     "spotlight": ["spotlight", "toggle"],
     "zen": ["zen", "toggle"],
@@ -60,6 +74,8 @@ COMMANDS = {
     "sound": ["pulse", "sound", "toggle"],
     "fade": ["pulse", "fade", "toggle"],
     "font": ["font", "toggle"],
+    "glass": ["glass", "toggle"],
+    "glass_look": ["glass", "look", "next"],
     "style": ["cards", "style", "next"],
     "undo": ["undo"],
 }
@@ -104,6 +120,7 @@ class Menu:
         mon, info = focused_output()
         if mon is not None and not self.win.get_visible():
             Gtk4LayerShell.set_monitor(self.win, mon)
+        self.app.glass.reload()                      # `glass` may have been run by hand
         flags = self.app.flags()
         for tid, spring in self.knob.items():        # opens showing the truth, unanimated
             spring.x = spring.target = 1.0 if flags.get(tid) else 0.0
@@ -329,8 +346,7 @@ class Menu:
         if kind == "toggle":
             self.draw_switch(cr, bx - 34 * u, by - 18 * u, self.knob[tid].x, u, a)
         elif kind == "cycle":
-            options = list(common.FONTS) if tid == "font" else list(STYLES)
-            for k, option in enumerate(reversed(options)):
+            for k, option in enumerate(reversed(OPTIONS[tid])):
                 cr.new_path()
                 cx, cy = bx - 4 * u - k * 13 * u, by - 9 * u
                 if option == value:
