@@ -103,9 +103,13 @@ in
   # them, but two of them were misleading and now point at the correctly-named
   # role: `@muted` is the `slate` role (#565f89), not the `muted` role (#a0a5c0),
   # and `@border` is a 10% wash of `fg`.
+  #
+  # `bg_alpha`, the island background, is the one that is not a constant: where
+  # liquid glass is enabled it comes from the `glass` command's state file
+  # (wm/glass.nix), so that the islands can turn see-through with it.
   xdg.configFile."waybar/palette.css".text = ''
+    ${config.programs.glass.islandBackground}
     @define-color bg ${theme.hex.bg};
-    @define-color bg_alpha ${theme.cssRgba "bg" "0.85"};
     @define-color surface ${theme.cssRgba "surface" "0.70"};
     @define-color fg ${theme.hex.fg};
     @define-color subtle ${theme.hex.subtle};

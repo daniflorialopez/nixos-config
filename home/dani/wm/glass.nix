@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  theme,
   ...
 }:
 
@@ -9,13 +10,16 @@
 #
 # Two switches, on purpose. This one, in the Nix config, decides whether the
 # machine CAN do glass: it installs the plugin and the `glass` command and
-# makes Hyprland and the terminal listen to the command's state. Whether glass IS on is the other switch, flipped at the
+# makes Hyprland, the bar, the volume pill and the terminal listen to the
+# command's state. Whether glass IS on is the other switch, flipped at the
 # keyboard (`glass toggle`, or the Glass tile in reverie's menu) and kept in
 # ~/.local/state/theme/ like every other runtime choice (ADR-005). With this
 # enabled and that one off — which is how it starts — nothing looks different.
 #
 # What follows the command, and how (the command's own header says why):
 #   Hyprland   sources glass.conf: the plugin and its rules, or nothing
+#   waybar     \  their "island" background comes from glass.css instead of
+#   swayosd    /  being a constant: 0.85 solid off, see-through on
 #   Alacritty  imports glass.toml: its background opacity while glass is on
 #
 # The terminal is the one deliberate break with shell/alacritty.nix's rule
@@ -25,6 +29,7 @@
 let
   cfg = config.programs.glass;
   stateDir = "${config.xdg.stateHome}/theme";
+  islandOff = theme.cssRgba "bg" "0.85";
   refresh = "${lib.getExe cfg.command} refresh";
 in
 {
@@ -38,6 +43,12 @@ in
       description = "The hyprglass plugin, built against this nixpkgs' Hyprland.";
     };
 
+    islandAlpha = lib.mkOption {
+      type = lib.types.str;
+      default = "0.30";
+      description = "How solid an island (bar group, volume pill) is while glass is on; off it is 0.85.";
+    };
+
     terminalOpacity = lib.mkOption {
       type = lib.types.str;
       default = "0.65";
@@ -49,13 +60,33 @@ in
       readOnly = true;
       description = "The `glass` command, built with the values above.";
     };
+
+    islandBackground = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = ''
+        The CSS line that defines the named colour `bg_alpha`, the island
+        background, for the stylesheets that draw islands: the constant when
+        glass is not enabled here, an import of the command's state file when
+        it is.
+      '';
+    };
   };
 
   config = lib.mkMerge [
     {
-      programs.glass.command = pkgs.callPackage ../../../pkgs/hyprglass/glass.nix {
-        hyprglass = cfg.plugin;
-        inherit (cfg) terminalOpacity;
+      programs.glass = {
+        command = pkgs.callPackage ../../../pkgs/hyprglass/glass.nix {
+          hyprglass = cfg.plugin;
+          inherit islandOff;
+          islandOn = theme.cssRgba "bg" cfg.islandAlpha;
+          inherit (cfg) terminalOpacity;
+        };
+        islandBackground =
+          if cfg.enable then
+            ''@import url("file://${stateDir}/glass.css");''
+          else
+            "@define-color bg_alpha ${islandOff};";
       };
     }
 
@@ -69,13 +100,17 @@ in
 
       programs.alacritty.settings.general.import = [ "${stateDir}/glass.toml" ];
 
-      # The files have to exist before anything reads them: a missing
-      # `source` is a Hyprland config error. Written at every activation
-      # (which is also when a new plugin path or new rules get into them),
-      # before the step that reloads Hyprland.
+      # The three files have to exist before anything reads them: a missing
+      # `source` is a Hyprland config error, a missing CSS import leaves the
+      # islands without a background. Written at every activation (which is
+      # also when a new plugin path or new rules get into them), before the
+      # step that reloads Hyprland, and again before the two GTK programs
+      # start, in case the state directory was cleared in between.
       home.activation.glassState = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
         run ${refresh}
       '';
+      systemd.user.services.waybar.Service.ExecStartPre = refresh;
+      systemd.user.services.swayosd.Service.ExecStartPre = refresh;
     })
   ];
 }

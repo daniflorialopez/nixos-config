@@ -9,6 +9,8 @@
 #   glass.conf   Hyprland sources it (wm/glass.nix). On, it declares the
 #                plugin, so Hyprland itself loads it — at every start and on
 #                every reload — and unloads it when the file is empty again.
+#   glass.css    the "island" background for the bar and the volume pill:
+#                solid as designed when off, see-through when on.
 #   glass.toml   Alacritty imports it: a see-through background when on.
 #
 #   glass on | off | toggle        glass look liquid|frosted|clear|next
@@ -18,9 +20,10 @@
 # Hyprland, shape the on-file:
 #
 #   - Hyprland's own blur is painted behind every window and covers the glass
-#     entirely, so blur is switched off per window.
+#     entirely, so blur is switched off per window. (Layers are different:
+#     there the glass replaces the blur by itself.)
 #   - Glass shows only through what is transparent, and by design almost
-#     nothing here is: hence the other file.
+#     nothing here is: hence the two other files.
 #   - A preset of our own, named in `default_preset`, earns a warning toast
 #     at every load: the plugin checks the name before it has read the
 #     definition. Redefining a setting of one of ITS presets under its own
@@ -36,8 +39,12 @@
   hyprland,
   jq,
   coreutils,
+  systemd,
   hyprglass,
-  # How solid the terminal's background is while glass is on.
+  # The island background, off and on (CSS colours), and how solid the
+  # terminal's background is while glass is on.
+  islandOff ? "rgba(26, 27, 38, 0.85)",
+  islandOn ? "rgba(26, 27, 38, 0.30)",
   terminalOpacity ? "0.65",
 }:
 
@@ -47,6 +54,7 @@ writeShellApplication {
     hyprland
     jq
     coreutils
+    systemd
   ];
   text = ''
     plugin=${hyprglass}/lib/libhyprglass.so
@@ -94,17 +102,23 @@ writeShellApplication {
         default_theme = dark
         default_preset = $(preset)
         preset = name:glass, chromatic_aberration:0.12
+        layers {
+            enabled = 1
+            namespaces = waybar, swayosd
+        }
     }
     EOF
+        echo "@define-color bg_alpha ${islandOn};" | put "$dir/glass.css"
         printf '[window]\nopacity = %s\n' "${terminalOpacity}" | put "$dir/glass.toml"
       else
         echo "# Liquid glass is off. Written by \`glass\`." | put "$dir/glass.conf"
+        echo "@define-color bg_alpha ${islandOff};" | put "$dir/glass.css"
         echo "# Liquid glass is off. Written by \`glass\`." | put "$dir/glass.toml"
       fi
     }
 
-    # The running session follows, if there is one: from a TTY there is no
-    # Hyprland to tell.
+    # The running session follows. Each step is allowed to find nobody home:
+    # from a TTY there is no Hyprland, in zen there is no bar.
     hypr() {
       if [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
         hyprctl "$@" > /dev/null 2>&1 || true
@@ -119,6 +133,10 @@ writeShellApplication {
       if [ "$on" = false ] && hyprctl plugin list 2> /dev/null | grep -q '^Plugin hyprglass '; then
         hypr plugin unload "$plugin"     # one loaded by hand, not by the file
       fi
+      if systemctl --user is-active -q waybar.service 2> /dev/null; then
+        systemctl --user reload waybar.service 2> /dev/null || true
+      fi
+      systemctl --user try-restart swayosd.service 2> /dev/null || true
     }
 
     case "''${1:-status}" in

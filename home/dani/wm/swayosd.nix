@@ -11,14 +11,20 @@
 # Styled to the design system: a glass Tokyo Night pill matching the
 # waybar islands (same bg/border/radius; the blur + ignorezero layerrule
 # pair lives in hyprland.nix next to waybar's).
-{ pkgs, theme, metrics, ... }:
+{ config, pkgs, theme, metrics, ... }:
 let
   # One palette source: home/dani/theme/palette.nix. Pure white/black washes
   # below stay literal on purpose — they are material effects (hairlines,
   # shadows, hover tints), not palette colours, and would not change with it.
+  #
+  # The background is the island background by name, not by value: with liquid
+  # glass enabled it follows the `glass` switch (wm/glass.nix), as the bar's
+  # islands do.
   style = pkgs.writeText "swayosd-style.css" ''
+    ${config.programs.glass.islandBackground}
+
     window#osd {
-      background: ${theme.cssRgba "bg" "0.85"};
+      background: @bg_alpha;
       border: 1px solid ${theme.cssRgba "fg" "0.10"};
       border-radius: ${metrics.px metrics.islandRadius};
       padding: 12px 20px;
