@@ -476,6 +476,84 @@ HUD rather than the current one."*
 - Noticed in passing on the HUD's own chips, unrelated to reverie:
   `restic-backups-remote.service` is in the failed state ("backup failed").
 
+**2026-11-22, later — Dani's eighth round**, four things:
+- *"I like how the HUD looks now, I would only want to improve it a bit
+  further when it is possible, when I have more time."* **Parked: small
+  improvements to the HUD, at Dani's initiative.** Nothing to do until he
+  says what.
+- *"we could commit that and apply the changes. My only concern is that ...
+  they don't look Nix-y at all ... like some Python scripts put together."*
+  He is right, and it was said to him so: 320 lines of Nix packaging and
+  wiring ~5,000 lines of Python. What the Nix does: the Python environment
+  from nixpkgs, the colours from `theme/palette.nix`, the shellchecked
+  wrapper, the systemd user service, the binds, the layer rules.
+  - **Done (`58fc6b4`):** the build now byte-compiles and imports every
+    module, so a broken daemon fails the build instead of the rebuilt
+    system. Tried with a bad import: the build fails.
+  - **Proposed, waiting for Dani's word** (no change in behaviour): split
+    `reverie.nix` into a package (`nix build .#reverie`, no `packages`
+    output exists in the flake today) and a small module; an `enable`
+    option instead of being on for every host that imports the WM config;
+    removing what he has turned down (the Fade switch; the `island` and
+    `banner` title cards).
+  - **To be said plainly at every bump:** this is software the repo now
+    owns. Hyprland's event socket, `hyprctl -j` fields and layer-rule syntax
+    are what it stands on; the 26.11 bump (after 2026-12-20) is the first
+    time that will be tested.
+  - **Applying it** has never happened: the systemd unit, the declared
+    binds and the idle listener have only ever existed in the file. First
+    `reverie untry` (or two daemons answer every key), then
+    `sudo nixos-rebuild test --flake .#legionix` from this branch, then
+    look; `switch` and the merge into master only after that.
+- *The parked ideas, brought back for review* (to be developed once reverie
+  is applied and merged, each on its own branch off master):
+  1. **Noir focus mode** (liked "quite a lot") — exists as a screen shader on
+     `rice/overdrive`; porting it is a small module and a switch. No
+     downloads.
+  2. **Glow ring** — the screen edge as an ambient channel, the "ping/alarm
+     shown more beautifully". Needs its sources decided first (long
+     commands, Claude Code, recording/mic, a failed backup, battery). No
+     downloads.
+  3. **Liquid glass** — see below.
+  4. *From reverie's own list:* a carousel of workspaces (idea liked,
+     execution rejected); a **day set** of photographs by time of day
+     (needs the photographs); **rest** and a **found video** as
+     screensaver — both are things that happen when the machine is idle,
+     which Dani has since said he does not want; treat as dropped unless he
+     says otherwise.
+  5. *Older, unrelated to the rice:* the boot look (section 5b).
+- *Liquid glass: "do you think we could implement it graciously? ... should
+  we put this texture in all the menus/HUD?"* Looked into on 2026-11-22:
+  - The plugin is `hyprglass` (github.com/hyprnux/hyprglass, BSD-3): blur,
+    edge refraction, chromatic aberration and specular highlights on
+    transparent windows **and, opt-in by namespace, on layer surfaces**
+    (bars, menus, notifications). It is not in the pinned nixpkgs
+    (`hyprlandPlugins` has thirteen others); it would be a
+    `mkHyprlandPlugin` derivation from its source.
+  - **Versions:** each release targets one Hyprland. Ours is 0.55.4, which
+    only v0.6.4 (June 2026) supports; the current v1.2.0 targets 0.57.2 and
+    has five months of fixes, among them "a huge window, bar or menu no
+    longer crashes Hyprland". Its layer support "hooks into Hyprland's
+    internal render pipeline ... may break across Hyprland updates".
+  - **Download:** building any plugin against the installed Hyprland needs
+    32 store paths, 104.8 MiB (measured with a dry run; nothing fetched),
+    plus the plugin's source.
+  - **Recommendation given to Dani:** do it after 2026-12-20, right after
+    the 26.11 bump, with the plugin version that matches the Hyprland that
+    bump brings — not now with a five-month-old one on a slow connection.
+    As an option that is off until he has looked at it, on one surface
+    first. What he liked on `rice/overdrive` was `drift`'s full-screen
+    imitation; the real thing bends what is behind each surface's edge and
+    may or may not be what he pictured.
+  - **Where it would go:** on what floats over live content — windows, the
+    bar's islands, the launcher, notifications, reverie's menu deck. **Not
+    inside the HUD:** the HUD paints its own backdrop, so there is nothing
+    behind its cards for glass to bend, and drawing it anyway is the
+    imitation he already turned down (the lenses). **Not on the bare title
+    card** (frozen).
+  - Not checked: whether v0.6.4 has layer support at all; how it behaves
+    with NVIDIA, with the spotlight's overlay, and under a fullscreen game.
+
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
   deadnix clean on `reverie.nix`; no literal colours outside the palette.
@@ -571,8 +649,8 @@ once more ideas have been collected — not now):
 2. *Glow ring* — the screen edge as an ambient channel: position = source,
    colour = severity, steady glow for states, one swell for events.
 3. *Liquid glass on windows* — per-window edge refraction via the `hyprglass`
-   plugin; needs a build against the exact Hyprland version, so check offline
-   feasibility or wait until home. (Reverie's HUD had cairo lenses imitating
+   plugin; needs a build against the exact Hyprland version. Looked into on
+   2026-11-22 (eighth round, above): wait for the 26.11 bump. (Reverie's HUD had cairo lenses imitating
    this on a screenshot; Dani found them "odd and out of place" and they were
    removed. That verdict is about the imitation, not about glass on windows.)
 
