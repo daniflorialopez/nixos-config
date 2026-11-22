@@ -23,7 +23,10 @@
 #
 #   - Hyprland's own blur is painted behind every window and covers the glass
 #     entirely, so blur is switched off per window. (Layers are different:
-#     there the glass replaces the blur by itself.)
+#     there the glass replaces the blur by itself.) Except a truly
+#     fullscreen window: Hyprland draws no decorations for those, the glass
+#     is one, and without either a see-through terminal is just a hole. It
+#     gets the blur back.
 #   - Glass shows only through what is transparent, and by design almost
 #     nothing here is: hence the two other files.
 #   - A preset of our own, named in `default_preset`, earns a warning toast
@@ -112,6 +115,7 @@ writeShellApplication {
     # Liquid glass is ON. Written by \`glass\`; do not edit, it is rewritten.
     plugin = $plugin
     windowrule = no_blur true, match:class .*
+    windowrule = no_blur false, match:fullscreen_state_internal 2
     plugin:hyprglass {
         default_theme = dark
         default_preset = $(preset)
