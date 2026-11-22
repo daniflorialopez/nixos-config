@@ -48,10 +48,7 @@
   islandOff ? "rgba(26, 27, 38, 0.85)",
   islandOn ? "rgba(26, 27, 38, 0.30)",
   popupOff ? "rgba(22, 22, 30, 0.90)",
-  popupOn ? "rgba(22, 22, 30, 0.50)",
-  # The clear look does not blur: what is behind a panel stays sharp and runs
-  # straight through its text. A panel that is read is more solid under it.
-  popupOnClear ? "rgba(22, 22, 30, 0.72)",
+  popupOn ? "rgba(22, 22, 30, 0.60)",
   terminalOpacity ? "0.65",
 }:
 
@@ -119,9 +116,14 @@ writeShellApplication {
         default_theme = dark
         default_preset = $(preset)
         preset = name:glass, chromatic_aberration:0.12
+        # The glass of the panels that are read — the launcher, the menu
+        # deck. Its own kind, whatever look is chosen for the rest: darker,
+        # and always blurred, so that nothing behind runs through the text.
+        preset = name:menu, inherits:subtle, blur_strength:1.6, brightness:0.55, adaptive_dim:0.6
         layers {
             enabled = 1
             namespaces = waybar, swayosd, walker, reverie-menu
+            namespace_presets = walker:menu, reverie-menu:menu
             # The launcher's box casts a shadow, and to the plugin a shadow
             # is something to put glass behind. The box is more solid than
             # its shadow ever gets; this is the line between the two (and
@@ -130,11 +132,9 @@ writeShellApplication {
         }
     }
     EOF
-        popup="${popupOn}"
-        if [ "$look" = clear ]; then popup="${popupOnClear}"; fi
         put "$dir/glass.css" <<EOF
     @define-color bg_alpha ${islandOn};
-    @define-color popup_bg $popup;
+    @define-color popup_bg ${popupOn};
     EOF
         put "$dir/glass.toml" <<EOF
     [window]
@@ -196,13 +196,7 @@ writeShellApplication {
           *) echo "glass: no look '$want' (there are: $looks)" >&2; exit 2 ;;
         esac
         write
-        if [ "$on" = true ]; then
-          hypr reload config-only
-          # Into or out of the clear look the launcher's box changes too.
-          case "$changed" in
-            *glass.css*) systemctl --user try-restart walker.service 2> /dev/null || true ;;
-          esac
-        fi
+        if [ "$on" = true ]; then hypr reload config-only; fi
         ;;
       refresh)
         write

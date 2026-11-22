@@ -20,7 +20,8 @@
 #   Hyprland   sources glass.conf: the plugin and its rules, or nothing
 #   waybar     \  their "island" background comes from glass.css instead of
 #   swayosd    /  being a constant: 0.85 solid off, see-through on
-#   walker     the launcher's box likewise: 0.90 off, half see-through on
+#   walker     the launcher's box likewise: 0.90 off, 0.60 on, over a
+#              darker glass of its own that does not follow the chosen look
 #              (the power menu states its own, nearly solid, and keeps it)
 #   Alacritty  imports glass.toml: its background opacity while glass is on
 #
@@ -58,16 +59,11 @@ in
 
     popupAlpha = lib.mkOption {
       type = lib.types.str;
-      default = "0.50";
-      description = "How solid the launcher's box is while glass is on; off it is 0.90.";
-    };
-
-    popupAlphaClear = lib.mkOption {
-      type = lib.types.str;
-      default = "0.72";
+      default = "0.60";
       description = ''
-        The same under the clear look, which does not blur: what is behind
-        the box would otherwise run sharp through its text.
+        How solid the launcher's box is while glass is on; off it is 0.90.
+        What shows through the rest is the darker "menu" glass, not the
+        chosen look.
       '';
     };
 
@@ -112,7 +108,6 @@ in
           inherit islandOff popupOff;
           islandOn = theme.cssRgba "bg" cfg.islandAlpha;
           popupOn = theme.cssRgba "bgDeep" cfg.popupAlpha;
-          popupOnClear = theme.cssRgba "bgDeep" cfg.popupAlphaClear;
           inherit (cfg) terminalOpacity;
         };
         islandBackground = fromState "@define-color bg_alpha ${islandOff};";
