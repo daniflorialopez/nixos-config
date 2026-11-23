@@ -734,7 +734,7 @@ HUD rather than the current one."*
       their own, once the panel had arrived. Dani: "I like the glass
       features but I don't like the HUD look now." Reverted (`355d0c0`).
       Do not bring pieces of glass back onto the panel.
-    - **What he asked for instead, built `5927ee9`, not applied yet:**
+    - **What he asked for instead, built `5927ee9`, applied 2026-11-23:**
       "a dark version of liquid glass with the current wallpaper without
       showing what apps are open below the HUD." With glass on, the
       panel's backdrop is that monitor's wallpaper — darkened, and as far
@@ -747,8 +747,8 @@ HUD rather than the current one."*
       is the capture anyway. The darkness per look is `PANE` in
       `src/hud.py`, three numbers to turn if he wants it darker or
       lighter.
-  - **Fullscreen and the selected look, built `b59616c`, not applied
-    yet.** Dani: "I would like the full-screen apps to apply also the
+  - **Fullscreen and the selected look, built `b59616c`, applied
+    2026-11-23.** Dani: "I would like the full-screen apps to apply also the
     selected liquid glass style, now they don't have that at all" (the
     blur given back in `9dda57a` is not the look). Real glass for a
     fullscreen window after all, by another road: while a see-through
@@ -763,17 +763,56 @@ HUD rather than the current one."*
     downloads about 4 MiB (ShellCheck, stdenv hooks) and regenerates a
     couple of hundred small files. Already done for this branch's
     current state.
-  - **Still to do, one per step, each shown to Dani first:** per-surface
-    looks (a refracting one for small floating pieces, a frosted one
-    behind text) once he has lived with one look for all; the terminal's
-    0.65; notifications last and only if he wants them (the theme frames
-    them as solid on purpose). Not: the HUD, the bare title card, the
-    spotlight, tooltips, the mouse grid, the power/capture menus. Not
-    possible: lock screen, login screen.
+  - **Second round the same day: Dani applied it and reported five
+    things.** Four were faults, fixed one commit each; all measured and
+    seen in the sealed nested Hyprland only.
+    - *"When I make an app fullscreen, the glass disappears for a
+      moment."* The sheet took 35 ms to arrive and 250 to fade in. Now at
+      once and whole: 1-5 ms, `no_anim` (`85ef125`).
+    - *"A difference between the colour intensity"* between fullscreen
+      and windowed. Hyprland's `fullscreen_opacity` (1.0) against the
+      0.94 of a window. The see-through windows keep 0.94 in fullscreen
+      while glass is on; which windows those are is one option now,
+      `programs.glass.windows`, and it includes the scratchpad terminals
+      (`995f300`).
+    - *Fullscreen glass "doesn't change to its selected glass mode right
+      away, or it doesn't change wallpapers".* The plugin keeps its sample
+      of what is behind a layer. Reverie now makes it sample again (the
+      sheet changes size by a pixel) after every config reload and through
+      a wallpaper change, which it learns of by watching
+      `~/.local/state/wallpaper/current` (`dcd95fa`). The HUD's backdrop is
+      remade then too, so the "old picture for a moment" limit is gone.
+    - *The Super+R menu "remains as a gray box that takes almost a second
+      to disappear".* The deck faded itself and the dark glass behind it
+      could not follow. On glass it unmaps at once and the compositor does
+      the fade (`5adbbb5`).
+    - *"Could the HUD benefit from adding liquid glass … on the background
+      wallpaper, and only on the wallpaper?"* Answered with a picture, not
+      built: the plugin's real glass behind the panel differs from what
+      the panel paints itself only under the liquid look (the screen edge
+      bends like a lens). It would take a second, opaque surface with the
+      wallpaper under the panel. **His call**; preview in the session
+      scratchpad (`hud-real-glass-preview.png`).
+  - **"I wouldn't mind to add it to all the appropriate things."**
+    - *Done:* notifications, on the dark `menu` glass, 0.60 solid
+      (`1e6ffbb`); they follow the switch without a restart.
+    - *Offered, not done, each his to say yes to:* the power and capture
+      menus (0.97 solid on purpose: a destructive question must stay
+      legible — over the dark glass 0.75 would do, but I cannot see the
+      real launcher in the test compositor); the `island` and `banner`
+      title cards; the HUD as above.
+    - *Not appropriate:* browser, editor and other windows that are read
+      all day; the bare title card (frozen); spotlight, mouse grid,
+      screenshot tools; tooltips and context menus (the plugin does not
+      do popups). *Not possible:* lock screen, login screen.
+  - **Known limits now:** nothing switches glass off for games; the
+    underlay is untested on two monitors; following a wallpaper change
+    costs about 0.4 s of CPU in the daemon at 1280x800 (more on the real
+    screen), only while a terminal is fullscreen; the real launcher and
+    the volume pill have still not been seen with glass by me.
   - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
-    from `feat/liquid-glass` (glass can stay on), then Super+G for the
-    HUD on the wallpaper, and a terminal in fullscreen under each look.
-    Merge only after he has seen it.
+    from `feat/liquid-glass` (glass can stay on), then the five things
+    above, and a notification. Merge only after he has seen it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
