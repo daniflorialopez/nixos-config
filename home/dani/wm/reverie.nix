@@ -4,6 +4,7 @@
   pkgs,
   theme,
   metrics,
+  scene,
   ...
 }:
 
@@ -45,6 +46,8 @@ in
         inherit theme metrics;
         glass = if config.programs.glass.enable then config.programs.glass.command else null;
         glassWindows = config.programs.glass.windows;
+        # Where wall-set records the choice: the daemon watches it.
+        wallpaperState = (import ./wall-apply.nix { inherit pkgs config scene; }).stateFile;
       };
       defaultText = lib.literalExpression "pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; glass = …; }";
       description = "The reverie package: the daemon and the `reverie` command.";

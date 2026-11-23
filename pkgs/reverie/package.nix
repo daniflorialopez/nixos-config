@@ -88,6 +88,10 @@
   # ... and the windows it makes see-through, a regex on their class
   # (src/under.py lays glass under those when they are fullscreen).
   glassWindows ? null,
+  # The file the chosen wallpaper is written to (wm/wall-apply.nix), where
+  # there is one: watched, so that what is drawn from the wallpaper — the
+  # HUD's backdrop, the glass under a fullscreen window — changes with it.
+  wallpaperState ? null,
 }:
 let
   python = python3.withPackages (p: [
@@ -178,6 +182,9 @@ writeShellApplication {
     ${lib.optionalString (
       glass != null && glassWindows != null
     ) "export REVERIE_GLASS_WINDOWS=${lib.escapeShellArg glassWindows}"}
+    ${lib.optionalString (
+      wallpaperState != null
+    ) "export REVERIE_WALLPAPER_STATE=${lib.escapeShellArg wallpaperState}"}
     sock="''${XDG_RUNTIME_DIR:-/tmp}/reverie.sock"
     self="$(readlink -f "$0")"
 

@@ -76,6 +76,7 @@ class Reverie(Gtk.Application):
         self.pulse.listeners += [self.ledger.on_event, self.cards.on_event, self.fx.on_event,
                                  self.under.on_event, self.on_key_event]
         GLib.idle_add(self.under.check)  # one may be fullscreen already
+        self.watch_wallpaper()
         self.restore()
         self.listen()
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -156,6 +157,36 @@ class Reverie(Gtk.Application):
             "font": common.FONT["name"], "style": self.cards.style,
             "glass": self.glass.on, "glass_look": self.glass.look,
         }
+
+    # -- the wallpaper ------------------------------------------------------
+    def watch_wallpaper(self):
+        """Two things here are pictures OF the wallpaper: the HUD's backdrop
+        (hud.py) and the glass under a fullscreen window (under.py). Neither
+        is told when it changes — the wallpaper daemon says nothing — so this
+        watches the file the choice is written to (wm/wall-apply.nix; the
+        path comes with the package, REVERIE_WALLPAPER_STATE). Without it
+        both still catch up, later: the HUD on its next opening, the glass
+        when the window leaves fullscreen."""
+        path = os.environ.get("REVERIE_WALLPAPER_STATE")
+        self.wall_timer = 0
+        if not path:
+            return
+        try:
+            self.wall = Gio.File.new_for_path(path).monitor_file(Gio.FileMonitorFlags.NONE, None)
+        except GLib.Error:
+            return
+        self.wall.connect("changed", self.on_wallpaper)
+
+    def on_wallpaper(self, *_):
+        self.under.follow()              # through the crossfade, as it happens
+        if self.wall_timer:
+            GLib.source_remove(self.wall_timer)
+        self.wall_timer = GLib.timeout_add(1500, self.wallpaper_changed)
+
+    def wallpaper_changed(self):
+        self.wall_timer = 0
+        self.hud.prepare()               # once the daemon reports the new picture
+        return False
 
     # -- zen: kill the bar --------------------------------------------------
     def set_zen(self, want):
