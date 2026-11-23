@@ -67,6 +67,20 @@ in
       '';
     };
 
+    fullscreen = lib.mkOption {
+      type = lib.types.enum [
+        "blur"
+        "underlay"
+      ];
+      default = "blur";
+      description = ''
+        What a see-through window has behind it in real fullscreen, where
+        Hyprland draws no decorations and so no glass: Hyprland's own blur,
+        or the plugin's glass on a layer that reverie puts under the window
+        (wm/reverie.nix sets this where it is enabled).
+      '';
+    };
+
     terminalOpacity = lib.mkOption {
       type = lib.types.str;
       default = "0.65";
@@ -108,7 +122,7 @@ in
           inherit islandOff popupOff;
           islandOn = theme.cssRgba "bg" cfg.islandAlpha;
           popupOn = theme.cssRgba "bgDeep" cfg.popupAlpha;
-          inherit (cfg) terminalOpacity;
+          inherit (cfg) terminalOpacity fullscreen;
         };
         islandBackground = fromState "@define-color bg_alpha ${islandOff};";
         popupBackground = fromState "@define-color popup_bg ${popupOff};";

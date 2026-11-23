@@ -36,6 +36,8 @@
 #              ignored and come straight back on focus.
 #   undo       $mod+U reopens the window you just closed, on its workspace
 #              and (if it floated) in its place.
+#   under      with `glass`: a see-through window made fullscreen keeps the
+#              glass it had (src/under.py); nothing to switch.
 #
 #   reverie hud show|hide|pin|hold|release     reverie zen on|off|toggle
 #   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle

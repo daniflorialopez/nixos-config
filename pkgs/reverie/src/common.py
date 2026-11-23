@@ -252,7 +252,8 @@ def layer_window(app, namespace, keyboard=False, layer=None, full=True):
     win = Gtk.Window(application=app)
     Gtk4LayerShell.init_for_window(win)
     Gtk4LayerShell.set_namespace(win, namespace)
-    Gtk4LayerShell.set_layer(win, layer or Gtk4LayerShell.Layer.OVERLAY)
+    # `is None`, not `or`: the background layer is the enum's zero.
+    Gtk4LayerShell.set_layer(win, Gtk4LayerShell.Layer.OVERLAY if layer is None else layer)
     if full:
         for edge in (Gtk4LayerShell.Edge.TOP, Gtk4LayerShell.Edge.BOTTOM,
                      Gtk4LayerShell.Edge.LEFT, Gtk4LayerShell.Edge.RIGHT):

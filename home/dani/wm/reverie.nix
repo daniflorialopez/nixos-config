@@ -53,6 +53,11 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = [ reverie ];
 
+    # With liquid glass: reverie is what lays the sheet of glass under a
+    # fullscreen window (pkgs/reverie/src/under.py), so glass need not fall
+    # back to plain blur there.
+    programs.glass.fullscreen = "underlay";
+
     systemd.user = {
       services.reverie = {
         Unit = {

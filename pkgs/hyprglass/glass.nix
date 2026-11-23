@@ -25,8 +25,10 @@
 #     entirely, so blur is switched off per window. (Layers are different:
 #     there the glass replaces the blur by itself.) Except a truly
 #     fullscreen window: Hyprland draws no decorations for those, the glass
-#     is one, and without either a see-through terminal is just a hole. It
-#     gets the blur back.
+#     is one, and without either a see-through terminal is just a hole.
+#     Where reverie runs it lays a sheet of real glass under such a window
+#     (`fullscreen = "underlay"`: its namespace is listed and that is all);
+#     anywhere else the window gets Hyprland's blur back ("blur").
 #   - Glass shows only through what is transparent, and by design almost
 #     nothing here is: hence the two other files.
 #   - A preset of our own, named in `default_preset`, earns a warning toast
@@ -52,6 +54,10 @@
   islandOn ? "rgba(26, 27, 38, 0.30)",
   popupOff ? "rgba(22, 22, 30, 0.90)",
   popupOn ? "rgba(22, 22, 30, 0.60)",
+  # What a see-through window gets behind it in real fullscreen: "blur", or
+  # "underlay" where something (reverie) puts a layer named
+  # reverie-glass-under there for the plugin to make glass of.
+  fullscreen ? "blur",
   terminalOpacity ? "0.65",
 }:
 
@@ -115,7 +121,9 @@ writeShellApplication {
     # Liquid glass is ON. Written by \`glass\`; do not edit, it is rewritten.
     plugin = $plugin
     windowrule = no_blur true, match:class .*
-    windowrule = no_blur false, match:fullscreen_state_internal 2
+    ${lib.optionalString (
+      fullscreen == "blur"
+    ) "windowrule = no_blur false, match:fullscreen_state_internal 2"}
     plugin:hyprglass {
         default_theme = dark
         default_preset = $(preset)
@@ -126,7 +134,9 @@ writeShellApplication {
         preset = name:menu, inherits:subtle, blur_strength:1.6, brightness:0.55, adaptive_dim:0.6
         layers {
             enabled = 1
-            namespaces = waybar, swayosd, walker, reverie-menu
+            namespaces = waybar, swayosd, walker, reverie-menu${
+              lib.optionalString (fullscreen == "underlay") ", reverie-glass-under"
+            }
             namespace_presets = walker:menu, reverie-menu:menu
             # The launcher's box casts a shadow, and to the plugin a shadow
             # is something to put glass behind. The box is more solid than

@@ -27,6 +27,7 @@ from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
 from menu import Menu  # noqa: E402
 from pulse import Pulse  # noqa: E402
+from under import Under  # noqa: E402
 
 # Tier 2 under ADR-005: runtime choices live in ~/.local/state/theme/, never in
 # the Nix config. This file is only "which of the opt-in behaviours are on".
@@ -67,12 +68,14 @@ class Reverie(Gtk.Application):
         self.cards = Cards(self)
         self.fx = Fx(self, self.pulse)
         self.glass = Glass()
+        self.under = Under(self)         # glass for a fullscreen window (under.py)
         self.menu = Menu(self)
         self.hud.pulse = self.pulse
         self.hud.ledger = self.ledger
         self.cards.bar = self.hud.bar
         self.pulse.listeners += [self.ledger.on_event, self.cards.on_event, self.fx.on_event,
-                                 self.on_key_event]
+                                 self.under.on_event, self.on_key_event]
+        GLib.idle_add(self.under.check)  # one may be fullscreen already
         self.restore()
         self.listen()
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -134,6 +137,7 @@ class Reverie(Gtk.Application):
         """Leave the desktop as it was found: nothing dimmed, the bar back."""
         self.pulse.restore()
         self.fx.close()                  # the spotlight is a child: it goes too
+        self.under.close()
         self.ledger.set_away(True)       # closes and saves the open block
         if self.zen:
             self.bar_running(True)       # the preference stays; the bar must not stay gone
@@ -255,6 +259,7 @@ class Reverie(Gtk.Application):
         elif head == "glass":
             reply = self.glass.command(rest)     # its state is the command's, not ours
             self.hud.prepare()                   # the HUD's backdrop follows the look
+            self.under.check()                   # and so does a fullscreen window's glass
             return reply
         elif head == "zen":
             want = not self.zen if (not rest or rest[0] == "toggle") else rest[0] == "on"
