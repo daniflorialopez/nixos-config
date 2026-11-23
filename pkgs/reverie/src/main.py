@@ -33,7 +33,8 @@ from pulse import Pulse  # noqa: E402
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
                      "theme", "reverie.json")
 
-USAGE = ("hud show|hide|pin|hold|release · cards on|off|style bare|island|banner|next · "
+USAGE = ("hud show|hide|pin|hold|release|glass on|off · "
+         "cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
          "font caskaydia|inter · glass on|off|toggle|look liquid|frosted|clear|next · "
@@ -95,6 +96,7 @@ class Reverie(Gtk.Application):
             self.fx.command("ripples", ["on"])
         common.set_font(state.get("font", "caskaydia"))
         self.hud.beats = bool(state.get("hold_repeats"))    # see Hud.hold
+        self.hud.glassy = state.get("hud_glass", True) is not False
         # Zen is a preference, so it survives a restart. Whether the bar is
         # really stopped is not something this file can know — a clean
         # shutdown brings it back, a crash leaves it down — so say it again.
@@ -113,6 +115,7 @@ class Reverie(Gtk.Application):
             "ripples": self.fx.ripples_on,
             "font": common.FONT["name"],
             "hold_repeats": self.hud.beats,
+            "hud_glass": self.hud.glassy,
             "zen": self.zen,
             "zen_cards": self.zen_cards,
             # spotlight is a mode you enter, not a preference: never restored.
@@ -250,7 +253,9 @@ class Reverie(Gtk.Application):
                 common.set_font(want)
             reply = f"font {common.FONT['name']}"
         elif head == "glass":
-            return self.glass.command(rest)      # its state is the command's, not ours
+            reply = self.glass.command(rest)     # its state is the command's, not ours
+            self.hud.prepare()                   # the HUD's backdrop follows the look
+            return reply
         elif head == "zen":
             want = not self.zen if (not rest or rest[0] == "toggle") else rest[0] == "on"
             self.set_zen(want)

@@ -42,6 +42,9 @@
 #   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
 #   reverie glass on|off|toggle|look <name>    (only when built with `glass`)
+#   reverie hud glass on|off|toggle            with glass on, the HUD's backdrop:
+#                                              the wallpaper through dark glass,
+#                                              or the desktop out of focus
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
 #                    binds for this session only (`reverie untry` removes them)
