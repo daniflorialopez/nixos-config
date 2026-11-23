@@ -798,14 +798,24 @@ HUD rather than the current one."*
       it. Default stays `wallpaper`. Glass and Glass look moved one key
       left (6, 7; HUD look is 8). Darkness per look: `WALL` in
       `src/hud.py`.
+    - **Applied, and "they seem the same to me, and I can't see the
+      wallpaper at all".** His wallpaper is a WebP and the daemon could
+      not read WebP (gdk-pixbuf loaders; I had only tried JPEG and PNG,
+      from a shell), so `glass` and `wallpaper` both fell back silently
+      to `desktop` — since `5927ee9`. Fixed `8eb5bea`: the wrapper names a
+      loader list with WebP in it, and an unreadable wallpaper is logged.
+      Still unreadable: any format gdk-pixbuf has no loader for here
+      (AVIF, JPEG XL); the library has none. **From now on: test with
+      his current wallpaper and with the service's environment
+      (`env -i`, its PATH), not mine.**
   - **"I wouldn't mind to add it to all the appropriate things."**
     - *Done:* notifications, on the dark `menu` glass, 0.60 solid
       (`1e6ffbb`); they follow the switch without a restart.
-    - *Offered, not done, each his to say yes to:* the power and capture
-      menus (0.97 solid on purpose: a destructive question must stay
-      legible — over the dark glass 0.75 would do, but I cannot see the
-      real launcher in the test compositor); the `island` and `banner`
-      title cards.
+    - *Done at his word ("add glass to the power and capture menus too",
+      `3e64da6`):* their box is 0.70 solid while glass is on, 0.97 as
+      before otherwise (`confirm_bg`, `programs.glass.confirmAlpha`). Not
+      seen with the real launcher; seen with a stand-in.
+    - *Offered, not done:* the `island` and `banner` title cards.
     - *Not appropriate:* browser, editor and other windows that are read
       all day; the bare title card (frozen); spotlight, mouse grid,
       screenshot tools; tooltips and context menus (the plugin does not
@@ -816,10 +826,11 @@ HUD rather than the current one."*
     screen), only while a terminal is fullscreen; the real launcher and
     the volume pill have still not been seen with glass by me.
   - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
-    from `feat/liquid-glass` (glass can stay on), then Super+R, tile 8
-    until it says `glass`, Super+G. The second round's fixes he has
-    applied (running system = that build); his verdict on them is not in
-    yet. Merge only after he has seen it.
+    from `feat/liquid-glass` (glass can stay on), then Super+G under
+    each HUD look (tile 8) — now with the wallpaper in it — and the power
+    menu (Super+Shift+Escape) and capture menu (Super+Shift+S). His
+    verdict on the second round's fixes is not in yet. Merge only after
+    he has seen it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
