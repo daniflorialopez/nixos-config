@@ -76,6 +76,7 @@
   gtk4,
   pango,
   gdk-pixbuf,
+  webp-pixbuf-loader,
   graphene,
   harfbuzz,
   gobject-introspection,
@@ -114,6 +115,19 @@ let
     glib.out
     gtk4-layer-shell
   ];
+
+  # gdk-pixbuf reads PNG and JPEG by itself and every other format through
+  # loader modules, which it finds in one list. A user service's environment
+  # names no such list, so it used its own, and that has no WebP — while
+  # three of the wallpapers here are WebP. The HUD's picture of the wallpaper
+  # then could not be made, and without a word it stood on the desktop out
+  # of focus instead, whatever look was chosen (Dani, 2026-11-23: "they seem
+  # the same to me, and I can't see the wallpaper at all"). Its own list
+  # plus the WebP loader's, which was in the store already.
+  loaders = runCommand "reverie-pixbuf-loaders.cache" { } ''
+    cat ${gdk-pixbuf}/lib/gdk-pixbuf-2.0/*/loaders.cache \
+        ${webp-pixbuf-loader}/lib/gdk-pixbuf-2.0/*/*loaders.cache > $out
+  '';
 
   palette = writeText "reverie-palette.json" theme.json;
 
@@ -176,6 +190,7 @@ writeShellApplication {
   text = ''
     export GI_TYPELIB_PATH="${typelibs}''${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
     export REVERIE_PALETTE="${palette}"
+    export GDK_PIXBUF_MODULE_FILE="${loaders}"
     # The HUD's chips are islands in the sense theme/metrics.nix defines
     # (0.85 bg, a 10% fg hairline, a floating rounded box), so they take the
     # island radius from there rather than restating 12.

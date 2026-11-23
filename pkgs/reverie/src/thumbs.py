@@ -215,7 +215,10 @@ def wallpaper(path, width, height):
         h = max(height, round(full.get_height() * scale))
         small = full.scale_simple(w, h, GdkPixbuf.InterpType.BILINEAR)
         return _surface(small.new_subpixbuf((w - width) // 2, (h - height) // 2, width, height))
-    except (GLib.Error, cairo.Error, MemoryError, ValueError):
+    except (GLib.Error, cairo.Error, MemoryError, ValueError) as exc:
+        # Said out loud (the journal): whatever needed this picture goes on
+        # without it, and "without it" looks like nothing having happened.
+        print(f"reverie: cannot read the wallpaper {path}: {exc}", flush=True)
         return None
 
 
