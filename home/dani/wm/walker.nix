@@ -77,9 +77,15 @@ let
   # Palette and shared chrome for both walker themes. walker gives every
   # theme its own CSS file and they do not inherit from one another, so the
   # common part lives here to stop dani-soft and dani-grid drifting apart.
+  #
+  # The box's background is `popup_bg`, by name: where liquid glass is enabled
+  # it follows the `glass` switch (wm/glass.nix), elsewhere it is the 0.90 it
+  # always was. The power and capture menus have a background of their own,
+  # `confirm_bg`, from the same place: 0.97 without glass, further down.
   baseCss = ''
+    ${config.programs.glass.popupBackground}
     /* Tokyo Night (see waybar/palette.css) */
-    @define-color window_bg_color ${theme.cssRgba "bgDeep" "0.90"};
+    @define-color window_bg_color @popup_bg;
     @define-color panel_bg_color ${theme.cssRgba "surface" "0.85"};
     @define-color accent_bg_color ${theme.cssRgba "accent" "0.14"};
     @define-color accent_line_color ${theme.cssRgba "accent" "0.24"};
@@ -239,8 +245,12 @@ let
       /* Nearly opaque, unlike the launcher's 0.90. A launcher can afford to
          show the desktop through it; a destructive confirmation cannot - at
          0.90 a busy window behind the dialog reads straight through the
-         resting card and the question stops being legible. */
-      background: ${theme.cssRgba "bgDeep" "0.97"};
+         resting card and the question stops being legible.
+         That is `confirm_bg` without liquid glass: 0.97. With glass on it is
+         0.70 (wm/glass.nix), and what keeps the window behind from reading
+         through is then the glass itself, which under the launcher's
+         namespace is the dark, always-blurred kind. */
+      background: @confirm_bg;
     }
 
     /* The answers are two cards side by side, icon over label. This

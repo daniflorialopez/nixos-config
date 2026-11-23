@@ -130,13 +130,27 @@
         legionix = mkHost "legionix";
       };
 
-      # Programs this repo carries itself. reverie is the Python daemon behind
-      # the HUD, the title cards and the spotlight (pkgs/reverie); the hosts
-      # get it through home/dani/wm/reverie.nix, and this makes it buildable
-      # and runnable on its own: `nix build .#reverie`, `nix run .#reverie -- try`.
-      packages.${system}.reverie = nixpkgs.legacyPackages.${system}.callPackage ./pkgs/reverie/package.nix {
-        inherit theme metrics;
-      };
+      # Programs this repo carries itself, buildable and runnable on their own
+      # (`nix build .#<name>`). The hosts get them through their modules.
+      packages.${system} =
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          # The Python daemon behind the HUD, the title cards and the
+          # spotlight (pkgs/reverie; home/dani/wm/reverie.nix turns it on).
+          # `nix run .#reverie -- try` runs it without a rebuild.
+          reverie = pkgs.callPackage ./pkgs/reverie/package.nix { inherit theme metrics; };
+
+          # The liquid-glass plugin, built against this nixpkgs' Hyprland (the
+          # top of its file says why it is the version it is), and `glass`,
+          # the switch that turns it on and off (home/dani/wm/glass.nix
+          # installs both where `programs.glass.enable` is set).
+          hyprglass = pkgs.callPackage ./pkgs/hyprglass/package.nix { };
+          glass = pkgs.callPackage ./pkgs/hyprglass/glass.nix {
+            inherit (self.packages.${system}) hyprglass;
+          };
+        };
 
       # Tools for working on this repo, loaded automatically by direnv via
       # .envrc (`use flake`). Kept out of the system and home profiles on

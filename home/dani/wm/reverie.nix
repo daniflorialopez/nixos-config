@@ -4,6 +4,7 @@
   pkgs,
   theme,
   metrics,
+  scene,
   ...
 }:
 
@@ -40,14 +41,26 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; };
-      defaultText = lib.literalExpression "pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; }";
+      # With liquid glass enabled (wm/glass.nix), its switch is on the menu.
+      default = pkgs.callPackage ../../../pkgs/reverie/package.nix {
+        inherit theme metrics;
+        glass = if config.programs.glass.enable then config.programs.glass.command else null;
+        glassWindows = config.programs.glass.windows;
+        # Where wall-set records the choice: the daemon watches it.
+        wallpaperState = (import ./wall-apply.nix { inherit pkgs config scene; }).stateFile;
+      };
+      defaultText = lib.literalExpression "pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; glass = …; }";
       description = "The reverie package: the daemon and the `reverie` command.";
     };
   };
 
   config = lib.mkIf cfg.enable {
     home.packages = [ reverie ];
+
+    # With liquid glass: reverie is what lays the sheet of glass under a
+    # fullscreen window (pkgs/reverie/src/under.py), so glass need not fall
+    # back to plain blur there.
+    programs.glass.fullscreen = "underlay";
 
     systemd.user = {
       services.reverie = {

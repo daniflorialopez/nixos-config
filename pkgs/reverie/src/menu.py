@@ -16,8 +16,13 @@ bar leave, a sample title card in the new style.
   arrows / hjkl  move      enter / space  flip      tab  next
   click          flip      esc, q, a click outside, or the menu key: close
 
-The two tiles on the right do something and leave: reopen the window you last
-closed (the tile says which), and the demo.
+A tile on the right does something and leaves: reopen the window you last
+closed (the tile says which), and — where there is no liquid glass — the demo.
+
+Where the package was built with the `glass` command (glass.py), its switch
+and its look take the two tiles that were Font and Demo: both of those are
+still commands (`reverie font`, `reverie demo`), neither was a thing to flip
+twice. The deck stays ten tiles, two full rows.
 """
 
 import math
@@ -27,6 +32,8 @@ import subprocess
 import cairo
 
 import common
+import glass
+import hud
 from cards import STYLES
 from common import (EFFECT, FONT, SPATIAL, Spring, focused_output, layer_window, rgba,
                     rounded, text)
@@ -37,6 +44,14 @@ ISLAND_RADIUS = float(os.environ.get("REVERIE_ISLAND_RADIUS", "12"))
 COLS = 5
 KEYS = "1234567890"
 KNOB = (520.0, 36.0)         # a switch knob: quick, the faintest overshoot
+# How solid the deck is. An island, like the bar's; and like the bar's it
+# turns see-through when liquid glass is on (the `glass` command lists this
+# surface for the plugin). Less so than the bar's 0.30: the bar's islands
+# hold a clock and icons, this holds ten labels in small type. It is a
+# panel that is read, like the launcher's box, and gets the same number and
+# the same darker glass behind it, which does not follow the chosen look
+# (the "menu" preset in pkgs/hyprglass/glass.nix).
+PANEL, PANEL_GLASS = 0.85, 0.60
 
 # id, label, kind, the line under the label (toggles and actions). A tile has
 # room for about 23 characters there.
@@ -46,12 +61,24 @@ TILES = [
     ("cards", "Title cards", "toggle", "name each workspace"),
     ("ripples", "Ripples", "toggle", "a ring on open, close"),
     ("sound", "Sound", "toggle", "a note per workspace"),
+] + ([
+    # With liquid glass, its three tiles stand where Fade (unwanted since
+    # 2026-11-20, still `reverie pulse fade on`), Font and Demo were.
+    ("glass", "Glass", "toggle", "see-through, refracting"),
+    ("glass_look", "Glass look", "cycle", ""),
+    ("hud_look", "HUD look", "cycle", ""),
+    ("style", "Card look", "cycle", ""),
+    ("undo", "Reopen", "action", "nothing closed yet"),
+] if glass.BIN else [
     ("fade", "Fade", "toggle", "idle windows dim"),
     ("font", "Font", "cycle", ""),
     ("style", "Card look", "cycle", ""),
     ("undo", "Reopen", "action", "nothing closed yet"),
     ("demo", "Demo", "action", "a 30 s tour"),
-]
+])
+# What a cycle tile steps through, for its row of dots.
+OPTIONS = {"font": tuple(common.FONTS), "style": tuple(STYLES), "glass_look": glass.LOOKS,
+           "hud_look": hud.LOOKS}
 COMMANDS = {
     "spotlight": ["spotlight", "toggle"],
     "zen": ["zen", "toggle"],
@@ -60,6 +87,9 @@ COMMANDS = {
     "sound": ["pulse", "sound", "toggle"],
     "fade": ["pulse", "fade", "toggle"],
     "font": ["font", "toggle"],
+    "glass": ["glass", "toggle"],
+    "glass_look": ["glass", "look", "next"],
+    "hud_look": ["hud", "look", "next"],
     "style": ["cards", "style", "next"],
     "undo": ["undo"],
 }
@@ -104,6 +134,7 @@ class Menu:
         mon, info = focused_output()
         if mon is not None and not self.win.get_visible():
             Gtk4LayerShell.set_monitor(self.win, mon)
+        self.app.glass.reload()                      # `glass` may have been run by hand
         flags = self.app.flags()
         for tid, spring in self.knob.items():        # opens showing the truth, unanimated
             spring.x = spring.target = 1.0 if flags.get(tid) else 0.0
@@ -111,6 +142,8 @@ class Menu:
         self.pointer = None
         self.alpha.target = 1.0
         self.rise.target = 1.0
+        if self.on_glass():
+            self.alpha.x = 1.0                       # the compositor fades it in: see hide
         Gtk4LayerShell.set_keyboard_mode(self.win, Gtk4LayerShell.KeyboardMode.EXCLUSIVE)
         self.win.set_visible(True)
         self._apply_input()
@@ -126,13 +159,32 @@ class Menu:
         if not self.shown:
             return
         self.shown = False
+        self.app.fx.set_lit(None)
+        if self.on_glass():
+            # The deck fades by drawing itself fainter, and the plugin's glass
+            # cannot follow that: it is there, whole, wherever the surface is
+            # not empty. So the writing went and the pane stayed — "a gray
+            # box that takes almost a second to disappear" (Dani, 2026-11-23).
+            # On glass the surface goes at once instead and the compositor
+            # fades what it showed, glass first (the `glass` command lifts
+            # this layer's no_anim while glass is on).
+            self.win.set_visible(False)
+            if self.tick_id:
+                self.area.remove_tick_callback(self.tick_id)
+                self.tick_id = 0
+            for spring in (self.alpha, self.rise):
+                spring.x = spring.target = 0.0
+                spring.v = 0.0
+            return
         self.alpha.target = 0.0
         self.rise.target = 0.0
         # Give the keyboard and the pointer back now, not when the fade ends.
         Gtk4LayerShell.set_keyboard_mode(self.win, Gtk4LayerShell.KeyboardMode.NONE)
         self._apply_input()
         self._ensure_tick()
-        self.app.fx.set_lit(None)
+
+    def on_glass(self):
+        return bool(glass.BIN and self.app.glass.on)
 
     def _apply_input(self):
         surface = self.win.get_surface()
@@ -272,7 +324,7 @@ class Menu:
         # The bar's material, like every other island. Outside it the surface
         # is fully transparent, so the layer rule blurs under the deck only.
         rounded(cr, x, y, pw, ph, 22 * u)
-        rgba(cr, "bg", 0.85 * a)
+        rgba(cr, "bg", (PANEL_GLASS if self.on_glass() else PANEL) * a)
         cr.fill_preserve()
         cr.set_line_width(1.0 * u)
         rgba(cr, "fg", 0.10 * a)
@@ -329,8 +381,7 @@ class Menu:
         if kind == "toggle":
             self.draw_switch(cr, bx - 34 * u, by - 18 * u, self.knob[tid].x, u, a)
         elif kind == "cycle":
-            options = list(common.FONTS) if tid == "font" else list(STYLES)
-            for k, option in enumerate(reversed(options)):
+            for k, option in enumerate(reversed(OPTIONS[tid])):
                 cr.new_path()
                 cx, cy = bx - 4 * u - k * 13 * u, by - 9 * u
                 if option == value:

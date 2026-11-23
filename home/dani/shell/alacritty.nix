@@ -1,4 +1,6 @@
 {
+  config,
+  lib,
   theme,
   ...
 }:
@@ -39,11 +41,18 @@ in
         # terminal now steps by exactly the same amount as everything else.
         # Blur is unaffected: decoration:blur:ignore_opacity is true, so the
         # glass behind the terminal does not depend on this value.
-        opacity = 1.0;
+        #
+        # The one exception is liquid glass (wm/glass.nix): where that is
+        # enabled the value is left unsaid here, because this file is read
+        # after its imports and would overrule the one the `glass` switch
+        # writes. Unsaid is 1.0, so with glass off nothing changes.
         padding = {
           x = 8;
           y = 8;
         };
+      }
+      // lib.optionalAttrs (!(config.programs.glass.enable or false)) {
+        opacity = 1.0;
       };
 
       colors = {

@@ -22,20 +22,25 @@ from gi.repository import Gio, GLib, GLibUnix, Gtk  # noqa: E402
 
 from cards import STYLES, Cards  # noqa: E402
 from fx import Fx  # noqa: E402
+from glass import Glass  # noqa: E402
+import hud  # noqa: E402
 from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
 from menu import Menu  # noqa: E402
 from pulse import Pulse  # noqa: E402
+from under import Under  # noqa: E402
 
 # Tier 2 under ADR-005: runtime choices live in ~/.local/state/theme/, never in
 # the Nix config. This file is only "which of the opt-in behaviours are on".
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
                      "theme", "reverie.json")
 
-USAGE = ("hud show|hide|pin|hold|release · cards on|off|style bare|island|banner|next · "
+USAGE = ("hud show|hide|pin|hold|release|look glass|wallpaper|desktop|next · "
+         "cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
-         "font caskaydia|inter · menu [show|hide] · "
+         "font caskaydia|inter · glass on|off|toggle|look liquid|frosted|clear|next · "
+         "menu [show|hide] · "
          "status · quit")
 
 
@@ -63,12 +68,16 @@ class Reverie(Gtk.Application):
         self.hud = Hud(self)
         self.cards = Cards(self)
         self.fx = Fx(self, self.pulse)
+        self.glass = Glass()
+        self.under = Under(self)         # glass for a fullscreen window (under.py)
         self.menu = Menu(self)
         self.hud.pulse = self.pulse
         self.hud.ledger = self.ledger
         self.cards.bar = self.hud.bar
         self.pulse.listeners += [self.ledger.on_event, self.cards.on_event, self.fx.on_event,
-                                 self.on_key_event]
+                                 self.under.on_event, self.on_key_event]
+        GLib.idle_add(self.under.check)  # one may be fullscreen already
+        self.watch_wallpaper()
         self.restore()
         self.listen()
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -92,6 +101,10 @@ class Reverie(Gtk.Application):
             self.fx.command("ripples", ["on"])
         common.set_font(state.get("font", "caskaydia"))
         self.hud.beats = bool(state.get("hold_repeats"))    # see Hud.hold
+        if state.get("hud_look") in hud.LOOKS:
+            self.hud.look = state["hud_look"]
+        elif state.get("hud_glass") is False:            # how it was saved before there were three
+            self.hud.look = "desktop"
         # Zen is a preference, so it survives a restart. Whether the bar is
         # really stopped is not something this file can know — a clean
         # shutdown brings it back, a crash leaves it down — so say it again.
@@ -110,6 +123,7 @@ class Reverie(Gtk.Application):
             "ripples": self.fx.ripples_on,
             "font": common.FONT["name"],
             "hold_repeats": self.hud.beats,
+            "hud_look": self.hud.look,
             "zen": self.zen,
             "zen_cards": self.zen_cards,
             # spotlight is a mode you enter, not a preference: never restored.
@@ -128,6 +142,7 @@ class Reverie(Gtk.Application):
         """Leave the desktop as it was found: nothing dimmed, the bar back."""
         self.pulse.restore()
         self.fx.close()                  # the spotlight is a child: it goes too
+        self.under.close()
         self.ledger.set_away(True)       # closes and saves the open block
         if self.zen:
             self.bar_running(True)       # the preference stays; the bar must not stay gone
@@ -144,7 +159,38 @@ class Reverie(Gtk.Application):
             "spotlight": self.fx.spot, "zen": self.zen, "cards": self.cards.enabled,
             "ripples": self.fx.ripples_on, "sound": self.pulse.sound, "fade": self.pulse.fade,
             "font": common.FONT["name"], "style": self.cards.style,
+            "glass": self.glass.on, "glass_look": self.glass.look, "hud_look": self.hud.look,
         }
+
+    # -- the wallpaper ------------------------------------------------------
+    def watch_wallpaper(self):
+        """Two things here are pictures OF the wallpaper: the HUD's backdrop
+        (hud.py) and the glass under a fullscreen window (under.py). Neither
+        is told when it changes — the wallpaper daemon says nothing — so this
+        watches the file the choice is written to (wm/wall-apply.nix; the
+        path comes with the package, REVERIE_WALLPAPER_STATE). Without it
+        both still catch up, later: the HUD on its next opening, the glass
+        when the window leaves fullscreen."""
+        path = os.environ.get("REVERIE_WALLPAPER_STATE")
+        self.wall_timer = 0
+        if not path:
+            return
+        try:
+            self.wall = Gio.File.new_for_path(path).monitor_file(Gio.FileMonitorFlags.NONE, None)
+        except GLib.Error:
+            return
+        self.wall.connect("changed", self.on_wallpaper)
+
+    def on_wallpaper(self, *_):
+        self.under.follow()              # through the crossfade, as it happens
+        if self.wall_timer:
+            GLib.source_remove(self.wall_timer)
+        self.wall_timer = GLib.timeout_add(1500, self.wallpaper_changed)
+
+    def wallpaper_changed(self):
+        self.wall_timer = 0
+        self.hud.prepare()               # once the daemon reports the new picture
+        return False
 
     # -- zen: kill the bar --------------------------------------------------
     def set_zen(self, want):
@@ -221,7 +267,8 @@ class Reverie(Gtk.Application):
             return USAGE
         head, rest = words[0], words[1:]
         if head == "hud":
-            self.menu.hide()             # one panel with the keyboard at a time
+            if rest[:1] != ["look"]:     # (a setting, and the menu is where it is set)
+                self.menu.hide()         # one panel with the keyboard at a time
             reply = self.hud.command(rest)
         elif head == "menu":
             if not self.menu.shown:
@@ -245,6 +292,11 @@ class Reverie(Gtk.Application):
                     want = names[(names.index(common.FONT["name"]) + 1) % len(names)]
                 common.set_font(want)
             reply = f"font {common.FONT['name']}"
+        elif head == "glass":
+            reply = self.glass.command(rest)     # its state is the command's, not ours
+            self.hud.prepare()                   # the HUD's backdrop follows the look
+            self.under.check()                   # and so does a fullscreen window's glass
+            return reply
         elif head == "zen":
             want = not self.zen if (not rest or rest[0] == "toggle") else rest[0] == "on"
             self.set_zen(want)

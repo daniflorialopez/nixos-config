@@ -22,6 +22,9 @@
 #              announce workspace changes instead, the HUD is a key-hold away.
 #   menu       $mod+R: a deck of tiles along the bottom, one per switch, lit
 #              when on. It stays open while you flip them (src/menu.py).
+#              Built with `glass` (pkgs/hyprglass), three of the tiles are
+#              liquid glass: on/off and its look, where reverie only passes
+#              the word on (src/glass.py), and what the HUD stands on.
 #   cards      a film title card on every workspace switch: the number,
 #              large, arriving from the direction you moved. Three looks
 #              (bare, island, banner), switchable live.
@@ -33,11 +36,19 @@
 #              ignored and come straight back on focus.
 #   undo       $mod+U reopens the window you just closed, on its workspace
 #              and (if it floated) in its place.
+#   under      with `glass`: a see-through window made fullscreen keeps the
+#              glass it had (src/under.py); nothing to switch.
 #
 #   reverie hud show|hide|pin|hold|release     reverie zen on|off|toggle
 #   reverie cards on|off|style <look>|next     reverie spotlight on|off|toggle
 #   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
+#   reverie glass on|off|toggle|look <name>    (only when built with `glass`)
+#   reverie hud look glass|wallpaper|desktop|next
+#                    what the HUD stands on while glass is on (the HUD look
+#                    tile): the plugin's glass of the wallpaper alone, the
+#                    wallpaper darkened by the HUD itself, or the desktop out
+#                    of focus as without glass
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
 #                    binds for this session only (`reverie untry` removes them)
@@ -65,6 +76,8 @@
   gtk4,
   pango,
   gdk-pixbuf,
+  webp-pixbuf-loader,
+  imagemagick,
   graphene,
   harfbuzz,
   gobject-introspection,
@@ -74,6 +87,15 @@
   # theme/metrics.nix), handed in by whoever calls this.
   theme,
   metrics,
+  # The `glass` command, where liquid glass is installed; null where it is not.
+  glass ? null,
+  # ... and the windows it makes see-through, a regex on their class
+  # (src/under.py lays glass under those when they are fullscreen).
+  glassWindows ? null,
+  # The file the chosen wallpaper is written to (wm/wall-apply.nix), where
+  # there is one: watched, so that what is drawn from the wallpaper — the
+  # HUD's backdrop, the glass under a fullscreen window — changes with it.
+  wallpaperState ? null,
 }:
 let
   python = python3.withPackages (p: [
@@ -94,6 +116,23 @@ let
     glib.out
     gtk4-layer-shell
   ];
+
+  # gdk-pixbuf reads PNG and JPEG by itself and every other format through
+  # loader modules, which it finds in one list. A user service's environment
+  # names no such list, so it used its own, and that has no WebP — while
+  # three of the wallpapers here are WebP. The HUD's picture of the wallpaper
+  # then could not be made, and without a word it stood on the desktop out
+  # of focus instead, whatever look was chosen (Dani, 2026-11-23: "they seem
+  # the same to me, and I can't see the wallpaper at all"). Its own list
+  # plus the WebP loader's, which was in the store already.
+  #
+  # That is the formats the wallpaper picker offers, read fast. It is not
+  # every format the wallpaper daemon can show: for the rest, whatever they
+  # are, the daemon asks ImageMagick (`_converted` in src/thumbs.py).
+  loaders = runCommand "reverie-pixbuf-loaders.cache" { } ''
+    cat ${gdk-pixbuf}/lib/gdk-pixbuf-2.0/*/loaders.cache \
+        ${webp-pixbuf-loader}/lib/gdk-pixbuf-2.0/*/*loaders.cache > $out
+  '';
 
   palette = writeText "reverie-palette.json" theme.json;
 
@@ -144,22 +183,35 @@ writeShellApplication {
   # hyprctl, pw-play, playerctl, nvidia-smi, nmcli and systemctl come
   # from the session PATH on purpose: each is optional at runtime (the
   # daemon checks) and naming them here would pin builds this host may not
-  # use. grim is named because the HUD's backdrop is built on it.
+  # use. grim is named because the HUD's backdrop is built on it, and
+  # ImageMagick because a wallpaper GdkPixbuf cannot read is read with it:
+  # found on the PATH or not, that would again be a picture missing without
+  # a word wherever it is not. (The wallpaper picker's thumbnails are made
+  # with the same one, wm/wallpaper.nix, so it costs nothing here.)
   runtimeInputs = [
     python
     socat
     coreutils
     grim
+    imagemagick
     jq
     util-linux
   ];
   text = ''
     export GI_TYPELIB_PATH="${typelibs}''${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
     export REVERIE_PALETTE="${palette}"
+    export GDK_PIXBUF_MODULE_FILE="${loaders}"
     # The HUD's chips are islands in the sense theme/metrics.nix defines
     # (0.85 bg, a 10% fg hairline, a floating rounded box), so they take the
     # island radius from there rather than restating 12.
     export REVERIE_ISLAND_RADIUS="${toString metrics.islandRadius}"
+    ${lib.optionalString (glass != null) ''export REVERIE_GLASS="${lib.getExe glass}"''}
+    ${lib.optionalString (
+      glass != null && glassWindows != null
+    ) "export REVERIE_GLASS_WINDOWS=${lib.escapeShellArg glassWindows}"}
+    ${lib.optionalString (
+      wallpaperState != null
+    ) "export REVERIE_WALLPAPER_STATE=${lib.escapeShellArg wallpaperState}"}
     sock="''${XDG_RUNTIME_DIR:-/tmp}/reverie.sock"
     self="$(readlink -f "$0")"
 

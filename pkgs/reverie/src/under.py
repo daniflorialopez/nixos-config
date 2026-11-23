@@ -1,0 +1,168 @@
+"""under: liquid glass for a fullscreen window.
+
+The plugin's glass behind a window is one of that window's decorations, and
+Hyprland draws no decorations for a window in real fullscreen. So a terminal
+with a see-through background, made fullscreen, had nothing behind it but the
+wallpaper, sharp: no glass at all (Dani, 2026-11-23: "I would like the
+full-screen apps to apply also the selected liquid glass style").
+
+What Hyprland does still draw under a fullscreen window is the `background`
+layer — that is where the wallpaper is. And the plugin will put its glass
+behind any layer surface it is told about. So, while a see-through window is
+fullscreen on a monitor, this maps one surface there: on `background`, above
+the wallpaper, the size of the monitor, and as good as empty. The plugin
+gives it the chosen look, of the wallpaper — which is all there is behind a
+fullscreen window — and the window shows it, edge of the screen to edge of
+the screen, as it would show its own glass edge to edge of itself.
+
+Only while it is needed. Left there under ordinary windows it would be a
+second pane behind each one's own; and under a game it would be work for
+nothing, so it is not for every fullscreen window but for the ones that are
+see-through — which, here, is what wm/glass.nix makes see-through.
+
+Two things about the plugin decide how (its GlassLayerSurface.cpp, v0.6.4):
+
+  - The window's own glass is gone in the very frame it turns fullscreen, so
+    every millisecond until the sheet is there is a window with the bare
+    wallpaper behind it. Hence no waiting on the `fullscreen` event and no
+    fade on the sheet (hyprland.nix): the first version took 35 ms to arrive
+    and 250 more to fade in, and that read as "the glass disappears for a
+    moment" (Dani, 2026-11-23).
+  - Behind a layer the plugin samples once and keeps the picture until a
+    window is focused, moved or made fullscreen, or the layer itself moves.
+    Under a fullscreen window none of that happens, so a new look or a new
+    wallpaper never reached the glass ("it doesn't change wallpapers until
+    having gone back to normal mode"). `again` is the one thing that makes it
+    look again without the sheet going away: the sheet changes size by a
+    pixel, off the bottom of the screen.
+"""
+
+import os
+import re
+import time
+
+import cairo
+
+import glass
+from common import hypr, layer_window
+
+from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
+
+# The windows that are see-through while glass is on, by class: wm/glass.nix
+# knows which (`programs.glass.windows`) and the package passes it on.
+SEE_THROUGH = re.compile(os.environ.get("REVERIE_GLASS_WINDOWS") or "^Alacritty$")
+# The events after which the answer may have changed. `fullscreen` and
+# `configreloaded` are not among them: they are answered at once (on_event).
+EVENTS = ("workspace", "workspacev2", "focusedmon", "focusedmonv2", "openwindow",
+          "closewindow", "movewindow", "movewindowv2", "activespecial", "monitoradded",
+          "monitorremoved")
+# A wallpaper change is a crossfade of about a second, starting a moment
+# after it was asked for (wm/wall-apply.nix). For this long, this often, the
+# glass is made to look again, so that it crosses over with the wallpaper.
+FOLLOW, STEP = 2.2, 33               # seconds, milliseconds
+
+
+class Under:
+    def __init__(self, app):
+        self.app = app
+        self.sheets = {}             # connector -> its window, made when first needed
+        self.pending = 0
+        self.following = 0           # the timer of a wallpaper change being followed
+        self.until = 0.0
+
+    def on_event(self, event, _data):
+        if not glass.BIN:
+            return
+        if event == "fullscreen":
+            self.check()             # now: see the top of the file
+        elif event == "configreloaded":
+            # Another look, or the switch — from the menu or by hand, it ends
+            # in a reload, and only after it does the plugin know.
+            self.app.glass.reload()
+            self.check()
+            self.again()
+        elif event in EVENTS and not self.pending:
+            # After Hyprland has finished with the event, and once for a burst.
+            self.pending = GLib.timeout_add(30, self._settled)
+
+    def _settled(self):
+        self.pending = 0
+        return self.check()
+
+    def check(self):
+        if self.pending:                 # asked directly: the timer has nothing left to do
+            GLib.source_remove(self.pending)
+            self.pending = 0
+        wanted = set()
+        if glass.BIN and self.app.glass.on:
+            showing = {}
+            for m in hypr("j/monitors") or []:
+                showing[m["activeWorkspace"]["id"]] = m["name"]
+                if m.get("specialWorkspace", {}).get("id"):
+                    showing[m["specialWorkspace"]["id"]] = m["name"]
+            for c in hypr("j/clients") or []:
+                if c.get("fullscreen") == 2 and SEE_THROUGH.search(c.get("class") or "") and \
+                        c.get("workspace", {}).get("id") in showing:
+                    wanted.add(showing[c["workspace"]["id"]])
+        for name in wanted - {n for n, w in self.sheets.items() if w.get_visible()}:
+            sheet = self.sheets.get(name) or self._sheet(name)
+            if sheet is not None:
+                sheet.set_visible(True)
+        for name, sheet in self.sheets.items():
+            if name not in wanted and sheet.get_visible():
+                sheet.set_visible(False)
+        return False
+
+    def again(self):
+        """Have the plugin sample again what is behind the sheets that are up."""
+        for sheet in self.sheets.values():
+            if sheet.get_visible():
+                edge = Gtk4LayerShell.Edge.BOTTOM
+                Gtk4LayerShell.set_margin(sheet, edge,
+                                          0 if Gtk4LayerShell.get_margin(sheet, edge) else -1)
+
+    def follow(self):
+        """The wallpaper is being changed: keep the glass with it."""
+        self.until = time.monotonic() + FOLLOW
+        if not self.following and any(s.get_visible() for s in self.sheets.values()):
+            self.following = GLib.timeout_add(STEP, self._follow)
+
+    def _follow(self):
+        if time.monotonic() > self.until or \
+                not any(s.get_visible() for s in self.sheets.values()):
+            self.following = 0
+            return False
+        self.again()
+        return True
+
+    def _sheet(self, name):
+        monitors = Gdk.Display.get_default().get_monitors()
+        mon = next((m for m in monitors if m.get_connector() == name), None)
+        if mon is None:
+            return None
+        win = layer_window(self.app, "reverie-glass-under", layer=Gtk4LayerShell.Layer.BACKGROUND)
+        Gtk4LayerShell.set_monitor(win, mon)
+        area = Gtk.DrawingArea()
+        area.set_draw_func(self.draw)
+        win.set_child(area)
+        win.connect("map", self._click_through)
+        self.sheets[name] = win
+        return win
+
+    @staticmethod
+    def _click_through(win):
+        surface = win.get_surface()
+        if surface is not None:
+            surface.set_input_region(cairo.Region())
+
+    @staticmethod
+    def draw(_area, cr, _w, _h):
+        # Not nothing: the plugin puts glass where a surface is not empty.
+        # But the least there is — two steps of 255 — so that what is seen
+        # is the glass, as dark as the window's own and no darker.
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.008)
+        cr.paint()
+
+    def close(self):
+        for sheet in self.sheets.values():
+            sheet.set_visible(False)

@@ -215,7 +215,7 @@ What can be changed safely between power-on and login, and what cannot:
   splash is undone from the very menu option 1 hides.
 - Windows lock/sign-in picture: set in Windows Settings, outside this repo.
 
-## 5d. Reverie rice — experimental, branch `rice/reverie`, NOT merged
+## 5d. Reverie rice — merged 2026-11-22 (8634e2f); liquid glass — merged 2026-11-23 after Dani's "I love it now"
 
 Second "craziest rice" experiment (2026-11-18). Unrelated to `rice/overdrive`
 (which has its own entry on its own branch). One module,
@@ -592,16 +592,259 @@ HUD rather than the current one."*
     and it is five months behind: two crash fixes came later (one on
     unloading, one for "a huge window, bar or menu"). A plugin that crashes
     takes the session with it.
-  - **Proposed to Dani, waiting for his go** (it is his mobile data and his
-    open windows): build v0.6.4, load it by hand with `hyprctl plugin load`
-    as a trial that is gone at the next login, on windows only at first;
-    declare it (behind an option, off by default) only if he likes it.
-    Reverie applied first, so that the two are not tried at once.
-- *Applying reverie:* a dry run of the rebuild from this branch builds 33
-  small local derivations (config files, units, completions) and fetches
-  nothing. Still to be run by Dani:
-  `nix run .#reverie -- untry`, then
-  `sudo nixos-rebuild test --flake .#legionix`.
+  - **Dani: "now bring hyprglass v0.6.4".** Done on `feat/liquid-glass`
+    (off master), nothing loaded into his session yet:
+    - `fddc2c0` — `pkgs/hyprglass/package.nix`, `nix build .#hyprglass`
+      (mkHyprlandPlugin, so always against the hosts' Hyprland).
+    - `b5644af` — `pkgs/hyprglass/trial.nix`, the `glass` command:
+      `nix run .#glass -- on [preset]`, `preset <name>`, `off`, `status`.
+      Runtime only; `off`, a logout or a reboot removes all of it.
+  - **What a nested Hyprland showed** (the system's binary, this desktop's
+    `general`/`decoration` blocks, the real wallpaper, Alacritty, a copy of
+    the bar — nothing of the real session touched):
+    - It loads, draws, unloads and reloads without a crash; so does layer
+      glass on the bar.
+    - **Hyprland's own blur covers it completely.** With blur on, loading
+      the plugin changes not one pixel. Blur has to be off for the window
+      (`no_blur true` rule / `setprop … no_blur 1`); the layers can keep it.
+    - **It only shows through transparency, and this desktop has little:**
+      windows are 88–94 % opaque, the bar's islands nearly solid. On the
+      windows as they are, every preset looks alike. The trial therefore
+      gives the open Alacritty terminals a see-through background
+      (`alacritty msg config window.opacity=0.55`; text stays solid).
+      **For glass to stay, something has to become translucent on purpose**
+      — the terminal's background, and whichever of bar / launcher /
+      notifications / reverie's menu should carry it. That is a theming
+      decision for Dani, after he has seen the trial.
+    - Presets: `glass` is the liquid one (wide refraction band with colour
+      fringes at the edges — may be too much for the palette), `subtle` and
+      `default` frosted, `clear` a plain plate, `high_contrast` dark.
+    - A change of preset repaints only partly until the windows are
+      touched; the command re-sets the window property to force it.
+    - The plugin hooks Hyprland's layer rendering as soon as it is loaded,
+      whether layer glass is on or not.
+  - **Not tested:** the real session — on the NVIDIA machine's own outputs,
+    with reverie's spotlight/HUD/cards on screen, with a game, and what it
+    costs per frame. A plugin crash ends the session.
+  - **Dani tried the trial (2026-11-22):** "for sure they are a treat to
+    the eyes", not sure which look he likes most; wants "as much glass as
+    reasonably possible", as proper switches, and suggested the two glass
+    switches take the place of reverie's Font and Demo tiles so the deck
+    stays symmetrical. Done, three commits, nothing applied yet:
+    - `48c3172` — `programs.glass.enable` (`home/dani/wm/glass.nix`,
+      legionix) + `glass on|off|toggle|look liquid|frosted|clear|next`.
+      The choice is runtime state (`~/.local/state/theme/glass.json`);
+      the command writes `glass.conf`, which the Hyprland config sources
+      last and which declares the plugin when on — so Hyprland loads and
+      unloads it itself, and a reload or a login cannot lose it — and
+      `glass.toml`, which Alacritty imports (background 0.65 while on).
+      The trial command (`trial.nix`) is gone; this replaced it.
+    - `d12188b` — the bar's three islands and the swayosd pill: their
+      background is `programs.glass.islandBackground` (0.85 off, 0.30 on,
+      from `glass.css`), and the plugin's layer glass is on for them.
+    - `274ce47` — reverie's menu: tile 7 Glass, tile 8 Glass look, where
+      Font and Demo were (both still commands). Only when built with
+      `glass`.
+  - **How it was tested:** all of it in a nested Hyprland running the
+    real generated config, with its own state directory, a copy of the
+    bar and a second reverie daemon. The complete legionix system builds
+    from the branch. **Never run in the real session**, and the swayosd
+    pill has not been seen on screen at all (its stylesheet parses).
+  - **Known limits of what is there:**
+    - One look for everything. The idea of a refracting look for small
+      floating pieces and a frosted one behind text is not built.
+    - Only Alacritty turns see-through; every other window stays 88–94 %
+      solid and shows almost no glass. That is as intended.
+    - With glass on, the terminal breaks the "Hyprland owns all window
+      opacity" rule (`shell/alacritty.nix`) on purpose.
+    - Nothing switches glass off for a game. Fullscreen windows draw no
+      decorations, so the glass itself should cost nothing there, but the
+      plugin's hook stays in the render path and none of this is
+      measured. A GameMode hook calling `glass off` is the obvious fix if
+      it shows in the eFootball numbers.
+    - If the plugin crashes Hyprland: it restarts in safe mode (no config,
+      so no plugin). `glass off` from there or a TTY, then load the
+      config. Read from the binary's own text, never tried.
+    - A rebuild that changes Hyprland builds a new plugin; the running
+      (old) Hyprland will refuse it until the next login.
+  - **Dani applied it (2026-11-22): "It looks great now. Do the next
+    ones."** (Super+R was dead for a moment first — my test compositor had
+    overwritten the session's display variables in systemd; fixed, and the
+    tests now run sealed off in their own runtime directory.) Done since,
+    committed (applied since):
+    - `f86ccd3` — the launcher (walker): its box is `popup_bg` by name,
+      0.90 off, 0.50 on, 0.72 under the clear look
+      (`programs.glass.popupAlpha`/`popupAlphaClear`); the plugin gets the
+      `walker` namespace with a mask threshold of 0.4 so the box's shadow
+      gets no glass. Launcher, window switcher, emoji, clipboard, the
+      Super+S board and the wallpaper picker share the box; the power and
+      capture menus keep their own 0.97 and stay solid, on purpose.
+    - `291e4e4` — reverie's menu deck: namespace `reverie-menu`, and the
+      deck paints itself 0.50 (0.72 under clear) when glass is on.
+    - `c3f750b` — fix: the command lost track of which state files it had
+      changed (writes through a pipe), so walker was not restarted when
+      the look crossed into or out of clear; and `glass refresh` (run at
+      every activation) now reloads Hyprland when the rules file changed,
+      so a rebuild that adds a surface takes effect without a toggle.
+  - **How these were tested:** the launcher with a stand-in layer surface
+    named `walker` wearing the real new stylesheet (the real walker will
+    not run as a second copy in a nested Hyprland — it panics there with
+    the old stylesheet too); the deck with a second reverie daemon. All
+    four launcher stylesheets parse under GTK4. **The real launcher has
+    not been seen with glass.**
+  - **Known limits added by these:**
+    - The plugin samples what is behind a layer once and keeps it until a
+      window is focused or moved or the layer reopens. Stepping the look
+      changes windows at once; the bar's islands and an open deck catch
+      up at the next change of focus / the next opening.
+    - If only the colours in `glass.css` change with a new version of the
+      command (not the units that read them), waybar and swayosd keep the
+      old ones until the next toggle.
+  - **Dani, after seeing launcher and deck (2026-11-22, night):** they
+    "should be quite darker than the normal selected glass, perhaps a
+    separate type of glass"; a fullscreen window "completely ignores the
+    liquid glass look and it looks see-through completely"; and "I wonder
+    if the HUD couldn't get a glass look that doesn't look bad." Done,
+    committed (applied since):
+    - `5f998c8` — a glass of their own for the panels that are read: the
+      plugin's preset per layer namespace, `menu` (its subtle glass,
+      blur 1.6, brightness 0.55) for `walker` and `reverie-menu`, whatever
+      look is chosen for the rest; box and deck 0.60 solid over it. The
+      clear-look special case (`popupAlphaClear`, the deck's 0.72) is gone
+      again, since this glass always blurs.
+    - `9dda57a` — fullscreen: Hyprland draws no decorations for a truly
+      fullscreen window and the plugin's glass is one, so with blur off a
+      see-through terminal was a hole onto the wallpaper. Real fullscreen
+      (`fullscreen_state_internal 2`) gets Hyprland's blur back. It is
+      frosted, not glass, and brighter than the windowed terminal (blur
+      cannot dim). **If Dani would rather have fullscreen solid:**
+      `force_rgbx true` on the same match instead (the terminal's
+      background then comes out darker than its palette colour).
+      Oddity found on the way: only a terminal opened while glass is on is
+      see-through in fullscreen; one opened before stays solid there.
+  - **The HUD and glass.** First three experiments with the HUD's one
+    surface handed to the plugin (glass as its backdrop; glass only behind
+    cards and chips; backdrop glass with refraction): none read as glass.
+    Why, from the plugin's source: on a layer the glass is one rectangle,
+    the surface's own box, and the surface's alpha only cuts holes in it —
+    and the HUD is opaque pictures and thin type on one dark surface.
+    Dani: "Yes, prototype the two-layer HUD".
+    - **Built (`46a4b29`), applied, and rejected.** A glass tray under
+      the workspace cards and glass pills under the chips, on surfaces of
+      their own, once the panel had arrived. Dani: "I like the glass
+      features but I don't like the HUD look now." Reverted (`355d0c0`).
+      Do not bring pieces of glass back onto the panel.
+    - **What he asked for instead, built `5927ee9`, applied 2026-11-23:**
+      "a dark version of liquid glass with the current wallpaper without
+      showing what apps are open below the HUD." With glass on, the
+      panel's backdrop is that monitor's wallpaper — darkened, and as far
+      out of focus as the chosen look (sharp under clear, soft under
+      liquid, hard under frosted) — instead of the desktop out of focus.
+      Painted by the panel itself (the plugin can only put behind a
+      surface what is behind it: the windows). The picture is kept and
+      made ahead, so the panel comes up on it at once.
+      `reverie hud glass off` goes back to the capture; without glass it
+      is the capture anyway. The darkness per look is `PANE` in
+      `src/hud.py`, three numbers to turn if he wants it darker or
+      lighter.
+  - **Fullscreen and the selected look, built `b59616c`, applied
+    2026-11-23.** Dani: "I would like the full-screen apps to apply also the
+    selected liquid glass style, now they don't have that at all" (the
+    blur given back in `9dda57a` is not the look). Real glass for a
+    fullscreen window after all, by another road: while a see-through
+    window (Alacritty) is fullscreen, reverie maps an all-but-empty
+    surface on the `background` layer above the wallpaper
+    (`src/under.py`), and the plugin makes the chosen glass of it.
+    `programs.glass.fullscreen` = "underlay" where reverie is enabled,
+    "blur" elsewhere. Not tested on two monitors. Nothing is put under a
+    game or any other opaque fullscreen window.
+  - **Housekeeping noticed 2026-11-23:** `nh-clean` runs weekly (Monday
+    00:00) and removes build-only tools; the first rebuild after it
+    downloads about 4 MiB (ShellCheck, stdenv hooks) and regenerates a
+    couple of hundred small files. Already done for this branch's
+    current state.
+  - **Second round the same day: Dani applied it and reported five
+    things.** Four were faults, fixed one commit each; all measured and
+    seen in the sealed nested Hyprland only.
+    - *"When I make an app fullscreen, the glass disappears for a
+      moment."* The sheet took 35 ms to arrive and 250 to fade in. Now at
+      once and whole: 1-5 ms, `no_anim` (`85ef125`).
+    - *"A difference between the colour intensity"* between fullscreen
+      and windowed. Hyprland's `fullscreen_opacity` (1.0) against the
+      0.94 of a window. The see-through windows keep 0.94 in fullscreen
+      while glass is on; which windows those are is one option now,
+      `programs.glass.windows`, and it includes the scratchpad terminals
+      (`995f300`).
+    - *Fullscreen glass "doesn't change to its selected glass mode right
+      away, or it doesn't change wallpapers".* The plugin keeps its sample
+      of what is behind a layer. Reverie now makes it sample again (the
+      sheet changes size by a pixel) after every config reload and through
+      a wallpaper change, which it learns of by watching
+      `~/.local/state/wallpaper/current` (`dcd95fa`). The HUD's backdrop is
+      remade then too, so the "old picture for a moment" limit is gone.
+    - *The Super+R menu "remains as a gray box that takes almost a second
+      to disappear".* The deck faded itself and the dark glass behind it
+      could not follow. On glass it unmaps at once and the compositor does
+      the fade (`5adbbb5`).
+    - *"Could the HUD benefit from adding liquid glass … on the background
+      wallpaper, and only on the wallpaper?"* Answered with a picture;
+      Dani: "Add the real glass HUD as a third choice, you could add it to
+      the Reverie menu … instead of the Fade option." **Built** (`575d548`,
+      `29834b0`): `reverie hud look glass|wallpaper|
+      desktop`, and a **HUD look** tile where Fade was (Fade was unwanted
+      since 2026-11-20; `reverie pulse fade on` still works). Under
+      `glass` the panel is see-through over a surface of its own that
+      shows only the wallpaper, and the plugin makes the chosen look of
+      it. Default stays `wallpaper`. Glass and Glass look moved one key
+      left (6, 7; HUD look is 8). Darkness per look: `WALL` in
+      `src/hud.py`.
+    - **Applied, and "they seem the same to me, and I can't see the
+      wallpaper at all".** His wallpaper is a WebP and the daemon could
+      not read WebP (gdk-pixbuf loaders; I had only tried JPEG and PNG,
+      from a shell), so `glass` and `wallpaper` both fell back silently
+      to `desktop` — since `5927ee9`. Fixed `8eb5bea`: the wrapper names a
+      loader list with WebP in it, and an unreadable wallpaper is logged.
+      **From now on: test with his current wallpaper and with the
+      service's environment (`env -i`, its PATH), not mine.**
+    - **"If now every type of file can be read, we are ready to wrap it
+      up."** It was not: nine of twenty formats tried were refused (SVG,
+      AVIF, JPEG XL, HEIC, QOI, DDS, EXR, HDR, farbfeld), and `wall-set`
+      takes any file. Now (`41a0490`) what GdkPixbuf refuses goes to
+      ImageMagick, named in the wrapper; all twenty read in the
+      service's bare environment, and the whole library. *Not done:*
+      asking awww which of those it can show, and opening the HUD over
+      one — the test compositor would not start that evening ("GBM:
+      Failed to allocate a GBM buffer: bo null", cause not looked for;
+      it had worked three hours earlier).
+  - **"I wouldn't mind to add it to all the appropriate things."**
+    - *Done:* notifications, on the dark `menu` glass, 0.60 solid
+      (`1e6ffbb`); they follow the switch without a restart.
+    - *Done at his word ("add glass to the power and capture menus too",
+      `3e64da6`):* their box is 0.70 solid while glass is on, 0.97 as
+      before otherwise (`confirm_bg`, `programs.glass.confirmAlpha`). Not
+      seen with the real launcher; seen with a stand-in.
+    - *Offered, not done:* the `island` and `banner` title cards.
+    - *Not appropriate:* browser, editor and other windows that are read
+      all day; the bare title card (frozen); spotlight, mouse grid,
+      screenshot tools; tooltips and context menus (the plugin does not
+      do popups). *Not possible:* lock screen, login screen.
+  - **Known limits now:** nothing switches glass off for games; the
+    underlay is untested on two monitors; following a wallpaper change
+    costs about 0.4 s of CPU in the daemon at 1280x800 (more on the real
+    screen), only while a terminal is fullscreen; the real launcher and
+    the volume pill have still not been seen with glass by me.
+  - **Dani's verdict, 2026-11-23, on the rebuilt branch (`6e6a45e`):
+    "I love it now."** `feat/liquid-glass` is merged into master (not
+    pushed). What he ran was `nixos-rebuild test`; the last fix
+    (`41a0490`, wallpaper formats) came after it. **Still his to run:**
+    `sudo nixos-rebuild switch --flake .#legionix` (makes it the boot
+    default and brings that fix; glass can stay on), and `git push`.
+- *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
+  confirmed "all the keybindings work as intended"; `rice/reverie` is merged
+  into master (8634e2f, not pushed). **The running system is not yet the
+  boot default** — still to be run by Dani:
+  `sudo nixos-rebuild switch --flake .#legionix`.
+  (zen is on in reverie's saved state, which is why the bar is stopped.)
 
 **Tested (against the built package, nothing rebuilt):**
 - Builds offline (shellcheck included); all three hosts evaluate; statix and
@@ -697,9 +940,8 @@ once more ideas have been collected — not now):
    band, as a toggle.
 2. *Glow ring* — the screen edge as an ambient channel: position = source,
    colour = severity, steady glow for states, one swell for events.
-3. *Liquid glass on windows* — per-window edge refraction via the `hyprglass`
-   plugin; needs a build against the exact Hyprland version. Looked into on
-   2026-11-22 (eighth round, above): wait for the 26.11 bump. (Reverie's HUD had cairo lenses imitating
+3. *Liquid glass on windows* — **done**, 2026-11-23 (`pkgs/hyprglass`, the
+   `glass` command, above; it did not have to wait for 26.11). (Reverie's HUD had cairo lenses imitating
    this on a screenshot; Dani found them "odd and out of place" and they were
    removed. That verdict is about the imitation, not about glass on windows.)
 

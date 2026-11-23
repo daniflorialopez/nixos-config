@@ -205,17 +205,67 @@ def wallpapers():
             re.finditer(r"(\S+): \d+x\d+.*?displaying: image: (.+)$", text, re.MULTILINE)}
 
 
+def _ppm(raw):
+    """A binary PPM, which is what grim and ImageMagick are asked for, as a
+    pixbuf; None if it is not one."""
+    magic, size, depth, rgb = raw.split(b"\n", 3)
+    w, h = (int(n) for n in size.split())
+    if magic != b"P6" or depth != b"255" or len(rgb) < w * h * 3:
+        return None
+    return GdkPixbuf.Pixbuf.new_from_bytes(
+        GLib.Bytes.new(rgb), GdkPixbuf.Colorspace.RGB, False, 8, w, h, w * 3)
+
+
+def _converted(path, width, height):
+    """A picture GdkPixbuf has no loader for, by way of ImageMagick: at least
+    `width` x `height`, on black where it is see-through. Raises ValueError
+    with the reason if that does not work either.
+
+    The wallpaper daemon reads more formats than GdkPixbuf has loaders for
+    here (SVG for one: awww carries a renderer for it), and a list of
+    loaders kept to match it is one that falls behind without a word.
+    ImageMagick reads those and whatever comes next, and is asked only when
+    GdkPixbuf has said no, so the usual wallpaper costs nothing more.
+
+      -size      a drawing (SVG) is drawn at that size, not drawn small and
+                 then enlarged; a picture made of pixels ignores it
+      [0]        the first frame of something animated
+      -strip     or a comment in the file lands in the header of the PPM
+    """
+    tool = shutil.which("magick")
+    if tool is None:
+        raise ValueError("GdkPixbuf has no loader for it, and there is no `magick` to ask")
+    size = f"{width}x{height}"
+    done = subprocess.run(
+        [tool, "-size", size, f"{path}[0]", "-strip",
+         "-background", "black", "-alpha", "remove", "-alpha", "off",
+         "-colorspace", "sRGB", "-resize", f"{size}^", "-depth", "8", "ppm:-"],
+        capture_output=True, timeout=10)
+    full = _ppm(done.stdout) if done.returncode == 0 and done.stdout else None
+    if full is None:
+        said = done.stderr.decode(errors="replace").strip().splitlines()
+        raise ValueError(said[-1] if said else "ImageMagick made nothing of it")
+    return full
+
+
 def wallpaper(path, width, height):
     """The wallpaper as it sits on the monitor (scaled to fill, centred),
     `width` x `height`, or None."""
     try:
-        full = GdkPixbuf.Pixbuf.new_from_file(path)
+        try:
+            full = GdkPixbuf.Pixbuf.new_from_file(path)
+        except GLib.Error:
+            full = _converted(path, width, height)
         scale = max(width / full.get_width(), height / full.get_height())
         w = max(width, round(full.get_width() * scale))
         h = max(height, round(full.get_height() * scale))
         small = full.scale_simple(w, h, GdkPixbuf.InterpType.BILINEAR)
         return _surface(small.new_subpixbuf((w - width) // 2, (h - height) // 2, width, height))
-    except (GLib.Error, cairo.Error, MemoryError, ValueError):
+    except (GLib.Error, cairo.Error, MemoryError, ValueError, OSError,
+            subprocess.SubprocessError) as exc:
+        # Said out loud (the journal): whatever needed this picture goes on
+        # without it, and "without it" looks like nothing having happened.
+        print(f"reverie: cannot read the wallpaper {path}: {exc}", flush=True)
         return None
 
 
@@ -224,12 +274,10 @@ def picture(identifier, width, height):
     try:
         raw = subprocess.run(["grim", "-t", "ppm", "-T", identifier, "-"],
                              capture_output=True, timeout=2).stdout
-        magic, size, depth, rgb = raw.split(b"\n", 3)
-        w, h = (int(n) for n in size.split())
-        if magic != b"P6" or depth != b"255" or len(rgb) < w * h * 3:
+        full = _ppm(raw)
+        if full is None:
             return None
-        full = GdkPixbuf.Pixbuf.new_from_bytes(
-            GLib.Bytes.new(rgb), GdkPixbuf.Colorspace.RGB, False, 8, w, h, w * 3)
+        w, h = full.get_width(), full.get_height()
         width, height = max(1, min(w, width)), max(1, min(h, height))
         small = full.scale_simple(width, height, GdkPixbuf.InterpType.BILINEAR)
         return _surface(small)
