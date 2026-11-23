@@ -159,7 +159,7 @@ class Reverie(Gtk.Application):
             "spotlight": self.fx.spot, "zen": self.zen, "cards": self.cards.enabled,
             "ripples": self.fx.ripples_on, "sound": self.pulse.sound, "fade": self.pulse.fade,
             "font": common.FONT["name"], "style": self.cards.style,
-            "glass": self.glass.on, "glass_look": self.glass.look,
+            "glass": self.glass.on, "glass_look": self.glass.look, "hud_look": self.hud.look,
         }
 
     # -- the wallpaper ------------------------------------------------------
@@ -267,7 +267,8 @@ class Reverie(Gtk.Application):
             return USAGE
         head, rest = words[0], words[1:]
         if head == "hud":
-            self.menu.hide()             # one panel with the keyboard at a time
+            if rest[:1] != ["look"]:     # (a setting, and the menu is where it is set)
+                self.menu.hide()         # one panel with the keyboard at a time
             reply = self.hud.command(rest)
         elif head == "menu":
             if not self.menu.shown:

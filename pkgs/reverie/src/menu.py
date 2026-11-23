@@ -33,6 +33,7 @@ import cairo
 
 import common
 import glass
+import hud
 from cards import STYLES
 from common import (EFFECT, FONT, SPATIAL, Spring, focused_output, layer_window, rgba,
                     rounded, text)
@@ -60,20 +61,24 @@ TILES = [
     ("cards", "Title cards", "toggle", "name each workspace"),
     ("ripples", "Ripples", "toggle", "a ring on open, close"),
     ("sound", "Sound", "toggle", "a note per workspace"),
-    ("fade", "Fade", "toggle", "idle windows dim"),
 ] + ([
+    # With liquid glass, its three tiles stand where Fade (unwanted since
+    # 2026-11-20, still `reverie pulse fade on`), Font and Demo were.
     ("glass", "Glass", "toggle", "see-through, refracting"),
     ("glass_look", "Glass look", "cycle", ""),
+    ("hud_look", "HUD look", "cycle", ""),
     ("style", "Card look", "cycle", ""),
     ("undo", "Reopen", "action", "nothing closed yet"),
 ] if glass.BIN else [
+    ("fade", "Fade", "toggle", "idle windows dim"),
     ("font", "Font", "cycle", ""),
     ("style", "Card look", "cycle", ""),
     ("undo", "Reopen", "action", "nothing closed yet"),
     ("demo", "Demo", "action", "a 30 s tour"),
 ])
 # What a cycle tile steps through, for its row of dots.
-OPTIONS = {"font": tuple(common.FONTS), "style": tuple(STYLES), "glass_look": glass.LOOKS}
+OPTIONS = {"font": tuple(common.FONTS), "style": tuple(STYLES), "glass_look": glass.LOOKS,
+           "hud_look": hud.LOOKS}
 COMMANDS = {
     "spotlight": ["spotlight", "toggle"],
     "zen": ["zen", "toggle"],
@@ -84,6 +89,7 @@ COMMANDS = {
     "font": ["font", "toggle"],
     "glass": ["glass", "toggle"],
     "glass_look": ["glass", "look", "next"],
+    "hud_look": ["hud", "look", "next"],
     "style": ["cards", "style", "next"],
     "undo": ["undo"],
 }
