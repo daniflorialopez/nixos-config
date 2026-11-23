@@ -787,12 +787,17 @@ HUD rather than the current one."*
       could not follow. On glass it unmaps at once and the compositor does
       the fade (`5adbbb5`).
     - *"Could the HUD benefit from adding liquid glass … on the background
-      wallpaper, and only on the wallpaper?"* Answered with a picture, not
-      built: the plugin's real glass behind the panel differs from what
-      the panel paints itself only under the liquid look (the screen edge
-      bends like a lens). It would take a second, opaque surface with the
-      wallpaper under the panel. **His call**; preview in the session
-      scratchpad (`hud-real-glass-preview.png`).
+      wallpaper, and only on the wallpaper?"* Answered with a picture;
+      Dani: "Add the real glass HUD as a third choice, you could add it to
+      the Reverie menu … instead of the Fade option." **Built** (`575d548`,
+      `29834b0`), not applied yet: `reverie hud look glass|wallpaper|
+      desktop`, and a **HUD look** tile where Fade was (Fade was unwanted
+      since 2026-11-20; `reverie pulse fade on` still works). Under
+      `glass` the panel is see-through over a surface of its own that
+      shows only the wallpaper, and the plugin makes the chosen look of
+      it. Default stays `wallpaper`. Glass and Glass look moved one key
+      left (6, 7; HUD look is 8). Darkness per look: `WALL` in
+      `src/hud.py`.
   - **"I wouldn't mind to add it to all the appropriate things."**
     - *Done:* notifications, on the dark `menu` glass, 0.60 solid
       (`1e6ffbb`); they follow the switch without a restart.
@@ -800,7 +805,7 @@ HUD rather than the current one."*
       menus (0.97 solid on purpose: a destructive question must stay
       legible — over the dark glass 0.75 would do, but I cannot see the
       real launcher in the test compositor); the `island` and `banner`
-      title cards; the HUD as above.
+      title cards.
     - *Not appropriate:* browser, editor and other windows that are read
       all day; the bare title card (frozen); spotlight, mouse grid,
       screenshot tools; tooltips and context menus (the plugin does not
@@ -811,8 +816,10 @@ HUD rather than the current one."*
     screen), only while a terminal is fullscreen; the real launcher and
     the volume pill have still not been seen with glass by me.
   - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
-    from `feat/liquid-glass` (glass can stay on), then the five things
-    above, and a notification. Merge only after he has seen it.
+    from `feat/liquid-glass` (glass can stay on), then Super+R, tile 8
+    until it says `glass`, Super+G. The second round's fixes he has
+    applied (running system = that build); his verdict on them is not in
+    yet. Merge only after he has seen it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
