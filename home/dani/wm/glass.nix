@@ -87,6 +87,18 @@ in
       description = "Alacritty's background opacity while glass is on; off it is 1.0.";
     };
 
+    windows = lib.mkOption {
+      type = lib.types.str;
+      default = "^(Alacritty|scratch-.*)$";
+      description = ''
+        The windows that are see-through while glass is on, as a regex on
+        their class: Alacritty, under its own name and under the scratchpads'
+        (wm/hyprland.nix). Said once, here, for the two things that have to
+        know: the rule that keeps their opacity in fullscreen, and reverie,
+        which lays glass under them there.
+      '';
+    };
+
     command = lib.mkOption {
       type = lib.types.package;
       readOnly = true;
@@ -122,7 +134,11 @@ in
           inherit islandOff popupOff;
           islandOn = theme.cssRgba "bg" cfg.islandAlpha;
           popupOn = theme.cssRgba "bgDeep" cfg.popupAlpha;
-          inherit (cfg) terminalOpacity fullscreen;
+          inherit (cfg) terminalOpacity fullscreen windows;
+          windowOpacity = toString (
+            lib.attrByPath [ "decoration" "active_opacity" ] 1.0
+              config.wayland.windowManager.hyprland.settings
+          );
         };
         islandBackground = fromState "@define-color bg_alpha ${islandOff};";
         popupBackground = fromState "@define-color popup_bg ${popupOff};";

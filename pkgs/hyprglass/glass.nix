@@ -31,6 +31,15 @@
 #     anywhere else the window gets Hyprland's blur back ("blur").
 #   - Glass shows only through what is transparent, and by design almost
 #     nothing here is: hence the two other files.
+#   - In real fullscreen Hyprland draws a window at `fullscreen_opacity`
+#     (1.0 here), not at the opacity it has as a window (0.94). On a
+#     see-through window that is a visible step: less of the glass comes
+#     through its background and its text is brighter ("between full-screen
+#     and normal mode there is a difference between the colour intensity",
+#     Dani, 2026-11-23). So the windows named in `windows` keep, fullscreen,
+#     the opacity they have as windows. Measured: the same spots of the
+#     same terminal, windowed and fullscreen, are then within one step of
+#     255 of each other; without the rule, up to four.
 #   - A preset of our own, named in `default_preset`, earns a warning toast
 #     at every load: the plugin checks the name before it has read the
 #     definition. Redefining a setting of one of ITS presets under its own
@@ -59,6 +68,10 @@
   # reverie-glass-under there for the plugin to make glass of.
   fullscreen ? "blur",
   terminalOpacity ? "0.65",
+  # The see-through windows (a Hyprland regex on the class) and the opacity
+  # Hyprland gives a focused window: together, the fullscreen rule above.
+  windows ? null,
+  windowOpacity ? null,
 }:
 
 writeShellApplication {
@@ -124,6 +137,9 @@ writeShellApplication {
     ${lib.optionalString (
       fullscreen == "blur"
     ) "windowrule = no_blur false, match:fullscreen_state_internal 2"}
+    ${lib.optionalString (
+      windows != null && windowOpacity != null
+    ) "windowrule = opacity 1.0 1.0 ${windowOpacity}, match:class ${windows}"}
     plugin:hyprglass {
         default_theme = dark
         default_preset = $(preset)

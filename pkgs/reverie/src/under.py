@@ -28,6 +28,9 @@ more to fade in, and that read as "the glass disappears for a moment" (Dani,
 2026-11-23).
 """
 
+import os
+import re
+
 import cairo
 
 import glass
@@ -35,9 +38,9 @@ from common import hypr, layer_window
 
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
 
-# The windows that are see-through while glass is on (wm/glass.nix: the
-# terminal's background opacity).
-SEE_THROUGH = ("Alacritty",)
+# The windows that are see-through while glass is on, by class: wm/glass.nix
+# knows which (`programs.glass.windows`) and the package passes it on.
+SEE_THROUGH = re.compile(os.environ.get("REVERIE_GLASS_WINDOWS") or "^Alacritty$")
 # The events after which the answer may have changed. `fullscreen` is not
 # among them: it is answered at once (on_event).
 EVENTS = ("workspace", "workspacev2", "focusedmon", "focusedmonv2", "openwindow",
@@ -70,9 +73,13 @@ class Under:
             self.pending = 0
         wanted = set()
         if glass.BIN and self.app.glass.on:
-            showing = {m["activeWorkspace"]["id"]: m["name"] for m in hypr("j/monitors") or []}
+            showing = {}
+            for m in hypr("j/monitors") or []:
+                showing[m["activeWorkspace"]["id"]] = m["name"]
+                if m.get("specialWorkspace", {}).get("id"):
+                    showing[m["specialWorkspace"]["id"]] = m["name"]
             for c in hypr("j/clients") or []:
-                if c.get("fullscreen") == 2 and c.get("class") in SEE_THROUGH and \
+                if c.get("fullscreen") == 2 and SEE_THROUGH.search(c.get("class") or "") and \
                         c.get("workspace", {}).get("id") in showing:
                     wanted.add(showing[c["workspace"]["id"]])
         for name in wanted - {n for n, w in self.sheets.items() if w.get_visible()}:
@@ -107,8 +114,9 @@ class Under:
     @staticmethod
     def draw(_area, cr, _w, _h):
         # Not nothing: the plugin puts glass where a surface is not empty.
-        # But as near to nothing as counts, so that what is seen is the glass.
-        cr.set_source_rgba(0.0, 0.0, 0.0, 0.02)
+        # But the least there is — two steps of 255 — so that what is seen
+        # is the glass, as dark as the window's own and no darker.
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.008)
         cr.paint()
 
     def close(self):

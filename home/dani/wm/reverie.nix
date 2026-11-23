@@ -44,6 +44,7 @@ in
       default = pkgs.callPackage ../../../pkgs/reverie/package.nix {
         inherit theme metrics;
         glass = if config.programs.glass.enable then config.programs.glass.command else null;
+        glassWindows = config.programs.glass.windows;
       };
       defaultText = lib.literalExpression "pkgs.callPackage ../../../pkgs/reverie/package.nix { inherit theme metrics; glass = …; }";
       description = "The reverie package: the daemon and the `reverie` command.";

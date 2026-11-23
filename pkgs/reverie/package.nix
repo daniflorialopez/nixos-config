@@ -85,6 +85,9 @@
   metrics,
   # The `glass` command, where liquid glass is installed; null where it is not.
   glass ? null,
+  # ... and the windows it makes see-through, a regex on their class
+  # (src/under.py lays glass under those when they are fullscreen).
+  glassWindows ? null,
 }:
 let
   python = python3.withPackages (p: [
@@ -172,6 +175,9 @@ writeShellApplication {
     # island radius from there rather than restating 12.
     export REVERIE_ISLAND_RADIUS="${toString metrics.islandRadius}"
     ${lib.optionalString (glass != null) ''export REVERIE_GLASS="${lib.getExe glass}"''}
+    ${lib.optionalString (
+      glass != null && glassWindows != null
+    ) "export REVERIE_GLASS_WINDOWS=${lib.escapeShellArg glassWindows}"}
     sock="''${XDG_RUNTIME_DIR:-/tmp}/reverie.sock"
     self="$(readlink -f "$0")"
 
