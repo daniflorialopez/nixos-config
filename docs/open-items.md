@@ -215,7 +215,7 @@ What can be changed safely between power-on and login, and what cannot:
   splash is undone from the very menu option 1 hides.
 - Windows lock/sign-in picture: set in Windows Settings, outside this repo.
 
-## 5d. Reverie rice — merged 2026-11-22 (8634e2f); liquid glass: the switch is built on `feat/liquid-glass`, waiting for a rebuild
+## 5d. Reverie rice — merged 2026-11-22 (8634e2f); liquid glass — merged 2026-11-23 after Dani's "I love it now"
 
 Second "craziest rice" experiment (2026-11-18). Unrelated to `rice/overdrive`
 (which has its own entry on its own branch). One module,
@@ -671,7 +671,7 @@ HUD rather than the current one."*
     ones."** (Super+R was dead for a moment first — my test compositor had
     overwritten the session's display variables in systemd; fixed, and the
     tests now run sealed off in their own runtime directory.) Done since,
-    committed, not applied yet:
+    committed (applied since):
     - `f86ccd3` — the launcher (walker): its box is `popup_bg` by name,
       0.90 off, 0.50 on, 0.72 under the clear look
       (`programs.glass.popupAlpha`/`popupAlphaClear`); the plugin gets the
@@ -705,7 +705,7 @@ HUD rather than the current one."*
     separate type of glass"; a fullscreen window "completely ignores the
     liquid glass look and it looks see-through completely"; and "I wonder
     if the HUD couldn't get a glass look that doesn't look bad." Done,
-    committed, not applied yet:
+    committed (applied since):
     - `5f998c8` — a glass of their own for the panels that are read: the
       plugin's preset per layer namespace, `menu` (its subtle glass,
       blur 1.6, brightness 0.55) for `walker` and `reverie-menu`, whatever
@@ -790,7 +790,7 @@ HUD rather than the current one."*
       wallpaper, and only on the wallpaper?"* Answered with a picture;
       Dani: "Add the real glass HUD as a third choice, you could add it to
       the Reverie menu … instead of the Fade option." **Built** (`575d548`,
-      `29834b0`), not applied yet: `reverie hud look glass|wallpaper|
+      `29834b0`): `reverie hud look glass|wallpaper|
       desktop`, and a **HUD look** tile where Fade was (Fade was unwanted
       since 2026-11-20; `reverie pulse fade on` still works). Under
       `glass` the panel is see-through over a surface of its own that
@@ -804,10 +804,18 @@ HUD rather than the current one."*
       from a shell), so `glass` and `wallpaper` both fell back silently
       to `desktop` — since `5927ee9`. Fixed `8eb5bea`: the wrapper names a
       loader list with WebP in it, and an unreadable wallpaper is logged.
-      Still unreadable: any format gdk-pixbuf has no loader for here
-      (AVIF, JPEG XL); the library has none. **From now on: test with
-      his current wallpaper and with the service's environment
-      (`env -i`, its PATH), not mine.**
+      **From now on: test with his current wallpaper and with the
+      service's environment (`env -i`, its PATH), not mine.**
+    - **"If now every type of file can be read, we are ready to wrap it
+      up."** It was not: nine of twenty formats tried were refused (SVG,
+      AVIF, JPEG XL, HEIC, QOI, DDS, EXR, HDR, farbfeld), and `wall-set`
+      takes any file. Now (`41a0490`) what GdkPixbuf refuses goes to
+      ImageMagick, named in the wrapper; all twenty read in the
+      service's bare environment, and the whole library. *Not done:*
+      asking awww which of those it can show, and opening the HUD over
+      one — the test compositor would not start that evening ("GBM:
+      Failed to allocate a GBM buffer: bo null", cause not looked for;
+      it had worked three hours earlier).
   - **"I wouldn't mind to add it to all the appropriate things."**
     - *Done:* notifications, on the dark `menu` glass, 0.60 solid
       (`1e6ffbb`); they follow the switch without a restart.
@@ -825,12 +833,12 @@ HUD rather than the current one."*
     costs about 0.4 s of CPU in the daemon at 1280x800 (more on the real
     screen), only while a terminal is fullscreen; the real launcher and
     the volume pill have still not been seen with glass by me.
-  - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
-    from `feat/liquid-glass` (glass can stay on), then Super+G under
-    each HUD look (tile 8) — now with the wallpaper in it — and the power
-    menu (Super+Shift+Escape) and capture menu (Super+Shift+S). His
-    verdict on the second round's fixes is not in yet. Merge only after
-    he has seen it.
+  - **Dani's verdict, 2026-11-23, on the rebuilt branch (`6e6a45e`):
+    "I love it now."** `feat/liquid-glass` is merged into master (not
+    pushed). What he ran was `nixos-rebuild test`; the last fix
+    (`41a0490`, wallpaper formats) came after it. **Still his to run:**
+    `sudo nixos-rebuild switch --flake .#legionix` (makes it the boot
+    default and brings that fix; glass can stay on), and `git push`.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
@@ -932,9 +940,8 @@ once more ideas have been collected — not now):
    band, as a toggle.
 2. *Glow ring* — the screen edge as an ambient channel: position = source,
    colour = severity, steady glow for states, one swell for events.
-3. *Liquid glass on windows* — per-window edge refraction via the `hyprglass`
-   plugin; needs a build against the exact Hyprland version. Looked into on
-   2026-11-22 (eighth round, above): wait for the 26.11 bump. (Reverie's HUD had cairo lenses imitating
+3. *Liquid glass on windows* — **done**, 2026-11-23 (`pkgs/hyprglass`, the
+   `glass` command, above; it did not have to wait for 26.11). (Reverie's HUD had cairo lenses imitating
    this on a screenshot; Dani found them "odd and out of place" and they were
    removed. That verdict is about the imitation, not about glass on windows.)
 
