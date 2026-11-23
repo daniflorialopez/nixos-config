@@ -729,29 +729,40 @@ HUD rather than the current one."*
     the surface's own box, and the surface's alpha only cuts holes in it —
     and the HUD is opaque pictures and thin type on one dark surface.
     Dani: "Yes, prototype the two-layer HUD".
-    - **Built, `46a4b29`, not applied yet — a prototype** (`src/rest.py`):
-      once the panel has arrived (about half a second), its backdrop moves
-      to a surface of its own underneath, the panel goes see-through
-      between its cards, and between the two a glass tray under the
-      workspace cards and a glass pill under each chip fade in. The
-      entrance and the exit are the single-surface panel as before; so is
-      the panel over a fullscreen window, and with
-      `reverie hud glass off` (saved; default on, and only ever with
-      liquid glass on). The light behind the selected card is in the tray.
-    - **Not known until Dani runs it:** how it looks at the real size and
-      what three more surfaces cost at 165 Hz; whether the tray arriving
-      half a second after the cards reads as intended or as late.
-    - **Limits known already:** the pieces follow the chosen look, and
-      under `clear` the tray is only a lighter plate (the plugin's default
-      tint), under `liquid` it has a refracted rim; the tray is laid out
-      for the row at rest and does not travel with the cards on their way
-      in; if glass is switched off from a terminal while the panel is
-      held up, the pieces stay as plain see-through shapes until it
-      closes.
-    - **If he likes it, next:** a preset of its own for the pieces
-      (tint, rim), the gauges and the clock left alone (lenses round the
-      gauges were tried long ago and rejected). **If he does not:**
-      revert `46a4b29`; nothing else depends on it.
+    - **Built (`46a4b29`), applied, and rejected.** A glass tray under
+      the workspace cards and glass pills under the chips, on surfaces of
+      their own, once the panel had arrived. Dani: "I like the glass
+      features but I don't like the HUD look now." Reverted (`355d0c0`).
+      Do not bring pieces of glass back onto the panel.
+    - **What he asked for instead, built `5927ee9`, not applied yet:**
+      "a dark version of liquid glass with the current wallpaper without
+      showing what apps are open below the HUD." With glass on, the
+      panel's backdrop is that monitor's wallpaper — darkened, and as far
+      out of focus as the chosen look (sharp under clear, soft under
+      liquid, hard under frosted) — instead of the desktop out of focus.
+      Painted by the panel itself (the plugin can only put behind a
+      surface what is behind it: the windows). The picture is kept and
+      made ahead, so the panel comes up on it at once.
+      `reverie hud glass off` goes back to the capture; without glass it
+      is the capture anyway. The darkness per look is `PANE` in
+      `src/hud.py`, three numbers to turn if he wants it darker or
+      lighter.
+  - **Fullscreen and the selected look, built `b59616c`, not applied
+    yet.** Dani: "I would like the full-screen apps to apply also the
+    selected liquid glass style, now they don't have that at all" (the
+    blur given back in `9dda57a` is not the look). Real glass for a
+    fullscreen window after all, by another road: while a see-through
+    window (Alacritty) is fullscreen, reverie maps an all-but-empty
+    surface on the `background` layer above the wallpaper
+    (`src/under.py`), and the plugin makes the chosen glass of it.
+    `programs.glass.fullscreen` = "underlay" where reverie is enabled,
+    "blur" elsewhere. Not tested on two monitors. Nothing is put under a
+    game or any other opaque fullscreen window.
+  - **Housekeeping noticed 2026-11-23:** `nh-clean` runs weekly (Monday
+    00:00) and removes build-only tools; the first rebuild after it
+    downloads about 4 MiB (ShellCheck, stdenv hooks) and regenerates a
+    couple of hundred small files. Already done for this branch's
+    current state.
   - **Still to do, one per step, each shown to Dani first:** per-surface
     looks (a refracting one for small floating pieces, a frosted one
     behind text) once he has lived with one look for all; the terminal's
@@ -760,9 +771,9 @@ HUD rather than the current one."*
     spotlight, tooltips, the mouse grid, the power/capture menus. Not
     possible: lock screen, login screen.
   - **Waiting for Dani:** `sudo nixos-rebuild test --flake .#legionix`
-    from `feat/liquid-glass` (glass can stay on), then the launcher, the
-    deck, a terminal opened afterwards in fullscreen, and Super+G for
-    the HUD. Merge only after he has seen it.
+    from `feat/liquid-glass` (glass can stay on), then Super+G for the
+    HUD on the wallpaper, and a terminal in fullscreen under each look.
+    Merge only after he has seen it.
 - *Applying reverie:* Dani ran `nixos-rebuild test` on 2026-11-22 and
   confirmed "all the keybindings work as intended"; `rice/reverie` is merged
   into master (8634e2f, not pushed). **The running system is not yet the
