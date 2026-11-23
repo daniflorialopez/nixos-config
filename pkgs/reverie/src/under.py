@@ -19,6 +19,13 @@ Only while it is needed. Left there under ordinary windows it would be a
 second pane behind each one's own; and under a game it would be work for
 nothing, so it is not for every fullscreen window but for the ones that are
 see-through — which, here, is what wm/glass.nix makes see-through.
+
+The window's own glass is gone in the very frame it turns fullscreen, so
+every millisecond until the sheet is there is a window with the bare
+wallpaper behind it. Hence no waiting on the `fullscreen` event and no fade
+on the sheet (hyprland.nix): the first version took 35 ms to arrive and 250
+more to fade in, and that read as "the glass disappears for a moment" (Dani,
+2026-11-23).
 """
 
 import cairo
@@ -31,8 +38,9 @@ from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common 
 # The windows that are see-through while glass is on (wm/glass.nix: the
 # terminal's background opacity).
 SEE_THROUGH = ("Alacritty",)
-# The events after which the answer may have changed.
-EVENTS = ("fullscreen", "workspace", "workspacev2", "focusedmon", "focusedmonv2", "openwindow",
+# The events after which the answer may have changed. `fullscreen` is not
+# among them: it is answered at once (on_event).
+EVENTS = ("workspace", "workspacev2", "focusedmon", "focusedmonv2", "openwindow",
           "closewindow", "movewindow", "movewindowv2", "activespecial", "monitoradded",
           "monitorremoved")
 
@@ -44,12 +52,22 @@ class Under:
         self.pending = 0
 
     def on_event(self, event, _data):
-        if glass.BIN and event in EVENTS and not self.pending:
+        if not glass.BIN:
+            return
+        if event == "fullscreen":
+            self.check()             # now: see the top of the file
+        elif event in EVENTS and not self.pending:
             # After Hyprland has finished with the event, and once for a burst.
-            self.pending = GLib.timeout_add(30, self.check)
+            self.pending = GLib.timeout_add(30, self._settled)
+
+    def _settled(self):
+        self.pending = 0
+        return self.check()
 
     def check(self):
-        self.pending = 0
+        if self.pending:                 # asked directly: the timer has nothing left to do
+            GLib.source_remove(self.pending)
+            self.pending = 0
         wanted = set()
         if glass.BIN and self.app.glass.on:
             showing = {m["activeWorkspace"]["id"]: m["name"] for m in hypr("j/monitors") or []}

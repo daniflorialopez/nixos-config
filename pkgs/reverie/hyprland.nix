@@ -81,10 +81,10 @@
     "ignore_alpha 0, match:namespace reverie-menu"
     "no_anim true, match:namespace reverie-menu"
     "no_anim true, match:namespace reverie-fx"
-    # The sheet of glass under a fullscreen window (src/under.py). It covers
-    # the monitor, so the layers' usual pop-in would be the whole wallpaper
-    # growing; it fades, and the plugin's glass fades with it.
-    "animation fade, match:namespace reverie-glass-under"
+    # The sheet of glass under a fullscreen window (src/under.py). It stands
+    # in for glass the window had until that very frame, so it must be there
+    # whole in the next one: no pop-in, and no fade either.
+    "no_anim true, match:namespace reverie-glass-under"
   ];
 
   # How a bind is spelt in the Hyprland config.
