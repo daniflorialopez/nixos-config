@@ -140,6 +140,14 @@ writeShellApplication {
     ${lib.optionalString (
       windows != null && windowOpacity != null
     ) "windowrule = opacity 1.0 1.0 ${windowOpacity}, match:class ${windows}"}
+    # reverie's menu deck fades itself, by drawing fainter, and so has
+    # no_anim. The glass behind it cannot follow that — it is whole wherever
+    # the surface is not empty — and stayed as a dark box until the deck was
+    # gone. On glass the deck leaves it to the compositor instead (its
+    # src/menu.py), which fades glass and deck in together and, on the way
+    # out, drops the glass first.
+    layerrule = no_anim false, match:namespace reverie-menu
+    layerrule = animation fade, match:namespace reverie-menu
     plugin:hyprglass {
         default_theme = dark
         default_preset = $(preset)

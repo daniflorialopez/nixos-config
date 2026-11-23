@@ -136,6 +136,8 @@ class Menu:
         self.pointer = None
         self.alpha.target = 1.0
         self.rise.target = 1.0
+        if self.on_glass():
+            self.alpha.x = 1.0                       # the compositor fades it in: see hide
         Gtk4LayerShell.set_keyboard_mode(self.win, Gtk4LayerShell.KeyboardMode.EXCLUSIVE)
         self.win.set_visible(True)
         self._apply_input()
@@ -151,13 +153,32 @@ class Menu:
         if not self.shown:
             return
         self.shown = False
+        self.app.fx.set_lit(None)
+        if self.on_glass():
+            # The deck fades by drawing itself fainter, and the plugin's glass
+            # cannot follow that: it is there, whole, wherever the surface is
+            # not empty. So the writing went and the pane stayed — "a gray
+            # box that takes almost a second to disappear" (Dani, 2026-11-23).
+            # On glass the surface goes at once instead and the compositor
+            # fades what it showed, glass first (the `glass` command lifts
+            # this layer's no_anim while glass is on).
+            self.win.set_visible(False)
+            if self.tick_id:
+                self.area.remove_tick_callback(self.tick_id)
+                self.tick_id = 0
+            for spring in (self.alpha, self.rise):
+                spring.x = spring.target = 0.0
+                spring.v = 0.0
+            return
         self.alpha.target = 0.0
         self.rise.target = 0.0
         # Give the keyboard and the pointer back now, not when the fade ends.
         Gtk4LayerShell.set_keyboard_mode(self.win, Gtk4LayerShell.KeyboardMode.NONE)
         self._apply_input()
         self._ensure_tick()
-        self.app.fx.set_lit(None)
+
+    def on_glass(self):
+        return bool(glass.BIN and self.app.glass.on)
 
     def _apply_input(self):
         surface = self.win.get_surface()
@@ -297,7 +318,7 @@ class Menu:
         # The bar's material, like every other island. Outside it the surface
         # is fully transparent, so the layer rule blurs under the deck only.
         rounded(cr, x, y, pw, ph, 22 * u)
-        rgba(cr, "bg", (PANEL_GLASS if glass.BIN and self.app.glass.on else PANEL) * a)
+        rgba(cr, "bg", (PANEL_GLASS if self.on_glass() else PANEL) * a)
         cr.fill_preserve()
         cr.set_line_width(1.0 * u)
         rgba(cr, "fg", 0.10 * a)
