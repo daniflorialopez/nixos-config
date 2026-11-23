@@ -21,8 +21,8 @@
 #   waybar     \  their "island" background comes from glass.css instead of
 #   swayosd    /  being a constant: 0.85 solid off, see-through on
 #   walker     the launcher's box likewise: 0.90 off, 0.60 on, over a
-#              darker glass of its own that does not follow the chosen look
-#              (the power menu states its own, nearly solid, and keeps it)
+#              darker glass of its own that does not follow the chosen look;
+#              and the power and capture menus' box, 0.97 off, 0.70 on
 #   Alacritty  imports glass.toml: its background opacity while glass is on
 #   mako       includes glass.mako: a notification is 0.88 solid off, 0.60 on,
 #              over the same darker glass as the launcher
@@ -36,6 +36,7 @@ let
   stateDir = "${config.xdg.stateHome}/theme";
   islandOff = theme.cssRgba "bg" "0.85";
   popupOff = theme.cssRgba "bgDeep" "0.90";
+  confirmOff = theme.cssRgba "bgDeep" "0.97";
   # Where glass is enabled, the stylesheets take these colours from the
   # command's state file; where it is not, they are the constants they were.
   fromState =
@@ -66,6 +67,16 @@ in
         How solid the launcher's box is while glass is on; off it is 0.90.
         What shows through the rest is the darker "menu" glass, not the
         chosen look.
+      '';
+    };
+
+    confirmAlpha = lib.mkOption {
+      type = lib.types.str;
+      default = "0.70";
+      description = ''
+        How solid the box of the power and capture menus is while glass is
+        on; off it is 0.97. More solid than the launcher's: what is asked
+        there is whether to shut the machine down.
       '';
     };
 
@@ -123,7 +134,7 @@ in
       readOnly = true;
       description = ''
         The same for `popup_bg`, the background of a popup box (the
-        launcher's).
+        launcher's), and `confirm_bg`, that of the power and capture menus.
       '';
     };
   };
@@ -133,7 +144,8 @@ in
       programs.glass = {
         command = pkgs.callPackage ../../../pkgs/hyprglass/glass.nix {
           hyprglass = cfg.plugin;
-          inherit islandOff popupOff;
+          inherit islandOff popupOff confirmOff;
+          confirmOn = theme.cssRgba "bgDeep" cfg.confirmAlpha;
           islandOn = theme.cssRgba "bg" cfg.islandAlpha;
           popupOn = theme.cssRgba "bgDeep" cfg.popupAlpha;
           notifyOn = theme.hexA "bg" "99"; # 0.60, like the launcher's box
@@ -144,7 +156,9 @@ in
           );
         };
         islandBackground = fromState "@define-color bg_alpha ${islandOff};";
-        popupBackground = fromState "@define-color popup_bg ${popupOff};";
+        popupBackground = fromState ''
+          @define-color popup_bg ${popupOff};
+          @define-color confirm_bg ${confirmOff};'';
       };
     }
 

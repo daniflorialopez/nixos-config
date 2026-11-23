@@ -9,9 +9,10 @@
 #   glass.conf   Hyprland sources it (wm/glass.nix). On, it declares the
 #                plugin, so Hyprland itself loads it — at every start and on
 #                every reload — and unloads it when the file is empty again.
-#   glass.css    two backgrounds by name, solid as designed when off and
+#   glass.css    three backgrounds by name, solid as designed when off and
 #                see-through when on: `bg_alpha`, the "island" of the bar
-#                and the volume pill, and `popup_bg`, the launcher's box.
+#                and the volume pill; `popup_bg`, the launcher's box; and
+#                `confirm_bg`, the box of the power and capture menus.
 #   glass.toml   Alacritty imports it: a see-through background when on.
 #   glass.mako   mako includes it: a see-through notification when on, and
 #                nothing when off, so that the colour it has without glass
@@ -66,6 +67,8 @@
   islandOn ? "rgba(26, 27, 38, 0.30)",
   popupOff ? "rgba(22, 22, 30, 0.90)",
   popupOn ? "rgba(22, 22, 30, 0.60)",
+  confirmOff ? "rgba(22, 22, 30, 0.97)",
+  confirmOn ? "rgba(22, 22, 30, 0.70)",
   # A notification's background while glass is on (mako's #RRGGBBAA).
   notifyOn ? "#1a1b2699",
   # What a see-through window gets behind it in real fullscreen: "blur", or
@@ -185,6 +188,7 @@ writeShellApplication {
         put "$dir/glass.css" <<EOF
     @define-color bg_alpha ${islandOn};
     @define-color popup_bg ${popupOn};
+    @define-color confirm_bg ${confirmOn};
     EOF
         put "$dir/glass.toml" <<EOF
     [window]
@@ -198,6 +202,7 @@ writeShellApplication {
         put "$dir/glass.css" <<EOF
     @define-color bg_alpha ${islandOff};
     @define-color popup_bg ${popupOff};
+    @define-color confirm_bg ${confirmOff};
     EOF
         put "$dir/glass.toml" <<< "# Liquid glass is off. Written by \`glass\`."
         put "$dir/glass.mako" <<< "# Liquid glass is off. Written by \`glass\`."
