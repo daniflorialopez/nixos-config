@@ -24,6 +24,8 @@
 #              darker glass of its own that does not follow the chosen look
 #              (the power menu states its own, nearly solid, and keeps it)
 #   Alacritty  imports glass.toml: its background opacity while glass is on
+#   mako       includes glass.mako: a notification is 0.88 solid off, 0.60 on,
+#              over the same darker glass as the launcher
 #
 # The terminal is the one deliberate break with shell/alacritty.nix's rule
 # that Hyprland owns all window opacity: glass is only seen through a window
@@ -134,6 +136,7 @@ in
           inherit islandOff popupOff;
           islandOn = theme.cssRgba "bg" cfg.islandAlpha;
           popupOn = theme.cssRgba "bgDeep" cfg.popupAlpha;
+          notifyOn = theme.hexA "bg" "99"; # 0.60, like the launcher's box
           inherit (cfg) terminalOpacity fullscreen windows;
           windowOpacity = toString (
             lib.attrByPath [ "decoration" "active_opacity" ] 1.0
@@ -155,6 +158,11 @@ in
 
       programs.alacritty.settings.general.import = [ "${stateDir}/glass.toml" ];
 
+      # After `background-color` in the file mako reads (Home Manager writes
+      # the keys in alphabetical order, and mako takes the later of two), so
+      # what the include says wins while glass is on; off, it says nothing.
+      services.mako.settings.include = "${stateDir}/glass.mako";
+
       # The three files have to exist before anything reads them: a missing
       # `source` is a Hyprland config error, a missing CSS import leaves the
       # islands without a background. Written at every activation (which is
@@ -167,6 +175,7 @@ in
       systemd.user.services.waybar.Service.ExecStartPre = refresh;
       systemd.user.services.swayosd.Service.ExecStartPre = refresh;
       systemd.user.services.walker.Service.ExecStartPre = refresh;
+      systemd.user.services.mako.Service.ExecStartPre = refresh;
     })
   ];
 }

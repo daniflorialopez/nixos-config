@@ -13,6 +13,9 @@
 #                see-through when on: `bg_alpha`, the "island" of the bar
 #                and the volume pill, and `popup_bg`, the launcher's box.
 #   glass.toml   Alacritty imports it: a see-through background when on.
+#   glass.mako   mako includes it: a see-through notification when on, and
+#                nothing when off, so that the colour it has without glass
+#                is said in one place only, mako's own config.
 #
 #   glass on | off | toggle        glass look liquid|frosted|clear|next
 #   glass status [json]            glass refresh   (rewrite the files; what
@@ -63,6 +66,8 @@
   islandOn ? "rgba(26, 27, 38, 0.30)",
   popupOff ? "rgba(22, 22, 30, 0.90)",
   popupOn ? "rgba(22, 22, 30, 0.60)",
+  # A notification's background while glass is on (mako's #RRGGBBAA).
+  notifyOn ? "#1a1b2699",
   # What a see-through window gets behind it in real fullscreen: "blur", or
   # "underlay" where something (reverie) puts a layer named
   # reverie-glass-under there for the plugin to make glass of.
@@ -153,15 +158,16 @@ writeShellApplication {
         default_preset = $(preset)
         preset = name:glass, chromatic_aberration:0.12
         # The glass of the panels that are read — the launcher, the menu
-        # deck. Its own kind, whatever look is chosen for the rest: darker,
-        # and always blurred, so that nothing behind runs through the text.
+        # deck, a notification. Its own kind, whatever look is chosen for
+        # the rest: darker, and always blurred, so that nothing behind runs
+        # through the text.
         preset = name:menu, inherits:subtle, blur_strength:1.6, brightness:0.55, adaptive_dim:0.6
         layers {
             enabled = 1
-            namespaces = waybar, swayosd, walker, reverie-menu${
+            namespaces = waybar, swayosd, walker, notifications, reverie-menu${
               lib.optionalString (fullscreen == "underlay") ", reverie-glass-under"
             }
-            namespace_presets = walker:menu, reverie-menu:menu
+            namespace_presets = walker:menu, notifications:menu, reverie-menu:menu
             # The launcher's box casts a shadow, and to the plugin a shadow
             # is something to put glass behind. The box is more solid than
             # its shadow ever gets; this is the line between the two (and
@@ -178,6 +184,9 @@ writeShellApplication {
     [window]
     opacity = ${terminalOpacity}
     EOF
+        put "$dir/glass.mako" <<EOF
+    background-color=${notifyOn}
+    EOF
       else
         put "$dir/glass.conf" <<< "# Liquid glass is off. Written by \`glass\`."
         put "$dir/glass.css" <<EOF
@@ -185,6 +194,7 @@ writeShellApplication {
     @define-color popup_bg ${popupOff};
     EOF
         put "$dir/glass.toml" <<< "# Liquid glass is off. Written by \`glass\`."
+        put "$dir/glass.mako" <<< "# Liquid glass is off. Written by \`glass\`."
       fi
     }
 
@@ -207,6 +217,10 @@ writeShellApplication {
       if systemctl --user is-active -q waybar.service 2> /dev/null; then
         systemctl --user reload waybar.service 2> /dev/null || true
       fi
+      # mako reads its config again when told to, and keeps what it is
+      # showing (a restart would drop it). What `makoctl reload` sends.
+      busctl --user call org.freedesktop.Notifications /fr/emersion/Mako \
+        fr.emersion.Mako Reload > /dev/null 2>&1 || true
       # These two read their stylesheet once, when they start.
       systemctl --user try-restart swayosd.service walker.service 2> /dev/null || true
     }
