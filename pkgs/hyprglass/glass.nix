@@ -162,12 +162,18 @@ writeShellApplication {
         # the rest: darker, and always blurred, so that nothing behind runs
         # through the text.
         preset = name:menu, inherits:subtle, blur_strength:1.6, brightness:0.55, adaptive_dim:0.6
+        # What reverie's HUD stands on when its look is "glass": the chosen
+        # look itself, less the pale tint the plugin lays over its frosted
+        # and its plain plate (13% of a blue-grey). Behind a window that is
+        # the frost; behind a whole screen of thin type it is a grey veil,
+        # and no darkening of the wallpaper underneath gets below it.
+        preset = name:hud, inherits:$(preset), chromatic_aberration:0.12, tint_color:0x00000000
         layers {
             enabled = 1
-            namespaces = waybar, swayosd, walker, notifications, reverie-menu${
+            namespaces = waybar, swayosd, walker, notifications, reverie-menu, reverie-hud-glass${
               lib.optionalString (fullscreen == "underlay") ", reverie-glass-under"
             }
-            namespace_presets = walker:menu, notifications:menu, reverie-menu:menu
+            namespace_presets = walker:menu, notifications:menu, reverie-menu:menu, reverie-hud-glass:hud
             # The launcher's box casts a shadow, and to the plugin a shadow
             # is something to put glass behind. The box is more solid than
             # its shadow ever gets; this is the line between the two (and

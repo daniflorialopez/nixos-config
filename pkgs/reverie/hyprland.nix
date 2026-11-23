@@ -69,6 +69,14 @@
     "blur true, match:namespace reverie-hud"
     "ignore_alpha 0, match:namespace reverie-hud"
     "no_anim true, match:namespace reverie-hud"
+    # The HUD standing on liquid glass (src/hud.py, the `glass` look) is two
+    # surfaces under other names. The panel, see-through: no blur of
+    # Hyprland's (the plugin's glass is behind it) and no no_anim — on glass
+    # a surface cannot fade itself, so the compositor does, in and out. And
+    # under it the wallpaper, which has to be whole from its first frame to
+    # its last, or the windows show through the panel.
+    "animation fade, match:namespace reverie-hud-glass"
+    "no_anim true, match:namespace reverie-hud-wall"
     # The title card is an island too: blurred like the bar, and only where
     # it is drawn (everything around it is fully transparent).
     "blur true, match:namespace reverie-card"

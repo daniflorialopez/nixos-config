@@ -22,9 +22,9 @@
 #              announce workspace changes instead, the HUD is a key-hold away.
 #   menu       $mod+R: a deck of tiles along the bottom, one per switch, lit
 #              when on. It stays open while you flip them (src/menu.py).
-#              Built with `glass` (pkgs/hyprglass), two of the tiles are
-#              liquid glass, on/off and its look; reverie only passes the
-#              word on (src/glass.py).
+#              Built with `glass` (pkgs/hyprglass), three of the tiles are
+#              liquid glass: on/off and its look, where reverie only passes
+#              the word on (src/glass.py), and what the HUD stands on.
 #   cards      a film title card on every workspace switch: the number,
 #              large, arriving from the direction you moved. Three looks
 #              (bare, island, banner), switchable live.
@@ -44,9 +44,11 @@
 #   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
 #   reverie glass on|off|toggle|look <name>    (only when built with `glass`)
-#   reverie hud glass on|off|toggle            with glass on, the HUD's backdrop:
-#                                              the wallpaper through dark glass,
-#                                              or the desktop out of focus
+#   reverie hud look glass|wallpaper|desktop|next
+#                    what the HUD stands on while glass is on (the HUD look
+#                    tile): the plugin's glass of the wallpaper alone, the
+#                    wallpaper darkened by the HUD itself, or the desktop out
+#                    of focus as without glass
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
 #                    binds for this session only (`reverie untry` removes them)

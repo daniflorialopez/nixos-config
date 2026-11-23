@@ -23,6 +23,7 @@ from gi.repository import Gio, GLib, GLibUnix, Gtk  # noqa: E402
 from cards import STYLES, Cards  # noqa: E402
 from fx import Fx  # noqa: E402
 from glass import Glass  # noqa: E402
+import hud  # noqa: E402
 from hud import Hud  # noqa: E402
 from ledger import Ledger  # noqa: E402
 from menu import Menu  # noqa: E402
@@ -34,7 +35,7 @@ from under import Under  # noqa: E402
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
                      "theme", "reverie.json")
 
-USAGE = ("hud show|hide|pin|hold|release|glass on|off · "
+USAGE = ("hud show|hide|pin|hold|release|look glass|wallpaper|desktop|next · "
          "cards on|off|style bare|island|banner|next · "
          "ripples on|off · spotlight on|off|toggle · "
          "pulse [sound|fade] on|off · zen on|off|toggle · undo · "
@@ -100,7 +101,10 @@ class Reverie(Gtk.Application):
             self.fx.command("ripples", ["on"])
         common.set_font(state.get("font", "caskaydia"))
         self.hud.beats = bool(state.get("hold_repeats"))    # see Hud.hold
-        self.hud.glassy = state.get("hud_glass", True) is not False
+        if state.get("hud_look") in hud.LOOKS:
+            self.hud.look = state["hud_look"]
+        elif state.get("hud_glass") is False:            # how it was saved before there were three
+            self.hud.look = "desktop"
         # Zen is a preference, so it survives a restart. Whether the bar is
         # really stopped is not something this file can know — a clean
         # shutdown brings it back, a crash leaves it down — so say it again.
@@ -119,7 +123,7 @@ class Reverie(Gtk.Application):
             "ripples": self.fx.ripples_on,
             "font": common.FONT["name"],
             "hold_repeats": self.hud.beats,
-            "hud_glass": self.hud.glassy,
+            "hud_look": self.hud.look,
             "zen": self.zen,
             "zen_cards": self.zen_cards,
             # spotlight is a mode you enter, not a preference: never restored.

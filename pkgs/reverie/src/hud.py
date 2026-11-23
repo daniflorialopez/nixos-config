@@ -113,6 +113,19 @@ VEIL = 0.90                  # the scrim that has to do the job alone if there i
 # wallpaper has none — and the sharper the picture, the darker, because type
 # has to be read on top of it.
 PANE = {"liquid": (3, 0.62), "frosted": (5, 0.60), "clear": (0, 0.70)}
+# What the panel stands on while liquid glass is on (`reverie hud look`, the
+# HUD look tile):
+#   glass      the plugin's own glass, of the wallpaper and nothing else: the
+#              panel is see-through, and under it, on a surface of its own,
+#              is the wallpaper — which is what hides the windows. The chosen
+#              look does the rest, as it does behind a fullscreen terminal.
+#   wallpaper  the picture this file paints itself (PANE, above)
+#   desktop    the desktop out of focus, as without glass
+LOOKS = ("glass", "wallpaper", "desktop")
+# For `glass`, how much bgDeep is laid over the wallpaper under the panel, per
+# look of the glass. Sharp always: the blur is the plugin's to do. Less than
+# PANE's, because the plugin's glass darkens what it shows as well.
+WALL = {"liquid": 0.62, "frosted": 0.60, "clear": 0.68}
 RANKS = ("accent", "fg", "hint", "slate")     # focus-history colours, most-used first
 
 
@@ -283,12 +296,15 @@ def pane(key, have):
     """The wallpaper backdrop for (output, width, height, look): what it was
     made from, and the picture. The picture is None if `have` is already
     made from just that; both are None if that output shows no picture.
+    `look` is the glass's look, or "glass:" and that for the picture that
+    goes UNDER a see-through panel (LOOKS).
 
     Slow the first time — reading and scaling a large JPEG is most of a
     fifth of a second (measured), the blur another 45 ms — which is why it
     is only ever called off the main loop, and why the result is kept.
     """
     output, width, height, look = key
+    how = (0, WALL[look[6:]]) if look.startswith("glass:") else PANE[look]
     path = wallpapers().get(output)
     try:
         made = key + (path, os.stat(path).st_mtime) if path else None
@@ -300,7 +316,7 @@ def pane(key, have):
         shot = wallpaper(path, width, height)
         if shot is None:
             return None, None
-        return made, frost(shot, width, height, *PANE[look])
+        return made, frost(shot, width, height, *how)
     except (cairo.Error, MemoryError):
         return None, None
 
@@ -366,8 +382,11 @@ class Hud:
         self.zoom = Spring(0.0, ZOOM)        # the chosen card on its way to being the screen
         self.zoom_ws = None                  # ... and which one that is
         self.zoomed = None                   # ... and where it started from
-        self.glassy = True                   # under liquid glass: the wallpaper, not a capture
+        self.look = "wallpaper"              # what it stands on under liquid glass: LOOKS
         self.pane = None                     # (what it was made from, that picture), kept
+        self.on_glass = False                # this showing is see-through, on the plugin's glass
+        self.namespace = "reverie-hud"       # ... and then the surface goes by another name
+        self.wall = None                     # ... over this one: the wallpaper, and only that
         GLib.idle_add(self._warm)
 
     def _bar_landed(self):
@@ -443,11 +462,10 @@ class Hud:
             self.veil.x = self.veil.target = TINT
             self.veil.v = 0.0
             self.app.glass.reload()          # `glass` may have been run by hand
-            look = self.app.glass.look if glass.BIN and self.glassy and self.app.glass.on \
-                else None
+            look = self._wanted()
             geo = mon.get_geometry() if mon is not None else None
-            if look in PANE and geo is not None:
-                self._pane(mon.get_connector(), geo.width, geo.height, look, self.token)
+            if look and geo is not None:
+                self._pane(mon, geo.width, geo.height, look, self.token, fading)
             elif geo is not None and shutil.which("grim"):
                 self.capturing = True
                 self._capture(mon.get_connector(), geo.width, geo.height, self.token)
@@ -455,7 +473,15 @@ class Hud:
                 self.veil.target = VEIL
         self._present()
 
-    def _pane(self, output, width, height, look, token):
+    def _wanted(self):
+        """Which picture of the wallpaper the panel needs, as `pane` names
+        them; None when it is to stand on the desktop out of focus."""
+        if not (glass.BIN and self.app.glass.on) or self.look == "desktop" \
+                or self.app.glass.look not in PANE:
+            return None
+        return ("glass:" if self.look == "glass" else "") + self.app.glass.look
+
+    def _pane(self, mon, width, height, look, token, fading=False):
         """The backdrop under liquid glass: this output's wallpaper, out of
         focus as the look says, and dark (see the top of the file).
 
@@ -463,10 +489,19 @@ class Hud:
         panel comes up on it at once, and whether the wallpaper is still the
         same one is looked into behind it — asking the wallpaper daemon is a
         process and ten milliseconds, and nearly always the answer is yes.
+
+        For the `glass` look that picture is not painted here but laid under
+        the panel (`_stand`). Only if it is at hand: the surface under a
+        see-through panel has to be whole in its first frame, or the windows
+        show. When it is not (the first opening after a change nothing
+        announced), this once the panel paints it itself, like `wallpaper`.
         """
+        output = mon.get_connector()
         key = (output, width, height, look)
         held = self.pane is not None and self.pane[0][:4] == key
-        if held:
+        if held and look.startswith("glass:") and not fading:
+            self._stand(mon)
+        elif held:
             self.backdrop = self.pane[1]
             self.frosted.x = self.frosted.target = 1.0
         else:
@@ -483,20 +518,77 @@ class Hud:
         threading.Thread(target=work, daemon=True).start()
 
     def _pane_made(self, made, surf, token=None):
+        if token is None and made[3] != self._wanted():
+            return False                     # made ahead for a look that has since been left
         self.pane = (made, surf)             # kept, whether or not the panel is still up
-        if token is not None:
+        if self.on_glass:
+            self.wall.get_child().queue_draw()   # the wallpaper had changed after all
+        elif token is not None:
             self._frosted(token, surf)
         return False
+
+    def _stand(self, mon):
+        """This showing stands on the plugin's glass (LOOKS, `glass`).
+
+        Two surfaces. Under: the wallpaper, opaque, there at once — it is
+        what the glass is glass OF, and what keeps the windows out of it.
+        Over: the panel, see-through. Under first, because within a level
+        Hyprland stacks surfaces in the order they came.
+        """
+        if self.wall is None:
+            self.wall = layer_window(self.app, "reverie-hud-wall")
+            area = Gtk.DrawingArea()
+            area.set_draw_func(self._draw_wall)
+            self.wall.set_child(area)
+            self.wall.connect("map", self._through)
+        Gtk4LayerShell.set_monitor(self.wall, mon)
+        self.wall.set_visible(True)
+        self.on_glass = True
+
+    @staticmethod
+    def _through(win):
+        surface = win.get_surface()
+        if surface is not None:
+            surface.set_input_region(cairo.Region())     # clicks are the panel's, or nobody's
+
+    def _draw_wall(self, _area, cr, w, h):
+        if self.pane is None:
+            return
+        picture = self.pane[1]
+        pw, ph = picture.get_width(), picture.get_height()
+        if (pw, ph) != (w, h):
+            cr.scale(w / pw, h / ph)
+        cr.set_source_surface(picture, 0, 0)
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.paint()
+
+    def _drop(self):
+        """Off the glass, at once. The panel cannot fade itself there: the
+        plugin's glass is whole wherever the surface is not empty, so the
+        writing would go and the pane would stay (menu.py's `hide` has the
+        story). The compositor fades the panel's last picture instead, and
+        the wallpaper under it goes in the same frame as the glass."""
+        self.win.set_visible(False)
+        if self.wall is not None:
+            self.wall.set_visible(False)
+        if self.tick_id:
+            self.area.remove_tick_callback(self.tick_id)
+            self.tick_id = 0
+        for spring in (self.alpha, self.rise, *self.gauge.values()):
+            spring.x = spring.target = 0.0
+            spring.v = 0.0
+        self.on_glass = False
+        self.zoom_ws = self.zoomed = None
 
     def prepare(self):
         """Make that picture before it is asked for — at start-up, and when
         the look of the glass changes — so that the first keypress finds it."""
         mon = focused_gdk_monitor()
-        if self.shown or mon is None or not (glass.BIN and self.glassy and self.app.glass.on) \
-                or self.app.glass.look not in PANE:
+        look = self._wanted()
+        if self.shown or mon is None or not look:
             return False
         geo = mon.get_geometry()
-        key = (mon.get_connector(), geo.width, geo.height, self.app.glass.look)
+        key = (mon.get_connector(), geo.width, geo.height, look)
 
         def work():
             made, surf = pane(key, self.pane[0] if self.pane else None)
@@ -593,6 +685,14 @@ class Hud:
         self.shown_at = time.monotonic()
         self.alpha.target = 1.0
         self.rise.target = 1.0
+        if self.on_glass:
+            self.alpha.x = 1.0               # the compositor fades it in, glass and all
+        name = "reverie-hud-glass" if self.on_glass else "reverie-hud"
+        if name != self.namespace and not self.win.get_visible():
+            # Another name, so that the plugin puts glass behind this showing
+            # and not behind the ones that bring their own backdrop.
+            Gtk4LayerShell.set_namespace(self.win, name)
+            self.namespace = name
         Gtk4LayerShell.set_keyboard_mode(
             self.win, Gtk4LayerShell.KeyboardMode.EXCLUSIVE if self.sticky
             else Gtk4LayerShell.KeyboardMode.NONE)
@@ -670,13 +770,16 @@ class Hud:
             if self.beats:
                 self._expire_in(delay + 0.25)
 
-    def hide(self):
+    def hide(self, drop=True):
         if self.hold_id:
             GLib.source_remove(self.hold_id)
             self.hold_id = 0
         if not self.shown:
             return
         self.shown = False
+        if self.on_glass and drop:
+            self._drop()
+            return
         self.alpha.target = 0.0
         self.rise.target = 0.0
         # Give the keyboard and the pointer back now, not when the fade ends:
@@ -697,7 +800,7 @@ class Hud:
         card = next((c for c in self.placed if c[0] == wid), None)
         forward = self.sticky and self.alpha.x > 0.9 and card is not None and \
             card[5].get("name") == self.output
-        self.hide()
+        self.hide(drop=not forward)
         if forward:
             self.alpha.target = self.rise.target = 1.0     # hold the picture meanwhile
             self.zoom_ws, self.zoomed = wid, None
@@ -726,15 +829,17 @@ class Hud:
             self.hide()
         elif what in ("toggle", "pin"):
             self.toggle()
-        elif what == "glass":
-            # Which backdrop the panel has while liquid glass is on: the
-            # wallpaper through dark glass (on), or the desktop out of focus
-            # as without glass (off).
+        elif what == "look":
+            # What the panel stands on while liquid glass is on: LOOKS.
             want = words[1] if len(words) > 1 else "status"
-            if want in ("on", "off", "toggle"):
-                self.glassy = not self.glassy if want == "toggle" else want == "on"
+            if want == "next":
+                want = LOOKS[(LOOKS.index(self.look) + 1) % len(LOOKS)]
+            if want in LOOKS:
+                self.look = want
                 self.prepare()
-            return "hud glass " + ("on" if self.glassy else "off")
+            elif want != "status":
+                return f"hud: no look {want!r} (there are: {' '.join(LOOKS)})"
+            return f"hud look {self.look}"
         elif what == "key" and len(words) > 1:
             # `reverie hud key <name>`: the key handler without a keyboard,
             # for tests, as the menu has it.
@@ -925,8 +1030,11 @@ class Hud:
             spring.step(dt)
         if self.zoom_ws is not None:
             self.zoom.step(dt)
+            if self.zoom.x > 0.72 and self.on_glass:
+                self._drop()                 # nearly the screen: let go over the real one
+                return False
             if self.zoom.x > 0.72:
-                self.alpha.target = 0.0      # nearly the screen: let go over the real one
+                self.alpha.target = 0.0      # (the same, for a panel that fades itself)
         # The panel may refresh at 165 Hz, and every frame here is a
         # full-screen software draw. Sixty is plenty for a spring.
         if now - self.drawn_at >= 1 / 61:
@@ -960,12 +1068,17 @@ class Hud:
         u = h / 1440.0                      # design unit: px at 1440p
 
         f = max(0.0, min(1.0, self.frosted.x))
-        if f < 0.999:
+        if self.on_glass:
+            # Nothing of its own behind the panel — but not nothing: the
+            # plugin puts glass where a surface is not empty (as under.py).
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.008)
+            cr.paint()
+        elif f < 0.999:
             # Until the picture is there (and for good if it never comes): a
             # scrim over the live desktop, as dark as the picture will be.
             rgba(cr, "bgDeep", max(0.0, min(1.0, self.veil.x)) * a)
             cr.paint()
-        if self.backdrop is not None and f > 0.001:
+        if self.backdrop is not None and f > 0.001 and not self.on_glass:
             # The desktop, out of focus and already darkened (see frost).
             bw, bh = self.backdrop.get_width(), self.backdrop.get_height()
             cr.save()
