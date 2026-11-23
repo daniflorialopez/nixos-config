@@ -38,9 +38,6 @@ corner, what the bar would be showing below.
 The panel is meant to be watched arrive and leave, not only read (Dani,
 2026-11-19: "could it be more spectacular?"). Four things, all in the panel's
 own vocabulary of light and depth rather than decoration laid on it:
-(With liquid glass on there is a fifth, a prototype: once the panel has come
-to rest it gets a tray and pills of real glass. That is rest.py, and nothing
-in the entrance or the exit knows about it.)
 
   - the cards come in as a sweep: the workspace you are on steps back into
     its card, its neighbours arrive from their own sides a moment apart;
@@ -76,7 +73,6 @@ from barinfo import BarInfo
 from common import (EFFECT, FONT, ICON_FAMILY, PAL, SPATIAL, Spring, focused_gdk_monitor, hypr,
                     ink, label, layer_window, measure, rgba, rounded, text)
 from ledger import human
-from rest import Rest
 from thumbs import Thumbs
 
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell  # noqa: E402  (common pins versions)
@@ -324,10 +320,6 @@ class Hud:
         self.zoom = Spring(0.0, ZOOM)        # the chosen card on its way to being the screen
         self.zoom_ws = None                  # ... and which one that is
         self.zoomed = None                   # ... and where it started from
-        self.mon = None                      # the Gdk monitor the panel is on
-        self.unit = 1.0                      # the design unit of the last frame drawn
-        self.island_radius = ISLAND_RADIUS
-        self.rest = Rest(self, app)          # the panel at rest, in glass (rest.py)
         GLib.idle_add(self._warm)
 
     def _bar_landed(self):
@@ -396,7 +388,6 @@ class Hud:
         if mon is not None and not fading:
             Gtk4LayerShell.set_monitor(self.win, mon)
             self.output = mon.get_connector()
-            self.mon = mon
         if self.backdrop is None:
             # (Shown again while fading out, it keeps the picture it has.)
             self.frosted.x = self.frosted.v = self.frosted.target = 0.0
@@ -571,7 +562,6 @@ class Hud:
         if not self.shown:
             return
         self.shown = False
-        self.rest.end()                      # one surface again before anything moves
         self.alpha.target = 0.0
         self.rise.target = 0.0
         # Give the keyboard and the pointer back now, not when the fade ends:
@@ -621,19 +611,6 @@ class Hud:
             self.hide()
         elif what in ("toggle", "pin"):
             self.toggle()
-        elif what == "glass":
-            # The glass rest (rest.py), on its own switch: a prototype has to
-            # be something you can turn off without turning glass off.
-            want = words[1] if len(words) > 1 else "status"
-            if want in ("on", "off", "toggle"):
-                self.rest.enabled = not self.rest.enabled if want == "toggle" else want == "on"
-                if self.shown:
-                    self._ensure_tick()      # so that it comes, or goes, now
-            return "hud glass " + ("on" if self.rest.enabled else "off")
-        elif what == "key" and len(words) > 1:
-            # `reverie hud key <name>`: the key handler without a keyboard,
-            # for tests, as the menu has it.
-            self.on_key(None, Gdk.keyval_from_name(words[1]), 0, 0)
         elif what != "status":
             return f"unknown: hud {what}"
         return "hud " + ("hidden" if not self.shown else "pinned" if self.sticky else "held")
@@ -786,7 +763,6 @@ class Hud:
         self.rise.step(dt)
         self.frosted.step(dt)
         self.veil.step(dt)
-        self.rest.glassy.step(dt)
         since = time.monotonic() - self.shown_at
         waiting = False
         for i, (key, _) in enumerate(GAUGES):
@@ -828,8 +804,6 @@ class Hud:
         if now - self.drawn_at >= 1 / 61:
             self.drawn_at = now
             self.area.queue_draw()
-        if self.shown and self.alpha.x > 0.99 and self.frosted.x > 0.99 and self.rise.resting:
-            self.rest.settled()              # arrived: the glass may come (rest.py)
         if not self.shown and self.alpha.x < 0.01:
             self.win.set_visible(False)
             self.backdrop = None             # ~14 MB; do not keep it while hidden
@@ -837,8 +811,7 @@ class Hud:
             self.tick_id = 0
             return False
         settled = self.alpha.resting and self.rise.resting and self.frosted.resting and \
-            self.veil.resting and self.rest.glassy.resting and \
-            all(s.resting for s in self.gauge.values()) and \
+            self.veil.resting and all(s.resting for s in self.gauge.values()) and \
             all(s.resting for s in self.grow.values()) and \
             all(s.resting for s in self.reveal.values()) and \
             all(s.resting for s in self.arrive.values())
@@ -857,12 +830,9 @@ class Hud:
         a = max(0.0, min(1.0, self.alpha.x))
         rise = self.rise.x
         u = h / 1440.0                      # design unit: px at 1440p
-        self.unit = u
 
-        # At rest in glass the backdrop is not ours to paint: it is the
-        # surface underneath, and this one is see-through down to it.
-        f = 0.0 if self.rest.live else max(0.0, min(1.0, self.frosted.x))
-        if f < 0.999 and not self.rest.live:
+        f = max(0.0, min(1.0, self.frosted.x))
+        if f < 0.999:
             # Until the picture is there (and for good if it never comes): a
             # scrim over the live desktop, as dark as the picture will be.
             rgba(cr, "bgDeep", max(0.0, min(1.0, self.veil.x)) * a)
@@ -897,7 +867,6 @@ class Hud:
             wid, x, y, cw, ch, mon, clients, g = self.zoomed
             self.draw_workspace(cr, wid, x * (1 - z), y * (1 - z), cw + (w - cw) * z,
                                 ch + (h - ch) * z, mon, clients, g, u, a, z)
-        self.rest.sync()                    # the glass pieces follow what was laid out
 
     def draw_clock(self, cr, cx, top, u, a):
         """The time under the arc of the day; `top` is the arc's crown."""
@@ -1072,27 +1041,13 @@ class Hud:
             text(cr, self.bar.title, w / 2, cy - tallest / 2 - 54 * u, 15 * u, "muted", a,
                  family=ICON_FAMILY, weight=400, align="center")
         self.placed = placed
-        # What the glass tray (rest.py) goes under: the row at its resting
-        # width — the cards trade sizes, their sum does not change — with
-        # the window title above it and the numbers below.
-        total = base * (n - 1 + HERO) + gap * (n - 1)
-        self.rest.tray_rect = ((w - total) / 2 - 44 * u, cy - lift - tallest / 2 - 84 * u,
-                               total + 88 * u, tallest + (84 + 118) * u)
         # The selected card sits in a pool of light — the spotlight's idea,
         # on the panel. It is wherever the cards' sizes say the selection is,
         # so when the selection moves the light glides with it.
         weight = sum(min(1.0, grown[p[0]]) for p in placed)
-        self.rest.light = None
         if weight > 0.05:
             lx = sum(min(1.0, grown[p[0]]) * (p[1] + p[3] / 2) for p in placed) / weight
             rx, ry = base * HERO * 0.98, tallest * 1.25
-        if weight > 0.05 and self.rest.live:
-            # At rest in glass the light is in the tray, under the cards
-            # (rest.py): painted here, on a surface that is see-through and
-            # blurred behind wherever it is not empty, it has edges.
-            self.rest.light = (glow(), lx - rx, cy - ry, rx / 80, ry / 80,
-                               GLOW * a * min(1.0, weight))
-        elif weight > 0.05:
             cr.save()
             cr.translate(lx - rx, cy - ry)
             cr.scale(rx / 80, ry / 80)
@@ -1326,17 +1281,11 @@ class Hud:
                 acc = 0.0
             rows[-1].append(chip)
             acc += chip[5] + gap
-        # As glass pills come up under the chips (rest.py), the chips' own
-        # solid islands go.
-        solid = a * (1.0 - max(0.0, min(1.0, self.rest.glassy.x)))
-        rects = []
         for r, row in enumerate(rows):
             x = (w - sum(c[5] for c in row) - gap * (len(row) - 1)) / 2
             ry = y + r * (ch + gap)
             for it, tw, th, dw, dh, cw in row:
-                rects.append((x, ry, cw, ch))
-                if solid > 0.004:
-                    self.island(cr, x, ry, cw, ch, u, solid)
+                self.island(cr, x, ry, cw, ch, u, a)
                 role = it["role"] if it["role"] in PAL else "subtle"
                 text(cr, it["text"], x + pad, ry + (ch - th) / 2, size, role, a,
                      family=ICON_FAMILY)
@@ -1344,4 +1293,3 @@ class Hud:
                     text(cr, it["detail"], x + pad + tw + between, ry + (ch - dh) / 2, dsize,
                          "muted", a, weight=FONT["regular"])
                 x += cw + gap
-        self.rest.chip_rects = rects

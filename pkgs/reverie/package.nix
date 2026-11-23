@@ -42,8 +42,6 @@
 #   reverie ripples on|off                     reverie menu [show|hide]
 #   reverie pulse [sound|fade] on|off          reverie undo · status · quit
 #   reverie glass on|off|toggle|look <name>    (only when built with `glass`)
-#   reverie hud glass on|off|toggle            the HUD at rest in glass, a
-#                                              prototype (src/rest.py)
 #   reverie demo     the whole thing in under a minute, then back to normal
 #   reverie try      no rebuild needed: starts the daemon and registers the
 #                    binds for this session only (`reverie untry` removes them)
