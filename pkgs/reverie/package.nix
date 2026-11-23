@@ -77,6 +77,7 @@
   pango,
   gdk-pixbuf,
   webp-pixbuf-loader,
+  imagemagick,
   graphene,
   harfbuzz,
   gobject-introspection,
@@ -124,6 +125,10 @@ let
   # of focus instead, whatever look was chosen (Dani, 2026-11-23: "they seem
   # the same to me, and I can't see the wallpaper at all"). Its own list
   # plus the WebP loader's, which was in the store already.
+  #
+  # That is the formats the wallpaper picker offers, read fast. It is not
+  # every format the wallpaper daemon can show: for the rest, whatever they
+  # are, the daemon asks ImageMagick (`_converted` in src/thumbs.py).
   loaders = runCommand "reverie-pixbuf-loaders.cache" { } ''
     cat ${gdk-pixbuf}/lib/gdk-pixbuf-2.0/*/loaders.cache \
         ${webp-pixbuf-loader}/lib/gdk-pixbuf-2.0/*/*loaders.cache > $out
@@ -178,12 +183,17 @@ writeShellApplication {
   # hyprctl, pw-play, playerctl, nvidia-smi, nmcli and systemctl come
   # from the session PATH on purpose: each is optional at runtime (the
   # daemon checks) and naming them here would pin builds this host may not
-  # use. grim is named because the HUD's backdrop is built on it.
+  # use. grim is named because the HUD's backdrop is built on it, and
+  # ImageMagick because a wallpaper GdkPixbuf cannot read is read with it:
+  # found on the PATH or not, that would again be a picture missing without
+  # a word wherever it is not. (The wallpaper picker's thumbnails are made
+  # with the same one, wm/wallpaper.nix, so it costs nothing here.)
   runtimeInputs = [
     python
     socat
     coreutils
     grim
+    imagemagick
     jq
     util-linux
   ];
